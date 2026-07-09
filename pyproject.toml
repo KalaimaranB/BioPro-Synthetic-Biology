@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "biopro-synthetic-biology"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "PyQt6>=6.5",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "networkx>=3.1",
+    "sbol3>=1.1",
+    "mesa>=2.0",
+    "pandas>=2.0",
+    "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+simulation = [
+    "tellurium>=2.2",
+]
+dev = [
+    "pytest",
+    "pytest-qt",
+    "ruff",
+    "pre-commit",
+]
+
+[tool.pytest.ini_options]
+markers = ["unit", "integration", "functional", "ui", "slow"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501", "E402", "E722", "F401", "F403", "F811"]
+
+[tool.setuptools]
+packages = ["analysis", "ui"]

@@ -1,0 +1,202 @@
+name: Auto-Release Plugin
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HOW TO USE THIS TEMPLATE
+#
+# 1. Copy this file into your plugin repo's .github/workflows/release.yml
+# 2. Add ONE GitHub repository secret named BIOPRO_PROJECT_PRIVATE_KEY:
+#    - Go to: Settings → Secrets and variables → Actions → New repository secret
+#    - Name:  BIOPRO_PROJECT_PRIVATE_KEY
+#    - Value: Paste the full contents of ~/.biopro/dev_private_key.pem
+# 3. Add ONE more secret named DIST_PAT:
+#    - This is a GitHub Personal Access Token with repo scope
+#    - It allows the workflow to open a PR on BioPro-Distribution
+# 4. To release:
+#    - Manually bump the "version" field in your `manifest.json` (e.g. "1.1.0")
+#    - `git commit` and `git push` to main.
+#    - The CI will detect the new version, tag it, sign it, and release it automatically.
+#    - If you push WITHOUT bumping the version, the CI will gracefully skip the release.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  check_version:
+    name: Check Version Bump
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+      version: ${{ steps.check.outputs.version }}
+      plugin_id: ${{ steps.check.outputs.plugin_id }}
+      release_notes: ${{ steps.check.outputs.release_notes }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Check Version
+        id: check
+        run: |
+          PLUGIN_ID=$(jq -r .id manifest.json)
+          VERSION=$(jq -r .version manifest.json)
+          RELEASE_NOTES=$(jq -r '.release_notes // "No release notes provided."' manifest.json)
+          TAG_NAME="v$VERSION"
+
+          echo "plugin_id=$PLUGIN_ID" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Handle multi-line strings safely in GITHUB_OUTPUT
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "release_notes<<$EOF" >> $GITHUB_OUTPUT
+          echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
+
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME"; then
+            echo "Version $VERSION already released. Skipping build."
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "New version $VERSION detected. Proceeding with release."
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+  release:
+    name: Evaluate, Sign & Release
+    needs: check_version
+    if: needs.check_version.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # ── 2. Tag Repository ────────────────────────────────────────────────
+      - name: Tag Repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          TAG_NAME="v${{ needs.check_version.outputs.version }}"
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
+
+      # ── 3. Python Setup ──────────────────────────────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Qt System Dependencies
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libxkbcommon-x11-0 libxcb-cursor0
+
+      - name: Install BioPro SDK
+        run: |
+          pip install git+https://github.com/KalaimaranB/BioPro-SDK.git
+
+      # ── 4. SDK Evaluate (Quality Gate) ───────────────────────────────────
+      - name: SDK Evaluate Plugin
+        run: |
+          biopro-sdk evaluate .
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      # ── 5. Project Sign ───────────────────────────────────────────────────
+      - name: Execute Project Signing
+        run: |
+          biopro-sdk project-sign .
+        env:
+          BIOPRO_PROJECT_PRIVATE_KEY: ${{ secrets.BIOPRO_PROJECT_PRIVATE_KEY }}
+          QT_QPA_PLATFORM: offscreen
+      # ── 7. Build ZIP (excluding development noise) ────────────────────────
+      - name: Build Release ZIP
+        run: |
+          PLUGIN_ID="${{ needs.check_version.outputs.plugin_id }}"
+          NEW_VERSION="${{ needs.check_version.outputs.version }}"
+          ZIP_NAME="${PLUGIN_ID}_v${NEW_VERSION}.zip"
+
+          zip -r "$ZIP_NAME" . \
+            --exclude "*.git*" \
+            --exclude "*tests/*" \
+            --exclude "*__pycache__/*" \
+            --exclude "*.venv/*" \
+            --exclude "*.DS_Store" \
+            --exclude "*.pem" \
+            --exclude "*.key" \
+            --exclude "*.pytest_cache/*" \
+            --exclude "*.github/*"
+
+      # ── 8. Publish GitHub Release ─────────────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ needs.check_version.outputs.version }}"
+          name: "${{ needs.check_version.outputs.plugin_id }} v${{ needs.check_version.outputs.version }}"
+          body: |
+            ### Release Notes
+            ${{ needs.check_version.outputs.release_notes }}
+
+            ---
+            *Auto-generated changes below:*
+          generate_release_notes: true
+          files: "${{ needs.check_version.outputs.plugin_id }}_v${{ needs.check_version.outputs.version }}.zip"
+
+      # ── 9. Open PR to BioPro-Distribution to bump registry.json ──────────
+      - name: Checkout BioPro-Distribution
+        uses: actions/checkout@v4
+        with:
+          repository: KalaimaranB/BioPro-Distribution
+          token: ${{ secrets.DIST_PAT }}
+          path: dist-repo
+
+      - name: Update registry.json
+        run: |
+          cd dist-repo
+          python3 - <<'EOF'
+          import json, sys
+
+          with open("registry.json") as f:
+              reg = json.load(f)
+
+          plugin_id = "${{ needs.check_version.outputs.plugin_id }}"
+          new_version = "${{ needs.check_version.outputs.version }}"
+          tag_name = f"v{new_version}"
+          zip_name = f"{plugin_id}_{tag_name}.zip"
+          download_url = f"https://github.com/${{ github.repository }}/releases/download/{tag_name}/{zip_name}"
+
+          if plugin_id in reg.get("plugins", {}):
+              reg["plugins"][plugin_id]["version"] = new_version
+              reg["plugins"][plugin_id]["download_url"] = download_url
+
+              with open("registry.json", "w") as f:
+                  json.dump(reg, f, indent=2)
+              print(f"Updated {plugin_id} in registry.json")
+          else:
+              print(f"Error: {plugin_id} not found in registry.json")
+              sys.exit(1)
+          EOF
+
+      - name: Open Registry Update PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.DIST_PAT }}
+          path: dist-repo
+          branch: "auto/update-${{ needs.check_version.outputs.plugin_id }}-v${{ needs.check_version.outputs.version }}"
+          title: "chore: bump ${{ needs.check_version.outputs.plugin_id }} to v${{ needs.check_version.outputs.version }}"
+          commit-message: "chore: bump ${{ needs.check_version.outputs.plugin_id }} to ${{ needs.check_version.outputs.version }}"
+          body: |
+            ## Automated Registry Update
+
+            Plugin **`${{ needs.check_version.outputs.plugin_id }}`** was released at tag `v${{ needs.check_version.outputs.version }}`.
+
+            ### Developer Release Notes
+            > ${{ needs.check_version.outputs.release_notes }}
+
+            This PR updates `registry.json` with the latest version.
+
+            > ⚠️ **Review before merging:** Verify the download URL is correct and the ZIP is valid.
+          add-paths: registry.json

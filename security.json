@@ -1,0 +1,42 @@
+{
+    "security_version": 1,
+    "plugin_id": "synthetic_biology",
+    "manifest_hash": "fff0bd3926ff3ba89609b93cfa4b5a10f4353892d34716fc8e6b95cedc04f653",
+    "exclusions": [
+        "tests"
+    ],
+    "hashes": {
+        ".pre-commit-config.yaml": "29243b367556333244a04acc31ef48fe5d2c7c8ebb84bfedec7ada197260863a",
+        "__init__.py": "5cff95c85d84b1c48fc0149821ad79e3a6cab4c3e22de6e32fe2ebd8b07a752a",
+        "delegation.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "mkdocs.yml": "43dece89abb70399eeca421d35790b07a7cec60b7fe1a3dc3f6abb73496c1d0e",
+        "ui/__init__.py": "e97e9f60942c80a31a5fd004e539c92aa67582a67a7aa26e40f41fdded2d2176",
+        "ui/composition_root.py": "858c1c1c4837b1623e4847b547a293ac5d0dac66839c9545157e5be0898ddddb",
+        "ui/main_panel.py": "6ae1b082f89afd145e83cab4a7aceb72a892387491c12e300e581aa6716dea64",
+        "ui/ribbons/__init__.py": "f6d9eb281c4e70614a52be944aefdb535defeef8a9a386a51755139fccefd5fa",
+        "ui/ribbons/biological_view_ribbon.py": "59d2f9fa6496d48e55660d0e16848ef09cca5c01f27e719fdf4c03d2c9e25670",
+        "ui/ribbons/design_ribbon.py": "13470956c40129edbff32c83bd97b79c8b6c632f24d6987d637510bc6a99f672",
+        "ui/ribbons/simulate_ribbon.py": "d409c4c8fc71e3ddcf12864c040badbe2834f9c864c68f1b5d03bfbd1e2e5514",
+        "ui/canvas/__init__.py": "343ff754c0a01f35c4adff6222089bd7f521dec7bcf832ffae9e88216acf028b",
+        "ui/canvas/circuit_canvas.py": "750e24cb7b360ff2162e51d64ef9403a1dedad7c1a12314a364892cdbbf92fbe",
+        "ui/views/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "ui/views/properties_view.py": "58b8c0b2367bb732dcc02ada84370ce76099b1d612d89ff3c0dc808a511f1504",
+        "analysis/__init__.py": "e5f7a4db1fca31752fdaf90c617e6e4ee81d3db75f1e4266aedc62ed0c113f43",
+        "analysis/config.py": "44b87ee403b52ea9818b6085a6e4b4b2f67aae65f8463681352eb1634321bcf9",
+        "analysis/events.py": "9a76918997c4715abe52b3dcfc7a2868697f81bc8aa2a86f6af079808116e936",
+        "analysis/state.py": "40a009815dbe2db0382c6f54d1738d175ecca77d30e349d7bf2b9b193d7c2d13",
+        "analysis/parts/__init__.py": "1d3e83c8eaded620d9e58a760581f9a623db5a11e65b204acc679f64fe504c89",
+        "analysis/parts/base.py": "47d4df8f3aaaff34a5f36690c56dbc2ce16a2dc5ac79fea319f34c593a775077",
+        "analysis/parts/components.py": "e52e577c92aecbb187a8a0e0734d02dcb1d61d878f78dff2a4f2b40e39a81859",
+        "analysis/api/__init__.py": "d2cf7ae9e531600b2463ad65d4ee2776b447eeed2fecf96e24b5245aae386295",
+        "analysis/api/client.py": "b8d121bb864adc627f432fd779ccb8d6ee14b2e48876a2a10b66268a497f7080",
+        "analysis/api/kinetics.py": "a4c912bef18e06829d08375f53a0fbf6293ed69029bbf895e553f39974ec87f5",
+        "tests/__init__.py": "5a4ef7228eb6275e41b652d5233c660120d669a26440b7af4b804b2b92c30108",
+        "tests/conftest.py": "d64df962c1083b06c2d531a307f978f9e71c02b009f34891a4d7dc378094da89",
+        "tests/unit/__init__.py": "9a4a1d0d63dbdc242b4536d00334837ec3c459a6ee5f81ca31688ef48312559c",
+        "tests/unit/test_api_client.py": "0b6652ccc26136ee85f42e8aa49aee308067158c51e001df24adc44c1def68dc",
+        "tests/unit/test_manifest.py": "404860e8d57c674da399a8821daa2286cc5009095f33cf44d0e079e83b913037",
+        "tests/unit/test_parts.py": "fa892101304f1c1007988521d6ceae6325daf20e62b5ebbbbb32ecad6c31e65f",
+        "tests/unit/test_state.py": "c4b137296193f79d07bf2cbc1cc127a39e01444fb02ee1856184e9b208f6251f"
+    }
+}
