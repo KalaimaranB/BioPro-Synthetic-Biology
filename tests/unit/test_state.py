@@ -2,7 +2,7 @@
 
 import pytest
 
-from analysis.state import CircuitState, SynBioState, ViewState
+from biopro.plugins.synthetic_biology.analysis.state import CircuitState, SynBioState, ViewState
 
 
 class TestCircuitState:

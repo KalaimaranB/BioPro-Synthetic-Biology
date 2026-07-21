@@ -10,7 +10,7 @@ matplotlib.use('QtAgg')
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
-from analysis.parts.components import Promoter
+from biopro.plugins.synthetic_biology.analysis.parts.components import Promoter
 
 
 class SimulateView(QWidget):

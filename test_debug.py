@@ -1,6 +1,6 @@
 import os
-from analysis.catalogue.repository import JsonPartRepository
-from analysis.catalogue.service import PartsCatalogueService
+from biopro.plugins.synthetic_biology.analysis.catalogue.repository import JsonPartRepository
+from biopro.plugins.synthetic_biology.analysis.catalogue.service import PartsCatalogueService
 
 def test_debug():
     if os.path.exists("debug_cat.json"): os.remove("debug_cat.json")

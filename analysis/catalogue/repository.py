@@ -2,8 +2,8 @@ import json
 import os
 from typing import List, Optional, Protocol
 
-from analysis.parts.base import BiologicalPart
-from analysis.parts.components import CDS, RBS, Insulator, Promoter, Terminator, sgRNA
+from biopro.plugins.synthetic_biology.analysis.parts.base import BiologicalPart
+from biopro.plugins.synthetic_biology.analysis.parts.components import CDS, RBS, Insulator, Promoter, Terminator, sgRNA
 
 
 class PartRepository(Protocol):

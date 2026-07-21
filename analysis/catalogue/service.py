@@ -3,10 +3,10 @@ import json
 import urllib.request
 from typing import List, Optional
 
-from analysis.api.kinetics import CelloKineticsDatabase
-from analysis.catalogue.repository import PartRepository
-from analysis.parts.base import BiologicalPart
-from analysis.parts.components import CDS, Promoter
+from biopro.plugins.synthetic_biology.analysis.api.kinetics import CelloKineticsDatabase
+from biopro.plugins.synthetic_biology.analysis.catalogue.repository import PartRepository
+from biopro.plugins.synthetic_biology.analysis.parts.base import BiologicalPart
+from biopro.plugins.synthetic_biology.analysis.parts.components import CDS, Promoter
 
 
 class PartsCatalogueService:

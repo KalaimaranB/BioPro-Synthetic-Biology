@@ -2,7 +2,7 @@
 
 import pytest
 
-from analysis.parts.components import CDS, RBS, Promoter, Terminator
+from biopro.plugins.synthetic_biology.analysis.parts.components import CDS, RBS, Promoter, Terminator
 
 
 class TestPromoter:

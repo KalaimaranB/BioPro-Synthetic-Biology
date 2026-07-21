@@ -6,7 +6,7 @@ from PyQt6.QtCore import QPointF, Qt
 from PyQt6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen, QPolygonF
 from PyQt6.QtWidgets import QGraphicsPathItem, QGraphicsPolygonItem, QGraphicsScene, QGraphicsView
 
-from analysis.parts.components import CDS, RBS, Promoter, Terminator, Insulator, sgRNA
+from biopro.plugins.synthetic_biology.analysis.parts.components import CDS, RBS, Promoter, Terminator, Insulator, sgRNA
 
 
 class CircuitCanvas(QGraphicsView):

@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel
 from PyQt6.QtCore import pyqtSignal, Qt
 
-from analysis.parts.base import BiologicalPart
+from biopro.plugins.synthetic_biology.analysis.parts.base import BiologicalPart
 from biopro.ui.theme import Colors, Fonts
 
 

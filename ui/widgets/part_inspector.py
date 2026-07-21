@@ -6,8 +6,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QPixmap
 
-from analysis.parts.base import BiologicalPart
-from analysis.parts.components import CDS, Promoter, Terminator, RBS
+from biopro.plugins.synthetic_biology.analysis.parts.base import BiologicalPart
+from biopro.plugins.synthetic_biology.analysis.parts.components import CDS, Promoter, Terminator, RBS
 from biopro.ui.theme import Colors, Fonts
 
 

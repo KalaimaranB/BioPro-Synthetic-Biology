@@ -1,8 +1,8 @@
 import json
 import pytest
-from analysis.catalogue.repository import JsonPartRepository
-from analysis.catalogue.service import PartsCatalogueService
-from analysis.parts.components import Promoter, CDS
+from biopro.plugins.synthetic_biology.analysis.catalogue.repository import JsonPartRepository
+from biopro.plugins.synthetic_biology.analysis.catalogue.service import PartsCatalogueService
+from biopro.plugins.synthetic_biology.analysis.parts.components import Promoter, CDS
 
 def test_json_part_repository_saves_and_retrieves(tmp_path):
     repo_path = tmp_path / "catalogue.json"

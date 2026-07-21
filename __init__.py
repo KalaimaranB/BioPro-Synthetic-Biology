@@ -10,10 +10,7 @@ __plugin_id__ = "synthetic_biology"
 import os
 import sys
 
-# Ensure the plugin's root directory is in sys.path so absolute imports like 'from analysis import ...' work
-plugin_dir = os.path.dirname(os.path.abspath(__file__))
-if plugin_dir not in sys.path:
-    sys.path.insert(0, plugin_dir)
+
 
 
 def get_panel_class():

@@ -9,8 +9,8 @@ from typing import Optional, Protocol
 import requests
 import sbol3
 
-from analysis.parts.base import BiologicalPart
-from analysis.parts.components import CDS, RBS, Promoter, Terminator, Insulator, sgRNA
+from biopro.plugins.synthetic_biology.analysis.parts.base import BiologicalPart
+from biopro.plugins.synthetic_biology.analysis.parts.components import CDS, RBS, Promoter, Terminator, Insulator, sgRNA
 
 
 class RegistryClient(Protocol):

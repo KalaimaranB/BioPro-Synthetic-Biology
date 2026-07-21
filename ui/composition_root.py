@@ -7,7 +7,7 @@ Dependency Inversion Principle.
 
 from typing import Any
 
-from analysis.state import SynBioState
+from biopro.plugins.synthetic_biology.analysis.state import SynBioState
 
 
 class ServiceFactory:
@@ -35,8 +35,14 @@ class ServiceFactory:
         self._services["synbiohub_client"] = SynBioHubClient()
         
         # Setup the Parts Catalogue
-        # Using a local workspace json for now
-        catalogue_path = os.path.join(os.getcwd(), "catalogue.json")
+        from pathlib import Path
+        
+        # os.getcwd() evaluates to '/' when running inside a macOS app bundle.
+        # Instead, we should save it relative to the plugin's root directory,
+        # or inside the user's ~/.biopro data folder. For now, we'll keep it in the plugin root.
+        plugin_root = Path(__file__).parent.parent
+        catalogue_path = str(plugin_root / "catalogue.json")
+        
         repo = JsonPartRepository(catalogue_path)
         catalogue_service = PartsCatalogueService(repo)
         catalogue_service.initialize_cello_parts()

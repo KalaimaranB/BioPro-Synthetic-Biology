@@ -127,7 +127,7 @@ sys.modules["biopro.shared"] = MagicMock()
 sys.modules["biopro.shared.ui"] = MagicMock()
 sys.modules["biopro.shared.ui.ui_components"] = mock_components
 
-from analysis.state import SynBioState
+from biopro.plugins.synthetic_biology.analysis.state import SynBioState
 
 
 @pytest.fixture

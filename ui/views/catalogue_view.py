@@ -3,10 +3,10 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 
-from analysis.catalogue.service import PartsCatalogueService
-from ui.widgets.flow_layout import FlowLayout
-from ui.widgets.part_card import PartCard
-from ui.widgets.part_inspector import PartInspector
+from biopro.plugins.synthetic_biology.analysis.catalogue.service import PartsCatalogueService
+from biopro.plugins.synthetic_biology.ui.widgets.flow_layout import FlowLayout
+from biopro.plugins.synthetic_biology.ui.widgets.part_card import PartCard
+from biopro.plugins.synthetic_biology.ui.widgets.part_inspector import PartInspector
 
 
 class CatalogueView(QWidget):

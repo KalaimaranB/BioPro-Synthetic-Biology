@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from analysis.parts.components import CDS, RBS, Promoter, Terminator
+from biopro.plugins.synthetic_biology.analysis.parts.components import CDS, RBS, Promoter, Terminator
 
 
 class PropertiesView(QWidget):

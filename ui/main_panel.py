@@ -52,7 +52,7 @@ except ImportError:
     theme_manager = _DummyThemeManager()
 
 # Relative imports — all within this plugin
-from analysis.state import SynBioState
+from biopro.plugins.synthetic_biology.analysis.state import SynBioState
 
 logger = get_logger(__name__, "synthetic_biology")
 

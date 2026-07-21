@@ -2,8 +2,8 @@
 
 from unittest.mock import patch
 
-from analysis.api.client import IGemClient
-from analysis.parts.components import Promoter
+from biopro.plugins.synthetic_biology.analysis.api.client import IGemClient
+from biopro.plugins.synthetic_biology.analysis.parts.components import Promoter
 
 
 class TestIGemClient:
