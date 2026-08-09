@@ -51,4 +51,3 @@ def cleanup():
 def shutdown():
     """Module-level shutdown."""
     pass
-

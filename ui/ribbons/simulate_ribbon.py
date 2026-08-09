@@ -22,6 +22,7 @@ class SimulateRibbon(QWidget):
 
     def _setup_ui(self):
         from PyQt6.QtWidgets import QComboBox
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(16, 12, 16, 12)
         layout.setSpacing(8)
@@ -44,5 +45,5 @@ class SimulateRibbon(QWidget):
         layout.addStretch()
 
     def _on_run_clicked(self):
-        method = 'ode' if self.method_combo.currentIndex() == 0 else 'gillespie'
+        method = "ode" if self.method_combo.currentIndex() == 0 else "gillespie"
         self.run_simulation.emit(self.time_spin.value(), method)

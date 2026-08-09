@@ -1,7 +1,14 @@
 """Design Ribbon — Fetch and select biological parts."""
 
 from PyQt6.QtCore import QStringListModel, Qt, pyqtSignal
-from PyQt6.QtWidgets import QComboBox, QCompleter, QHBoxLayout, QLabel, QMessageBox, QWidget
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QCompleter,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QWidget,
+)
 
 try:
     from biopro.shared.ui.ui_components import BioLineEdit, PrimaryButton
@@ -34,7 +41,7 @@ class DesignRibbon(QWidget):
         "Terminator": [
             "BBa_B0015 - Double terminator",
             "BBa_B0010 - T1 terminator",
-        ]
+        ],
     }
 
     def __init__(self, service_factory, parent=None):
@@ -49,7 +56,9 @@ class DesignRibbon(QWidget):
 
         layout.addWidget(QLabel("Role:"))
         self.role_combo = QComboBox()
-        self.role_combo.addItems(["Promoter", "Ribosome Binding Site", "Coding Sequence", "Terminator"])
+        self.role_combo.addItems(
+            ["Promoter", "Ribosome Binding Site", "Coding Sequence", "Terminator"]
+        )
         self.role_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
         self.role_combo.setMinimumWidth(250)
         self.role_combo.currentTextChanged.connect(self._update_completer)
@@ -76,6 +85,7 @@ class DesignRibbon(QWidget):
         # Apply dark theme styling ONCE so the SDK global style migration can pick up the hex codes
         try:
             from biopro.ui.theme import Colors
+
             self.role_combo.setStyleSheet(f"""
                 QComboBox {{
                     background: {Colors.BG_DARK};
@@ -124,7 +134,9 @@ class DesignRibbon(QWidget):
                     self.part_fetched.emit(part)
                     self.search_input.clear()
                 else:
-                    QMessageBox.warning(self, "Fetch Failed", f"Could not find part '{part_id}'.")
+                    QMessageBox.warning(
+                        self, "Fetch Failed", f"Could not find part '{part_id}'."
+                    )
         finally:
             self.fetch_btn.setEnabled(True)
             self.fetch_btn.setText("Fetch Part")

@@ -6,12 +6,14 @@ between wild-type baseline parts and mutated sequences.
 
 from typing import Any, Dict, Optional
 import matplotlib
-matplotlib.use('QtAgg')
+
+matplotlib.use("QtAgg")
 from matplotlib.figure import Figure
 import numpy as np
 
 try:
     from biopro.ui.theme import Colors
+
     DARK_BG = getattr(Colors, "BG_DARKEST", "#0d1117")
     TEXT_COLOR = getattr(Colors, "FG_PRIMARY", "#c9d1d9")
     WT_COLOR = getattr(Colors, "SUCCESS", "#4caf50")
@@ -60,25 +62,25 @@ def apply_standard_axes(
     ax.set_ylabel(y_label, color=dark_text_color, fontsize=12, fontweight="bold")
 
     # Hide top and right spines
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
 
     # Style bottom and left spines
-    ax.spines['bottom'].set_visible(True)
-    ax.spines['bottom'].set_color(spine_color)
-    ax.spines['left'].set_visible(True)
-    ax.spines['left'].set_color(spine_color)
+    ax.spines["bottom"].set_visible(True)
+    ax.spines["bottom"].set_color(spine_color)
+    ax.spines["left"].set_visible(True)
+    ax.spines["left"].set_color(spine_color)
 
     # Style ticks with font size 10 and dark text color
     ax.tick_params(
-        axis='both',
-        which='both' if (is_log_x or is_log_y) else 'major',
+        axis="both",
+        which="both" if (is_log_x or is_log_y) else "major",
         colors=dark_text_color,
         labelsize=10,
     )
 
     # Dynamic scaling & protective margins
-    ax.autoscale(enable=True, axis='both', tight=False)
+    ax.autoscale(enable=True, axis="both", tight=False)
     ax.margins(x=0.02, y=0.05)
 
     # Light dashed grid lines
@@ -96,7 +98,6 @@ def apply_standard_axes(
 
     # Call tight_layout to protect layout
     fig.tight_layout()
-
 
 
 def generate_transfer_curve(
@@ -166,12 +167,16 @@ def generate_transfer_curve(
         R = np.logspace(np.log10(r_min), np.log10(r_max), 500)
 
         # Repressive Hill Equation calculation
-        wt_P = wt_ymin + (wt_ymax - wt_ymin) / (1.0 + (R / max(1e-6, wt_kd)) ** max(0.1, wt_n))
-        mut_P = mut_ymin + (mut_ymax - mut_ymin) / (1.0 + (R / max(1e-6, mut_kd)) ** max(0.1, mut_n))
+        wt_P = wt_ymin + (wt_ymax - wt_ymin) / (
+            1.0 + (R / max(1e-6, wt_kd)) ** max(0.1, wt_n)
+        )
+        mut_P = mut_ymin + (mut_ymax - mut_ymin) / (
+            1.0 + (R / max(1e-6, mut_kd)) ** max(0.1, mut_n)
+        )
 
         # Plot curves: solid green for wild type, dashed red for mutation
-        ax.plot(R, wt_P, 'g-', label="Wild Type Baseline", linewidth=2.2, alpha=0.9)
-        ax.plot(R, mut_P, 'r--', label="Mutated Sequence", linewidth=2.2, alpha=0.9)
+        ax.plot(R, wt_P, "g-", label="Wild Type Baseline", linewidth=2.2, alpha=0.9)
+        ax.plot(R, mut_P, "r--", label="Mutated Sequence", linewidth=2.2, alpha=0.9)
 
         ax.set_xscale("log")
         if not title:
@@ -188,11 +193,27 @@ def generate_transfer_curve(
 
     elif clean_type == "cds":
         # Extract CDS kinetics parameters
-        wt_alpha = float(wt_params.get("translation_rate") or wt_params.get("wt_translation_rate") or 0.1)
-        wt_gamma = float(wt_params.get("degradation_rate") or wt_params.get("wt_degradation_rate") or 0.01)
+        wt_alpha = float(
+            wt_params.get("translation_rate")
+            or wt_params.get("wt_translation_rate")
+            or 0.1
+        )
+        wt_gamma = float(
+            wt_params.get("degradation_rate")
+            or wt_params.get("wt_degradation_rate")
+            or 0.01
+        )
 
-        mut_alpha = float(mut_params.get("translation_rate") or mut_params.get("mut_translation_rate") or 0.1)
-        mut_gamma = float(mut_params.get("degradation_rate") or mut_params.get("mut_degradation_rate") or 0.01)
+        mut_alpha = float(
+            mut_params.get("translation_rate")
+            or mut_params.get("mut_translation_rate")
+            or 0.1
+        )
+        mut_gamma = float(
+            mut_params.get("degradation_rate")
+            or mut_params.get("mut_degradation_rate")
+            or 0.01
+        )
 
         # Time array using numpy.linspace
         t = np.linspace(0, 100, 500)
@@ -205,8 +226,8 @@ def generate_transfer_curve(
         mut_P = mut_steady * (1.0 - np.exp(-max(1e-5, mut_gamma) * t))
 
         # Plot curves: solid green for wild type, dashed red for mutation
-        ax.plot(t, wt_P, 'g-', label="Wild Type Baseline", linewidth=2.2, alpha=0.9)
-        ax.plot(t, mut_P, 'r--', label="Mutated Sequence", linewidth=2.2, alpha=0.9)
+        ax.plot(t, wt_P, "g-", label="Wild Type Baseline", linewidth=2.2, alpha=0.9)
+        ax.plot(t, mut_P, "r--", label="Mutated Sequence", linewidth=2.2, alpha=0.9)
 
         if not title:
             title = "CDS Protein Accumulation Kinetics (WT vs Mutation)"
@@ -220,6 +241,8 @@ def generate_transfer_curve(
         )
 
     else:
-        raise ValueError(f"Unsupported part type '{part_type}' for transfer curve generation.")
+        raise ValueError(
+            f"Unsupported part type '{part_type}' for transfer curve generation."
+        )
 
     return fig

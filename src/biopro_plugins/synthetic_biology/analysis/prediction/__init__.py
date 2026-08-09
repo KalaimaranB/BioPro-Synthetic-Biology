@@ -10,4 +10,3 @@ __all__ = [
     "generate_transfer_curve",
     "apply_standard_axes",
 ]
-

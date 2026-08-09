@@ -12,10 +12,14 @@ class Promoter(BiologicalPart):
 
     y_min: Optional[float] = None  # Leakiness (RPU)
     y_max: Optional[float] = None  # Max output (RPU)
-    K_d: Optional[float] = None    # Activation/Repression threshold
-    n: Optional[float] = None      # Hill coefficient (steepness)
-    repressors: list[str] = field(default_factory=list)  # Molecules that repress this promoter
-    activators: list[str] = field(default_factory=list)  # Molecules that activate this promoter
+    K_d: Optional[float] = None  # Activation/Repression threshold
+    n: Optional[float] = None  # Hill coefficient (steepness)
+    repressors: list[str] = field(
+        default_factory=list
+    )  # Molecules that repress this promoter
+    activators: list[str] = field(
+        default_factory=list
+    )  # Molecules that activate this promoter
 
     @property
     def part_type(self) -> str:
@@ -95,7 +99,7 @@ class RBS(BiologicalPart):
 @dataclass
 class Insulator(BiologicalPart):
     """An insulator sequence (e.g., Ribozyme) that decouples transcription from translation."""
-    
+
     cleavage_efficiency: Optional[float] = None
 
     @property
@@ -111,7 +115,7 @@ class Insulator(BiologicalPart):
 @dataclass
 class sgRNA(BiologicalPart):
     """A single guide RNA sequence used for CRISPR-based logic gates."""
-    
+
     transcription_rate: Optional[float] = None
     degradation_rate: Optional[float] = None
     target_promoter: str = ""

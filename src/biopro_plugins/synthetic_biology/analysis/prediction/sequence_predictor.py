@@ -41,22 +41,70 @@ def levenshtein_distance(seq1: str, seq2: str) -> int:
 
 # Standard Bacterial Genetic Code Table
 STANDARD_GENETIC_CODE = {
-    "TTT": "F", "TTC": "F", "TTA": "L", "TTG": "L",
-    "CTT": "L", "CTC": "L", "CTA": "L", "CTG": "L",
-    "ATT": "I", "ATC": "I", "ATA": "I", "ATG": "M",
-    "GTT": "V", "GTC": "V", "GTA": "V", "GTG": "V",
-    "TCT": "S", "TCC": "S", "TCA": "S", "TCG": "S",
-    "CCT": "P", "CCC": "P", "CCA": "P", "CCG": "P",
-    "ACT": "T", "ACC": "T", "ACA": "T", "ACG": "T",
-    "GCT": "A", "GCC": "A", "GCA": "A", "GCG": "A",
-    "TAT": "Y", "TAC": "Y", "TAA": "*", "TAG": "*",
-    "CAT": "H", "CAC": "H", "CAA": "Q", "CAG": "Q",
-    "AAT": "N", "AAC": "N", "AAA": "K", "AAG": "K",
-    "GAT": "D", "GAC": "D", "GAA": "E", "GAG": "E",
-    "TGT": "C", "TGC": "C", "TGA": "*", "TGG": "W",
-    "CGT": "R", "CGC": "R", "CGA": "R", "CGG": "R",
-    "AGT": "S", "AGC": "S", "AGA": "R", "AGG": "R",
-    "GGT": "G", "GGC": "G", "GGA": "G", "GGG": "G",
+    "TTT": "F",
+    "TTC": "F",
+    "TTA": "L",
+    "TTG": "L",
+    "CTT": "L",
+    "CTC": "L",
+    "CTA": "L",
+    "CTG": "L",
+    "ATT": "I",
+    "ATC": "I",
+    "ATA": "I",
+    "ATG": "M",
+    "GTT": "V",
+    "GTC": "V",
+    "GTA": "V",
+    "GTG": "V",
+    "TCT": "S",
+    "TCC": "S",
+    "TCA": "S",
+    "TCG": "S",
+    "CCT": "P",
+    "CCC": "P",
+    "CCA": "P",
+    "CCG": "P",
+    "ACT": "T",
+    "ACC": "T",
+    "ACA": "T",
+    "ACG": "T",
+    "GCT": "A",
+    "GCC": "A",
+    "GCA": "A",
+    "GCG": "A",
+    "TAT": "Y",
+    "TAC": "Y",
+    "TAA": "*",
+    "TAG": "*",
+    "CAT": "H",
+    "CAC": "H",
+    "CAA": "Q",
+    "CAG": "Q",
+    "AAT": "N",
+    "AAC": "N",
+    "AAA": "K",
+    "AAG": "K",
+    "GAT": "D",
+    "GAC": "D",
+    "GAA": "E",
+    "GAG": "E",
+    "TGT": "C",
+    "TGC": "C",
+    "TGA": "*",
+    "TGG": "W",
+    "CGT": "R",
+    "CGC": "R",
+    "CGA": "R",
+    "CGG": "R",
+    "AGT": "S",
+    "AGC": "S",
+    "AGA": "R",
+    "AGG": "R",
+    "GGT": "G",
+    "GGC": "G",
+    "GGA": "G",
+    "GGG": "G",
 }
 
 
@@ -86,70 +134,301 @@ def translate_dna_to_protein(dna_seq: str) -> str:
 # E. coli Codon Relative Adaptiveness Values (w_i) for CAI Model
 ECOLI_CODON_W = {
     # Ala (A)
-    "GCG": 1.00, "GCC": 0.75, "GCT": 0.55, "GCA": 0.40,
+    "GCG": 1.00,
+    "GCC": 0.75,
+    "GCT": 0.55,
+    "GCA": 0.40,
     # Arg (R)
-    "CGT": 1.00, "CGC": 0.88, "CGG": 0.08, "CGA": 0.05, "AGA": 0.04, "AGG": 0.02,
+    "CGT": 1.00,
+    "CGC": 0.88,
+    "CGG": 0.08,
+    "CGA": 0.05,
+    "AGA": 0.04,
+    "AGG": 0.02,
     # Asn (N)
-    "AAC": 1.00, "AAT": 0.35,
+    "AAC": 1.00,
+    "AAT": 0.35,
     # Asp (D)
-    "GAC": 1.00, "GAT": 0.45,
+    "GAC": 1.00,
+    "GAT": 0.45,
     # Cys (C)
-    "TGC": 1.00, "TGT": 0.40,
+    "TGC": 1.00,
+    "TGT": 0.40,
     # Gln (Q)
-    "CAG": 1.00, "CAA": 0.20,
+    "CAG": 1.00,
+    "CAA": 0.20,
     # Glu (E)
-    "GAA": 1.00, "GAG": 0.25,
+    "GAA": 1.00,
+    "GAG": 0.25,
     # Gly (G)
-    "GGC": 1.00, "GGT": 0.90, "GGG": 0.15, "GGA": 0.10,
+    "GGC": 1.00,
+    "GGT": 0.90,
+    "GGG": 0.15,
+    "GGA": 0.10,
     # His (H)
-    "CAC": 1.00, "CAT": 0.45,
+    "CAC": 1.00,
+    "CAT": 0.45,
     # Ile (I)
-    "ATC": 1.00, "ATT": 0.80, "ATA": 0.08,
+    "ATC": 1.00,
+    "ATT": 0.80,
+    "ATA": 0.08,
     # Leu (L)
-    "CTG": 1.00, "CTC": 0.25, "CTT": 0.12, "TTA": 0.06, "TTG": 0.12, "CTA": 0.04,
+    "CTG": 1.00,
+    "CTC": 0.25,
+    "CTT": 0.12,
+    "TTA": 0.06,
+    "TTG": 0.12,
+    "CTA": 0.04,
     # Lys (K)
-    "AAA": 1.00, "AAG": 0.25,
+    "AAA": 1.00,
+    "AAG": 0.25,
     # Met (M)
     "ATG": 1.00,
     # Phe (F)
-    "TTC": 1.00, "TTT": 0.60,
+    "TTC": 1.00,
+    "TTT": 0.60,
     # Pro (P)
-    "CCG": 1.00, "CCA": 0.20, "CCT": 0.15, "CCC": 0.10,
+    "CCG": 1.00,
+    "CCA": 0.20,
+    "CCT": 0.15,
+    "CCC": 0.10,
     # Ser (S)
-    "TCC": 1.00, "AGC": 0.95, "TCT": 0.85, "TCG": 0.20, "TCA": 0.15, "AGT": 0.15,
+    "TCC": 1.00,
+    "AGC": 0.95,
+    "TCT": 0.85,
+    "TCG": 0.20,
+    "TCA": 0.15,
+    "AGT": 0.15,
     # Thr (T)
-    "ACC": 1.00, "ACG": 0.70, "ACT": 0.55, "ACA": 0.15,
+    "ACC": 1.00,
+    "ACG": 0.70,
+    "ACT": 0.55,
+    "ACA": 0.15,
     # Trp (W)
     "TGG": 1.00,
     # Tyr (Y)
-    "TAC": 1.00, "TAT": 0.45,
+    "TAC": 1.00,
+    "TAT": 0.45,
     # Val (V)
-    "GTG": 1.00, "GTT": 0.85, "GTC": 0.45, "GTA": 0.20,
+    "GTG": 1.00,
+    "GTT": 0.85,
+    "GTC": 0.45,
+    "GTA": 0.20,
 }
 
 
 # BLOSUM62 Amino Acid Substitution Matrix (Unrolled Pair Dictionary)
 BLOSUM62_SCORES = {
-    ('A', 'A'): 4, ('A', 'R'): -1, ('A', 'N'): -2, ('A', 'D'): -2, ('A', 'C'): 0, ('A', 'Q'): -1, ('A', 'E'): -1, ('A', 'G'): 0, ('A', 'H'): -2, ('A', 'I'): -1, ('A', 'L'): -1, ('A', 'K'): -1, ('A', 'M'): -1, ('A', 'F'): -2, ('A', 'P'): -1, ('A', 'S'): 1, ('A', 'T'): 0, ('A', 'W'): -3, ('A', 'Y'): -2, ('A', 'V'): 0,
-    ('R', 'R'): 5, ('R', 'N'): 0, ('R', 'D'): -2, ('R', 'C'): -3, ('R', 'Q'): 1, ('R', 'E'): 0, ('R', 'G'): -2, ('R', 'H'): 0, ('R', 'I'): -3, ('R', 'L'): -2, ('R', 'K'): 2, ('R', 'M'): -1, ('R', 'F'): -3, ('R', 'P'): -2, ('R', 'S'): -1, ('R', 'T'): -1, ('R', 'W'): -3, ('R', 'Y'): -2, ('R', 'V'): -3,
-    ('N', 'N'): 6, ('N', 'D'): 1, ('N', 'C'): -3, ('N', 'Q'): 0, ('N', 'E'): 0, ('N', 'G'): 0, ('N', 'H'): 1, ('N', 'I'): -3, ('N', 'L'): -3, ('N', 'K'): 0, ('N', 'M'): -2, ('N', 'F'): -3, ('N', 'P'): -2, ('N', 'S'): 1, ('N', 'T'): 0, ('N', 'W'): -4, ('N', 'Y'): -2, ('N', 'V'): -3,
-    ('D', 'D'): 6, ('D', 'C'): -3, ('D', 'Q'): 0, ('D', 'E'): 2, ('D', 'G'): -1, ('D', 'H'): -1, ('D', 'I'): -3, ('D', 'L'): -4, ('D', 'K'): -1, ('D', 'M'): -3, ('D', 'F'): -3, ('D', 'P'): -1, ('D', 'S'): 0, ('D', 'T'): -1, ('D', 'W'): -4, ('D', 'Y'): -3, ('D', 'V'): -3,
-    ('C', 'C'): 9, ('C', 'Q'): -3, ('C', 'E'): -4, ('C', 'G'): -3, ('C', 'H'): -3, ('C', 'I'): -1, ('C', 'L'): -1, ('C', 'K'): -3, ('C', 'M'): -1, ('C', 'F'): -2, ('C', 'P'): -3, ('C', 'S'): -1, ('C', 'T'): -1, ('C', 'W'): -2, ('C', 'Y'): -2, ('C', 'V'): -1,
-    ('Q', 'Q'): 5, ('Q', 'E'): 2, ('Q', 'G'): -2, ('Q', 'H'): 0, ('Q', 'I'): -3, ('Q', 'L'): -2, ('Q', 'K'): 1, ('Q', 'M'): 0, ('Q', 'F'): -3, ('Q', 'P'): -1, ('Q', 'S'): 0, ('Q', 'T'): -1, ('Q', 'W'): -2, ('Q', 'Y'): -1, ('Q', 'V'): -2,
-    ('E', 'E'): 5, ('E', 'G'): -2, ('E', 'H'): 0, ('E', 'I'): -3, ('E', 'L'): -3, ('E', 'K'): 1, ('E', 'M'): -2, ('E', 'F'): -3, ('E', 'P'): -1, ('E', 'S'): 0, ('E', 'T'): -1, ('E', 'W'): -3, ('E', 'Y'): -2, ('E', 'V'): -2,
-    ('G', 'G'): 6, ('G', 'H'): -2, ('G', 'I'): -4, ('G', 'L'): -4, ('G', 'K'): -2, ('G', 'M'): -3, ('G', 'F'): -3, ('G', 'P'): -2, ('G', 'S'): 0, ('G', 'T'): -2, ('G', 'W'): -2, ('G', 'Y'): -3, ('G', 'V'): -3,
-    ('H', 'H'): 8, ('H', 'I'): -3, ('H', 'L'): -3, ('H', 'K'): -1, ('H', 'M'): -2, ('H', 'F'): -1, ('H', 'P'): -2, ('H', 'S'): -1, ('H', 'T'): -2, ('H', 'W'): -2, ('H', 'Y'): 2, ('H', 'V'): -3,
-    ('I', 'I'): 4, ('I', 'L'): 2, ('I', 'K'): -3, ('I', 'M'): 1, ('I', 'F'): 0, ('I', 'P'): -3, ('I', 'S'): -2, ('I', 'T'): -1, ('I', 'W'): -3, ('I', 'Y'): -1, ('I', 'V'): 3,
-    ('L', 'L'): 4, ('L', 'K'): -2, ('L', 'M'): 2, ('L', 'F'): 0, ('L', 'P'): -3, ('L', 'S'): -2, ('L', 'T'): -1, ('L', 'W'): -2, ('L', 'Y'): -1, ('L', 'V'): 1,
-    ('K', 'K'): 5, ('K', 'M'): -1, ('K', 'F'): -3, ('K', 'P'): -1, ('K', 'S'): 0, ('K', 'T'): -1, ('K', 'W'): -3, ('K', 'Y'): -2, ('K', 'V'): -2,
-    ('M', 'M'): 5, ('M', 'F'): 0, ('M', 'P'): -2, ('M', 'S'): -1, ('M', 'T'): -1, ('M', 'W'): -1, ('M', 'Y'): -1, ('M', 'V'): 1,
-    ('F', 'F'): 6, ('F', 'P'): -4, ('F', 'S'): -2, ('F', 'T'): -2, ('F', 'W'): 1, ('F', 'Y'): 3, ('F', 'V'): -1,
-    ('P', 'P'): 7, ('P', 'S'): -1, ('P', 'T'): -1, ('P', 'W'): -4, ('P', 'Y'): -3, ('P', 'V'): -2,
-    ('S', 'S'): 4, ('S', 'T'): 1, ('S', 'W'): -3, ('S', 'Y'): -2, ('S', 'V'): -2,
-    ('T', 'T'): 5, ('T', 'W'): -2, ('T', 'Y'): -2, ('T', 'V'): 0,
-    ('W', 'W'): 11, ('W', 'Y'): 2, ('W', 'V'): -3,
-    ('Y', 'Y'): 7, ('Y', 'V'): -1,
-    ('V', 'V'): 4,
+    ("A", "A"): 4,
+    ("A", "R"): -1,
+    ("A", "N"): -2,
+    ("A", "D"): -2,
+    ("A", "C"): 0,
+    ("A", "Q"): -1,
+    ("A", "E"): -1,
+    ("A", "G"): 0,
+    ("A", "H"): -2,
+    ("A", "I"): -1,
+    ("A", "L"): -1,
+    ("A", "K"): -1,
+    ("A", "M"): -1,
+    ("A", "F"): -2,
+    ("A", "P"): -1,
+    ("A", "S"): 1,
+    ("A", "T"): 0,
+    ("A", "W"): -3,
+    ("A", "Y"): -2,
+    ("A", "V"): 0,
+    ("R", "R"): 5,
+    ("R", "N"): 0,
+    ("R", "D"): -2,
+    ("R", "C"): -3,
+    ("R", "Q"): 1,
+    ("R", "E"): 0,
+    ("R", "G"): -2,
+    ("R", "H"): 0,
+    ("R", "I"): -3,
+    ("R", "L"): -2,
+    ("R", "K"): 2,
+    ("R", "M"): -1,
+    ("R", "F"): -3,
+    ("R", "P"): -2,
+    ("R", "S"): -1,
+    ("R", "T"): -1,
+    ("R", "W"): -3,
+    ("R", "Y"): -2,
+    ("R", "V"): -3,
+    ("N", "N"): 6,
+    ("N", "D"): 1,
+    ("N", "C"): -3,
+    ("N", "Q"): 0,
+    ("N", "E"): 0,
+    ("N", "G"): 0,
+    ("N", "H"): 1,
+    ("N", "I"): -3,
+    ("N", "L"): -3,
+    ("N", "K"): 0,
+    ("N", "M"): -2,
+    ("N", "F"): -3,
+    ("N", "P"): -2,
+    ("N", "S"): 1,
+    ("N", "T"): 0,
+    ("N", "W"): -4,
+    ("N", "Y"): -2,
+    ("N", "V"): -3,
+    ("D", "D"): 6,
+    ("D", "C"): -3,
+    ("D", "Q"): 0,
+    ("D", "E"): 2,
+    ("D", "G"): -1,
+    ("D", "H"): -1,
+    ("D", "I"): -3,
+    ("D", "L"): -4,
+    ("D", "K"): -1,
+    ("D", "M"): -3,
+    ("D", "F"): -3,
+    ("D", "P"): -1,
+    ("D", "S"): 0,
+    ("D", "T"): -1,
+    ("D", "W"): -4,
+    ("D", "Y"): -3,
+    ("D", "V"): -3,
+    ("C", "C"): 9,
+    ("C", "Q"): -3,
+    ("C", "E"): -4,
+    ("C", "G"): -3,
+    ("C", "H"): -3,
+    ("C", "I"): -1,
+    ("C", "L"): -1,
+    ("C", "K"): -3,
+    ("C", "M"): -1,
+    ("C", "F"): -2,
+    ("C", "P"): -3,
+    ("C", "S"): -1,
+    ("C", "T"): -1,
+    ("C", "W"): -2,
+    ("C", "Y"): -2,
+    ("C", "V"): -1,
+    ("Q", "Q"): 5,
+    ("Q", "E"): 2,
+    ("Q", "G"): -2,
+    ("Q", "H"): 0,
+    ("Q", "I"): -3,
+    ("Q", "L"): -2,
+    ("Q", "K"): 1,
+    ("Q", "M"): 0,
+    ("Q", "F"): -3,
+    ("Q", "P"): -1,
+    ("Q", "S"): 0,
+    ("Q", "T"): -1,
+    ("Q", "W"): -2,
+    ("Q", "Y"): -1,
+    ("Q", "V"): -2,
+    ("E", "E"): 5,
+    ("E", "G"): -2,
+    ("E", "H"): 0,
+    ("E", "I"): -3,
+    ("E", "L"): -3,
+    ("E", "K"): 1,
+    ("E", "M"): -2,
+    ("E", "F"): -3,
+    ("E", "P"): -1,
+    ("E", "S"): 0,
+    ("E", "T"): -1,
+    ("E", "W"): -3,
+    ("E", "Y"): -2,
+    ("E", "V"): -2,
+    ("G", "G"): 6,
+    ("G", "H"): -2,
+    ("G", "I"): -4,
+    ("G", "L"): -4,
+    ("G", "K"): -2,
+    ("G", "M"): -3,
+    ("G", "F"): -3,
+    ("G", "P"): -2,
+    ("G", "S"): 0,
+    ("G", "T"): -2,
+    ("G", "W"): -2,
+    ("G", "Y"): -3,
+    ("G", "V"): -3,
+    ("H", "H"): 8,
+    ("H", "I"): -3,
+    ("H", "L"): -3,
+    ("H", "K"): -1,
+    ("H", "M"): -2,
+    ("H", "F"): -1,
+    ("H", "P"): -2,
+    ("H", "S"): -1,
+    ("H", "T"): -2,
+    ("H", "W"): -2,
+    ("H", "Y"): 2,
+    ("H", "V"): -3,
+    ("I", "I"): 4,
+    ("I", "L"): 2,
+    ("I", "K"): -3,
+    ("I", "M"): 1,
+    ("I", "F"): 0,
+    ("I", "P"): -3,
+    ("I", "S"): -2,
+    ("I", "T"): -1,
+    ("I", "W"): -3,
+    ("I", "Y"): -1,
+    ("I", "V"): 3,
+    ("L", "L"): 4,
+    ("L", "K"): -2,
+    ("L", "M"): 2,
+    ("L", "F"): 0,
+    ("L", "P"): -3,
+    ("L", "S"): -2,
+    ("L", "T"): -1,
+    ("L", "W"): -2,
+    ("L", "Y"): -1,
+    ("L", "V"): 1,
+    ("K", "K"): 5,
+    ("K", "M"): -1,
+    ("K", "F"): -3,
+    ("K", "P"): -1,
+    ("K", "S"): 0,
+    ("K", "T"): -1,
+    ("K", "W"): -3,
+    ("K", "Y"): -2,
+    ("K", "V"): -2,
+    ("M", "M"): 5,
+    ("M", "F"): 0,
+    ("M", "P"): -2,
+    ("M", "S"): -1,
+    ("M", "T"): -1,
+    ("M", "W"): -1,
+    ("M", "Y"): -1,
+    ("M", "V"): 1,
+    ("F", "F"): 6,
+    ("F", "P"): -4,
+    ("F", "S"): -2,
+    ("F", "T"): -2,
+    ("F", "W"): 1,
+    ("F", "Y"): 3,
+    ("F", "V"): -1,
+    ("P", "P"): 7,
+    ("P", "S"): -1,
+    ("P", "T"): -1,
+    ("P", "W"): -4,
+    ("P", "Y"): -3,
+    ("P", "V"): -2,
+    ("S", "S"): 4,
+    ("S", "T"): 1,
+    ("S", "W"): -3,
+    ("S", "Y"): -2,
+    ("S", "V"): -2,
+    ("T", "T"): 5,
+    ("T", "W"): -2,
+    ("T", "Y"): -2,
+    ("T", "V"): 0,
+    ("W", "W"): 11,
+    ("W", "Y"): 2,
+    ("W", "V"): -3,
+    ("Y", "Y"): 7,
+    ("Y", "V"): -1,
+    ("V", "V"): 4,
 }
 
 
@@ -341,7 +620,12 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
     ]
 
     PWM_10_PENALTIES = [
-        {"T": 0.0, "C": 2.2, "A": 2.5, "G": 2.5},  # Pos 0: T (Crucial at -12 for un-winding)
+        {
+            "T": 0.0,
+            "C": 2.2,
+            "A": 2.5,
+            "G": 2.5,
+        },  # Pos 0: T (Crucial at -12 for un-winding)
         {"A": 0.0, "G": 1.8, "T": 2.0, "C": 2.2},  # Pos 1: A (Crucial at -11)
         {"T": 0.0, "C": 1.2, "A": 1.4, "G": 1.5},  # Pos 2: T (Moderately conserved)
         {"A": 0.0, "G": 1.0, "T": 1.2, "C": 1.4},  # Pos 3: A (Moderately conserved)
@@ -350,14 +634,16 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
     ]
 
     SPACER_PENALTIES = {
-        17: 0.0,   # Optimal spacing
-        16: 1.8,   # 1 bp compression strain
-        18: 1.8,   # 1 bp extension strain
-        15: 4.5,   # 2 bp compression strain
-        19: 4.5,   # 2 bp extension strain
+        17: 0.0,  # Optimal spacing
+        16: 1.8,  # 1 bp compression strain
+        18: 1.8,  # 1 bp extension strain
+        15: 4.5,  # 2 bp compression strain
+        19: 4.5,  # 2 bp extension strain
     }
 
-    def _compute_hexamer_penalty(self, hexamer: str, pwm_table: List[Dict[str, float]]) -> float:
+    def _compute_hexamer_penalty(
+        self, hexamer: str, pwm_table: List[Dict[str, float]]
+    ) -> float:
         """Compute thermodynamic penalty for a 6 bp hexamer sequence against PWM matrix."""
         penalty = 0.0
         clean_hex = hexamer.upper()
@@ -424,7 +710,9 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
         y_max_ref = 250.0
         y_max_floor = 0.05
         decay_rate_ymax = 0.35
-        y_max = y_max_floor + (y_max_ref - y_max_floor) * math.exp(-decay_rate_ymax * penalty)
+        y_max = y_max_floor + (y_max_ref - y_max_floor) * math.exp(
+            -decay_rate_ymax * penalty
+        )
 
         kd_base = 0.05
         growth_rate_kd = 0.4
@@ -481,7 +769,9 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
         # Run PWM sliding window alignment
         window_match = self._scan_sliding_window(clean_query)
         if not window_match:
-            raise ValueError("Failed to locate valid -35/-10 promoter window in sequence.")
+            raise ValueError(
+                "Failed to locate valid -35/-10 promoter window in sequence."
+            )
 
         penalty = window_match["total_penalty"]
         params = self._map_penalty_to_parameters(penalty)
@@ -558,10 +848,12 @@ class CDSStructuralStrategy(PredictionStrategy):
         """Map CAI score (0.01 - 1.0) to continuous translation_rate parameter (min^-1)."""
         rate_min = 0.005
         rate_max = 1.0
-        rate = rate_min + (rate_max - rate_min) * (cai ** 1.5)
+        rate = rate_min + (rate_max - rate_min) * (cai**1.5)
         return round(max(rate_min, min(rate_max, rate)), 4)
 
-    def _compute_blosum62_penalty(self, aa_query: str, aa_ref: str) -> Tuple[float, int]:
+    def _compute_blosum62_penalty(
+        self, aa_query: str, aa_ref: str
+    ) -> Tuple[float, int]:
         """Compute protein structural instability penalty using BLOSUM62 matrix.
 
         For substituted position i:
@@ -589,7 +881,9 @@ class CDSStructuralStrategy(PredictionStrategy):
         length_diff = abs(len(aa_query) - len(aa_ref))
         total_penalty += length_diff * 4.0
 
-        penalty_norm = (total_penalty / float(max(1, len(aa_ref)))) + (substitutions * 0.8)
+        penalty_norm = (total_penalty / float(max(1, len(aa_ref)))) + (
+            substitutions * 0.8
+        )
         return penalty_norm, substitutions
 
     def _map_penalty_to_degradation_rate(
@@ -614,7 +908,6 @@ class CDSStructuralStrategy(PredictionStrategy):
             return round(min(0.5, max(min_mut_deg, deg_rate)), 4)
 
         return round(max(0.001, base_deg_rate), 4)
-
 
     def predict(
         self,
@@ -656,8 +949,12 @@ class CDSStructuralStrategy(PredictionStrategy):
                             "top_match_distance": 0,
                             "status_message": "⚡ [Predicted via CAI & BLOSUM62 Stability Model]",
                             "parameters": {
-                                "translation_rate": float(val_trans) if val_trans is not None else 0.1,
-                                "degradation_rate": float(val_deg) if val_deg is not None else 0.01,
+                                "translation_rate": float(val_trans)
+                                if val_trans is not None
+                                else 0.1,
+                                "degradation_rate": float(val_deg)
+                                if val_deg is not None
+                                else 0.01,
                             },
                         }
 
@@ -678,8 +975,12 @@ class CDSStructuralStrategy(PredictionStrategy):
                 try:
                     protein_ref = translate_dna_to_protein(clean_ref_dna)
                     top_match_id = "WildType Baseline"
-                    top_match_dist = str(levenshtein_distance(clean_query, clean_ref_dna))
-                    structural_penalty, sub_count = self._compute_blosum62_penalty(protein_query, protein_ref)
+                    top_match_dist = str(
+                        levenshtein_distance(clean_query, clean_ref_dna)
+                    )
+                    structural_penalty, sub_count = self._compute_blosum62_penalty(
+                        protein_query, protein_ref
+                    )
                 except Exception:
                     structural_penalty = 0.0
                     sub_count = 0
@@ -687,13 +988,19 @@ class CDSStructuralStrategy(PredictionStrategy):
         # Case B: Find closest CDS candidate in repository for BLOSUM62 structural comparison
         else:
             valid_cds_candidates = [
-                p for p in candidate_parts
-                if getattr(p, "part_type", "").lower() == "cds" and getattr(p, "sequence", "").strip()
+                p
+                for p in candidate_parts
+                if getattr(p, "part_type", "").lower() == "cds"
+                and getattr(p, "sequence", "").strip()
             ]
 
             if valid_cds_candidates:
                 # Prefer candidates with distance > 0 so query sequence isn't compared against itself
-                non_self = [p for p in valid_cds_candidates if p.sequence.upper().strip() != clean_query]
+                non_self = [
+                    p
+                    for p in valid_cds_candidates
+                    if p.sequence.upper().strip() != clean_query
+                ]
                 pool = non_self if non_self else valid_cds_candidates
 
                 best_candidate = None
@@ -717,7 +1024,9 @@ class CDSStructuralStrategy(PredictionStrategy):
 
                     try:
                         protein_ref = translate_dna_to_protein(best_candidate.sequence)
-                        structural_penalty, sub_count = self._compute_blosum62_penalty(protein_query, protein_ref)
+                        structural_penalty, sub_count = self._compute_blosum62_penalty(
+                            protein_query, protein_ref
+                        )
                     except Exception:
                         structural_penalty = 0.0
                         sub_count = 0
@@ -747,7 +1056,6 @@ class CDSStructuralStrategy(PredictionStrategy):
                 "matched_ref_id": top_match_id,
             },
         }
-
 
 
 class SequencePredictor:
@@ -826,7 +1134,6 @@ class SequencePredictor:
             k=k,
         )
 
-
     @classmethod
     def identify_wildtype(
         cls,
@@ -877,7 +1184,9 @@ def identify_wildtype(
         candidates = catalogue_db.get_all()
     elif hasattr(catalogue_db, "get_all_parts"):
         candidates = catalogue_db.get_all_parts()
-    elif hasattr(catalogue_db, "_repository") and hasattr(catalogue_db._repository, "get_all"):
+    elif hasattr(catalogue_db, "_repository") and hasattr(
+        catalogue_db._repository, "get_all"
+    ):
         candidates = catalogue_db._repository.get_all()
     else:
         candidates = []
@@ -952,10 +1261,14 @@ def compare_kinetics(
 
     wt_info = identify_wildtype(clean_mut, catalogue_db, part_type=part_type)
     if not wt_info:
-        raise ValueError("No wild type sequence candidate found in catalogue database with edit distance > 0.")
+        raise ValueError(
+            "No wild type sequence candidate found in catalogue database with edit distance > 0."
+        )
 
     wt_seq = wt_info["sequence"]
-    effective_part_type = (part_type or wt_info.get("part_type") or "promoter").lower().strip()
+    effective_part_type = (
+        (part_type or wt_info.get("part_type") or "promoter").lower().strip()
+    )
 
     if isinstance(catalogue_db, list):
         candidates = catalogue_db
@@ -963,7 +1276,9 @@ def compare_kinetics(
         candidates = catalogue_db.get_all()
     elif hasattr(catalogue_db, "get_all_parts"):
         candidates = catalogue_db.get_all_parts()
-    elif hasattr(catalogue_db, "_repository") and hasattr(catalogue_db._repository, "get_all"):
+    elif hasattr(catalogue_db, "_repository") and hasattr(
+        catalogue_db._repository, "get_all"
+    ):
         candidates = catalogue_db._repository.get_all()
     else:
         candidates = []
@@ -981,7 +1296,6 @@ def compare_kinetics(
         ref_sequence=wt_seq,
     )
 
-
     wt_params = wt_pred.get("parameters", {})
     mut_params = mut_pred.get("parameters", {})
 
@@ -995,23 +1309,26 @@ def compare_kinetics(
     }
 
     if effective_part_type == "promoter":
-        result.update({
-            "wt_ymax": wt_params.get("y_max", 250.0),
-            "wt_kd": wt_params.get("K_d", 0.05),
-            "wt_ymin": wt_params.get("y_min", 0.01),
-            "wt_n": wt_params.get("n", 2.0),
-            "mut_ymax": mut_params.get("y_max", 250.0),
-            "mut_kd": mut_params.get("K_d", 0.05),
-            "mut_ymin": mut_params.get("y_min", 0.01),
-            "mut_n": mut_params.get("n", 2.0),
-        })
+        result.update(
+            {
+                "wt_ymax": wt_params.get("y_max", 250.0),
+                "wt_kd": wt_params.get("K_d", 0.05),
+                "wt_ymin": wt_params.get("y_min", 0.01),
+                "wt_n": wt_params.get("n", 2.0),
+                "mut_ymax": mut_params.get("y_max", 250.0),
+                "mut_kd": mut_params.get("K_d", 0.05),
+                "mut_ymin": mut_params.get("y_min", 0.01),
+                "mut_n": mut_params.get("n", 2.0),
+            }
+        )
     elif effective_part_type == "cds":
-        result.update({
-            "wt_translation_rate": wt_params.get("translation_rate", 0.1),
-            "wt_degradation_rate": wt_params.get("degradation_rate", 0.01),
-            "mut_translation_rate": mut_params.get("translation_rate", 0.1),
-            "mut_degradation_rate": mut_params.get("degradation_rate", 0.01),
-        })
+        result.update(
+            {
+                "wt_translation_rate": wt_params.get("translation_rate", 0.1),
+                "wt_degradation_rate": wt_params.get("degradation_rate", 0.01),
+                "mut_translation_rate": mut_params.get("translation_rate", 0.1),
+                "mut_degradation_rate": mut_params.get("degradation_rate", 0.01),
+            }
+        )
 
     return result
-

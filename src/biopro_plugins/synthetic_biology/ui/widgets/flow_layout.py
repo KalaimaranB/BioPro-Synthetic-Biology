@@ -10,10 +10,10 @@ class FlowLayout(QLayout):
         self._itemList = []
         self._hSpace = hSpacing
         self._vSpace = vSpacing
-        
+
         if margin >= 0:
             self.setContentsMargins(margin, margin, margin, margin)
-            
+
     def __del__(self):
         item = self.takeAt(0)
         while item:
@@ -57,7 +57,9 @@ class FlowLayout(QLayout):
         for item in self._itemList:
             size = size.expandedTo(item.minimumSize())
         margins = self.contentsMargins()
-        size += QSize(margins.left() + margins.right(), margins.top() + margins.bottom())
+        size += QSize(
+            margins.left() + margins.right(), margins.top() + margins.bottom()
+        )
         return size
 
     def _doLayout(self, rect, testOnly):
@@ -69,10 +71,18 @@ class FlowLayout(QLayout):
             wid = item.widget()
             spaceX = self._hSpace
             if spaceX == -1:
-                spaceX = wid.style().layoutSpacing(QSizePolicy.ControlType.PushButton, QSizePolicy.ControlType.PushButton, Qt.Orientation.Horizontal)
+                spaceX = wid.style().layoutSpacing(
+                    QSizePolicy.ControlType.PushButton,
+                    QSizePolicy.ControlType.PushButton,
+                    Qt.Orientation.Horizontal,
+                )
             spaceY = self._vSpace
             if spaceY == -1:
-                spaceY = wid.style().layoutSpacing(QSizePolicy.ControlType.PushButton, QSizePolicy.ControlType.PushButton, Qt.Orientation.Vertical)
+                spaceY = wid.style().layoutSpacing(
+                    QSizePolicy.ControlType.PushButton,
+                    QSizePolicy.ControlType.PushButton,
+                    Qt.Orientation.Vertical,
+                )
 
             nextX = x + item.sizeHint().width() + spaceX
             if nextX - spaceX > rect.right() and lineHeight > 0:

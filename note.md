@@ -47,7 +47,7 @@ available at runtime when the plugin is loaded.
 
 5. If using PyInstaller, add them to `BioPro.spec` hidden imports:
    ```python
-   hiddenimports += ['networkx', 'sbol3', 'tellurium', 'mesa']
+   hiddenimports += ["networkx", "sbol3", "tellurium", "mesa"]
    ```
 
 ### Also update BioPro-Distribution

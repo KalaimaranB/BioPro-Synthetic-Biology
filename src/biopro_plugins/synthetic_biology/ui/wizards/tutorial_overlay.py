@@ -1,15 +1,28 @@
 """Full-screen dimmed interactive tutorial overlay with pop-out mascot for Synthetic Biology workspace."""
 
-import os
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 
 from PyQt6.QtCore import Qt, QRectF
 from PyQt6.QtGui import (
-    QColor, QFont, QPainter, QPainterPath, QPen, QBrush, QPixmap, QLinearGradient
+    QColor,
+    QFont,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QBrush,
+    QPixmap,
+    QLinearGradient,
 )
 from PyQt6.QtWidgets import (
-    QDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
-    QPushButton, QProgressBar, QGraphicsDropShadowEffect
+    QDialog,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QFrame,
+    QPushButton,
+    QProgressBar,
+    QGraphicsDropShadowEffect,
 )
 
 
@@ -35,7 +48,6 @@ SYNTHETIC_BIOLOGY_TUTORIAL_STEPS: List[Dict[str, str]] = [
         "icon": "📊",
     },
 ]
-
 
 
 def create_default_mascot_pixmap(width: int = 120, height: int = 200) -> QPixmap:
@@ -97,7 +109,9 @@ def create_default_mascot_pixmap(width: int = 120, height: int = 200) -> QPixmap
 
     painter.setFont(QFont("Arial", 14))
     painter.setPen(QPen(QColor("#0091ea")))
-    painter.drawText(QRectF(width // 2 - 16, height - 55, 32, 32), Qt.AlignmentFlag.AlignCenter, "🧬")
+    painter.drawText(
+        QRectF(width // 2 - 16, height - 55, 32, 32), Qt.AlignmentFlag.AlignCenter, "🧬"
+    )
 
     painter.end()
     return pixmap
@@ -106,7 +120,11 @@ def create_default_mascot_pixmap(width: int = 120, height: int = 200) -> QPixmap
 class AcademyTutorialDialog(QDialog):
     """Full-screen dimmed tutorial overlay with pop-out mascot layout."""
 
-    def __init__(self, parent: Optional[QWidget] = None, steps: Optional[List[Dict[str, str]]] = None):
+    def __init__(
+        self,
+        parent: Optional[QWidget] = None,
+        steps: Optional[List[Dict[str, str]]] = None,
+    ):
         super().__init__(parent)
         self.steps = steps or SYNTHETIC_BIOLOGY_TUTORIAL_STEPS
         self.current_step = 0

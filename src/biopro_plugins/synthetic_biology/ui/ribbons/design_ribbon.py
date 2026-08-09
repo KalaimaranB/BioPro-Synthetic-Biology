@@ -1,7 +1,6 @@
 """Design Ribbon — Fetch and select biological parts via dynamic dropdown."""
 
-from typing import Optional, List, Any
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QMessageBox, QWidget
 
 try:
@@ -10,13 +9,16 @@ except ImportError:
     from PyQt6.QtWidgets import QPushButton as PrimaryButton
 
 try:
-    from ...analysis.parts.components import BiologicalPart, Promoter, CDS, RBS, Terminator, sgRNA
+    from ...analysis.parts.components import BiologicalPart
 except ImportError:
     try:
-        from analysis.parts.components import BiologicalPart, Promoter, CDS, RBS, Terminator, sgRNA
+        from analysis.parts.components import BiologicalPart
+        
     except ImportError:
-        from biopro.plugins.synthetic_biology.analysis.parts.components import BiologicalPart, Promoter, CDS, RBS, Terminator, sgRNA
-
+        # pyrefly: ignore [missing-import]
+        from biopro.plugins.synthetic_biology.analysis.parts.components import (
+            BiologicalPart,
+        )
 
 
 class DesignRibbon(QWidget):
@@ -61,12 +63,14 @@ class DesignRibbon(QWidget):
 
         layout.addWidget(QLabel("Role:"))
         self.role_combo = QComboBox()
-        self.role_combo.addItems([
-            "Promoter",
-            "Ribosome Binding Site",
-            "Coding Sequence",
-            "Terminator",
-        ])
+        self.role_combo.addItems(
+            [
+                "Promoter",
+                "Ribosome Binding Site",
+                "Coding Sequence",
+                "Terminator",
+            ]
+        )
         self.role_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
         self.role_combo.setMinimumWidth(160)
         layout.addWidget(self.role_combo)
@@ -75,7 +79,9 @@ class DesignRibbon(QWidget):
         layout.addWidget(QLabel("Part:"))
         self.part_selector_combo = QComboBox()
         self.part_selector_combo.setMinimumWidth(280)
-        self.part_selector_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+        self.part_selector_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToContents
+        )
         layout.addWidget(self.part_selector_combo)
 
         # Connect Role dropdown to update_part_selector method
@@ -96,6 +102,7 @@ class DesignRibbon(QWidget):
     def _apply_theme(self):
         try:
             from biopro.ui.theme import Colors
+
             combo_style = f"""
                 QComboBox {{
                     background: {Colors.BG_DARK};
@@ -133,7 +140,9 @@ class DesignRibbon(QWidget):
             "Coding Sequence": ["cds", "coding sequence"],
             "Terminator": ["terminator"],
         }
-        matching_types = role_type_map.get(selected_role_clean, [selected_role_clean.lower()])
+        matching_types = role_type_map.get(
+            selected_role_clean, [selected_role_clean.lower()]
+        )
 
         # Query Parts Catalogue Service
         catalogue_parts = []
@@ -152,7 +161,11 @@ class DesignRibbon(QWidget):
         # Case A: Populated from local catalogue database
         if catalogue_parts:
             for p in catalogue_parts:
-                display_name = f"{p.id} - {p.name}" if getattr(p, "name", None) and p.name != p.id else p.id
+                display_name = (
+                    f"{p.id} - {p.name}"
+                    if getattr(p, "name", None) and p.name != p.id
+                    else p.id
+                )
                 self.part_selector_combo.addItem(display_name, userData=p)
 
         # Case B: Catalogue database empty or no matching parts -> Fall back to predefined popular iGEM parts
@@ -162,7 +175,9 @@ class DesignRibbon(QWidget):
                 for pid, display_name in fallback_list:
                     self.part_selector_combo.addItem(display_name, userData=pid)
             else:
-                self.part_selector_combo.addItem(f"No {selected_role_clean} parts available", userData=None)
+                self.part_selector_combo.addItem(
+                    f"No {selected_role_clean} parts available", userData=None
+                )
 
         self.part_selector_combo.blockSignals(False)
 
@@ -188,10 +203,16 @@ class DesignRibbon(QWidget):
                 return
 
             # Case 2: userData is part_id string
-            part_id = selected_data if isinstance(selected_data, str) else current_text.split(" - ")[0].strip()
+            part_id = (
+                selected_data
+                if isinstance(selected_data, str)
+                else current_text.split(" - ")[0].strip()
+            )
 
             # Attempt database lookup first
-            catalogue_service = self._factory.get("parts_catalogue") if self._factory else None
+            catalogue_service = (
+                self._factory.get("parts_catalogue") if self._factory else None
+            )
             part = None
             if catalogue_service and hasattr(catalogue_service, "get_part"):
                 part = catalogue_service.get_part(part_id)
@@ -205,7 +226,11 @@ class DesignRibbon(QWidget):
             if part:
                 self.part_fetched.emit(part)
             else:
-                QMessageBox.warning(self, "Fetch Failed", f"Could not find or instantiate part '{part_id}'.")
+                QMessageBox.warning(
+                    self,
+                    "Fetch Failed",
+                    f"Could not find or instantiate part '{part_id}'.",
+                )
         finally:
             self.fetch_btn.setEnabled(True)
             self.fetch_btn.setText("Fetch Part")

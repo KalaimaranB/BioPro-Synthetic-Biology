@@ -13,7 +13,9 @@ def test_steady_state_boundary_values():
     y_min = 0.5
     n = 2.0
 
-    res = calculate_steady_state_curve(K_d=K_d, y_max=y_max, y_min=y_min, n=n, r_min=1e-4, r_max=1e4)
+    res = calculate_steady_state_curve(
+        K_d=K_d, y_max=y_max, y_min=y_min, n=n, r_min=1e-4, r_max=1e4
+    )
 
     R = res["R"]
     y = res["y"]

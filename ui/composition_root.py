@@ -27,22 +27,21 @@ class ServiceFactory:
     def build_all(self) -> None:
         """Instantiates all services and wires them up."""
         from analysis.api.client import IGemClient, SynBioHubClient
-        import os
         from analysis.catalogue.repository import JsonPartRepository
         from analysis.catalogue.service import PartsCatalogueService
 
         self._services["igem_client"] = IGemClient()
         self._services["synbiohub_client"] = SynBioHubClient()
-        
+
         # Setup the Parts Catalogue
         from pathlib import Path
-        
+
         # os.getcwd() evaluates to '/' when running inside a macOS app bundle.
         # Instead, we should save it relative to the plugin's root directory,
         # or inside the user's ~/.biopro data folder. For now, we'll keep it in the plugin root.
         plugin_root = Path(__file__).parent.parent
         catalogue_path = str(plugin_root / "catalogue.json")
-        
+
         repo = JsonPartRepository(catalogue_path)
         catalogue_service = PartsCatalogueService(repo)
         catalogue_service.initialize_cello_parts()

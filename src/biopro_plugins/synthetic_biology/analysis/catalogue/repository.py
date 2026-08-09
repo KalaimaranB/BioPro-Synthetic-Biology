@@ -8,8 +8,8 @@ from ..parts.components import CDS, RBS, Insulator, Promoter, Terminator, sgRNA
 
 class PartRepository(Protocol):
     """Protocol defining the interface for a parts catalogue repository.
-    
-    Adheres to the Dependency Inversion Principle (DIP) and 
+
+    Adheres to the Dependency Inversion Principle (DIP) and
     Interface Segregation Principle (ISP).
     """
 
@@ -32,7 +32,7 @@ class PartRepository(Protocol):
 
 class JsonPartRepository:
     """A JSON-file backed implementation of PartRepository.
-    
+
     Adheres to the Single Responsibility Principle (SRP) by solely
     managing serialization and persistence of parts.
     """
@@ -50,7 +50,7 @@ class JsonPartRepository:
         try:
             with open(self.file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                
+
             self._cache = {}
             for part_dict in data:
                 part = self._deserialize_part(part_dict)

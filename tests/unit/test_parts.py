@@ -1,7 +1,5 @@
 """Unit tests for the Biological Parts domain model."""
 
-import pytest
-
 from analysis.parts.components import CDS, RBS, Promoter, Terminator
 
 
@@ -55,7 +53,9 @@ class TestCDS:
 
 class TestTerminator:
     def test_initialization(self):
-        term = Terminator(id="BBa_B0015", name="Double terminator", termination_efficiency=0.99)
+        term = Terminator(
+            id="BBa_B0015", name="Double terminator", termination_efficiency=0.99
+        )
         assert term.id == "BBa_B0015"
         assert term.part_type == "terminator"
         assert term.termination_efficiency == 0.99

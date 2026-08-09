@@ -14,11 +14,13 @@ class CatalogueRibbon(QWidget):
     def _setup_ui(self):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(16, 8, 16, 8)
-        
+
         title = QLabel("Parts Catalogue")
-        title.setStyleSheet(f"color: {Colors.FG_PRIMARY}; font-size: {Fonts.SIZE_SMALL + 2}px; font-weight: bold;")
+        title.setStyleSheet(
+            f"color: {Colors.FG_PRIMARY}; font-size: {Fonts.SIZE_SMALL + 2}px; font-weight: bold;"
+        )
         layout.addWidget(title)
-        
+
         layout.addStretch()
 
     def refresh_styles(self):

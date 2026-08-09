@@ -199,7 +199,7 @@ class SynBioPanel(PluginBase):
         self._circuit_canvas.add_part(part)
         self._properties_view.set_parts(self._parts_cache)
         self._simulate_view.set_parts(self._parts_cache)
-        
+
         # Save to local catalogue and refresh view
         catalogue = self._factory.get("parts_catalogue")
         if catalogue:
@@ -235,7 +235,9 @@ class SynBioPanel(PluginBase):
             )
 
         if hasattr(self, "_ribbon_stack"):
-            self._ribbon_stack.setStyleSheet(f"background: {Colors.BG_DARK}; border-bottom: 1px solid {Colors.BORDER};")
+            self._ribbon_stack.setStyleSheet(
+                f"background: {Colors.BG_DARK}; border-bottom: 1px solid {Colors.BORDER};"
+            )
 
         # Deep recursion for sub-widgets
         for child in self.findChildren(QWidget):

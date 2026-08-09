@@ -4,13 +4,20 @@ Uses Dependency Inversion Principle via the `RegistryClient` protocol.
 """
 
 import xml.etree.ElementTree as ET
-from typing import Optional, Protocol
+from typing import Protocol
 
 import requests
 import sbol3
 
 from biopro.plugins.synthetic_biology.analysis.parts.base import BiologicalPart
-from biopro.plugins.synthetic_biology.analysis.parts.components import CDS, RBS, Promoter, Terminator, Insulator, sgRNA
+from biopro.plugins.synthetic_biology.analysis.parts.components import (
+    CDS,
+    RBS,
+    Promoter,
+    Terminator,
+    Insulator,
+    sgRNA,
+)
 
 
 class RegistryClient(Protocol):
@@ -81,36 +88,47 @@ class IGemClient:
 
         # Fetch and inject rigorous quantitative metrics from the Cello Database
         from analysis.api.kinetics import CelloKineticsDatabase
+
         cello_params = CelloKineticsDatabase.get_parameters(part_id).copy()
-        
+
         # Move metadata into properties to avoid unexpected keyword args
         for meta_key in ["citation", "notes"]:
             if meta_key in cello_params:
                 kwargs["properties"][meta_key] = cello_params.pop(meta_key)
-                
+
         kwargs.update(cello_params)
 
         # Map iGEM part types to our domain model
         if "promoter" in part_type or "regulatory" in part_type:
             # Attempt to extract known regulator data if not explicitly set
             import re
+
             ctrl = kwargs["properties"].get("control", "").lower()
-            desc = kwargs.get("name", "").lower() + " " + kwargs.get("description", "").lower()
+            desc = (
+                kwargs.get("name", "").lower()
+                + " "
+                + kwargs.get("description", "").lower()
+            )
             reps = kwargs.get("repressors", [])
-            
+
             if "laci" in ctrl or "laci" in desc:
-                if "LacI" not in reps: reps.append("LacI")
+                if "LacI" not in reps:
+                    reps.append("LacI")
             if "tetr" in ctrl or "tetr" in desc:
-                if "TetR" not in reps: reps.append("TetR")
-                
+                if "TetR" not in reps:
+                    reps.append("TetR")
+
             # Use word boundaries to prevent 'laci' from matching 'ci'
-            if re.search(r'\b(lambda|ci)\b', ctrl) or re.search(r'\b(lambda|ci)\b', desc):
-                if "cI" not in reps: reps.append("cI")
-                
+            if re.search(r"\b(lambda|ci)\b", ctrl) or re.search(
+                r"\b(lambda|ci)\b", desc
+            ):
+                if "cI" not in reps:
+                    reps.append("cI")
+
             if reps:
                 kwargs["repressors"] = reps
             return Promoter(**kwargs)
-            
+
         elif "coding" in part_type or "cds" in part_type:
             # Attempt to extract product data if not explicitly set
             if "product" not in kwargs:
@@ -118,18 +136,19 @@ class IGemClient:
                 if protein:
                     kwargs["product"] = protein
             return CDS(**kwargs)
-            
+
         elif "terminator" in part_type:
             # Attempt to extract efficiency (e.g. '0.984[CC]/0.97[JK]')
             if "termination_efficiency" not in kwargs:
                 eff = kwargs["properties"].get("forward_efficiency")
                 if eff:
                     import re
+
                     match = re.search(r"([0-9]*\.?[0-9]+)", eff)
                     if match:
                         kwargs["termination_efficiency"] = float(match.group(1))
             return Terminator(**kwargs)
-            
+
         elif "rbs" in part_type or "ribosome" in part_type:
             # Attempt to extract binding strength
             if "translation_initiation_rate" not in kwargs:
@@ -142,10 +161,10 @@ class IGemClient:
             return RBS(**kwargs)
         elif "rna" in part_type or "sgrna" in part_type or "guide" in part_type:
             return sgRNA(**kwargs)
-            
+
         elif "insulator" in part_type or "ribozyme" in part_type:
             return Insulator(**kwargs)
-            
+
         else:
             # Fallback to CDS if we don't know, or we could have a GenericPart
             # For now, default to CDS to ensure we return a valid part
@@ -170,10 +189,15 @@ class SynBioHubClient:
 
             # Create a temporary document and load the SBOL data
             doc = sbol3.Document()
-            doc.read_string(response.text, sbol3.SORTED_NTRIPLES if url.endswith("nt") else sbol3.RDF_XML)
+            doc.read_string(
+                response.text,
+                sbol3.SORTED_NTRIPLES if url.endswith("nt") else sbol3.RDF_XML,
+            )
 
             # Find the component definition
-            components = [obj for obj in doc.objects if isinstance(obj, sbol3.Component)]
+            components = [
+                obj for obj in doc.objects if isinstance(obj, sbol3.Component)
+            ]
             if not components:
                 return None
 

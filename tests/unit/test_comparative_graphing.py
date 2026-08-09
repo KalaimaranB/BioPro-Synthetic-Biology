@@ -1,14 +1,11 @@
 """Unit tests for the comparative graphing module (WT reverse lookup, dual parameter extraction, and curve generation)."""
 
-import pytest
-import numpy as np
 from matplotlib.figure import Figure
 
 from analysis.parts.components import Promoter, CDS
 from analysis.prediction.sequence_predictor import (
     identify_wildtype,
     compare_kinetics,
-    SequencePredictor,
 )
 from analysis.prediction.graphing_utils import generate_transfer_curve
 
@@ -17,7 +14,9 @@ def test_identify_wildtype():
     """Test wild type reverse lookup finds part with lowest distance strictly > 0."""
     wt_seq = "CGTACTTGACAAGCTAGCTAGCTAGCTATATAATGCTAG"  # Baseline
     far_seq = "CGTACCCCACAAGCTAGCTAGCTAGCTATAGAATGCTAG"  # Multiple mutations (dist = 3)
-    near_seq = "CGTACTTGACAAGCTAGCTAGCTAGCTATATAATGCTAA"  # Single base swap at end (dist = 1)
+    near_seq = (
+        "CGTACTTGACAAGCTAGCTAGCTAGCTATATAATGCTAA"  # Single base swap at end (dist = 1)
+    )
     mut_seq = "CGTACTTGACAAGCTAGCTAGCTAGCTATATAATGCTAG"  # Exact match (dist = 0)
 
     wt_part = Promoter(id="WT_P1", name="Wild Type 1", sequence=wt_seq)
@@ -71,7 +70,13 @@ def test_compare_kinetics_cds():
     wt_seq = "ATGCTGGCGACCCGT"  # Met-Leu-Ala-Thr-Arg
     mut_seq = "ATGCTAGCAACAAGA"  # Rare codons
 
-    wt_part = CDS(id="WT_CDS", name="WT CDS", sequence=wt_seq, translation_rate=0.5, degradation_rate=0.01)
+    wt_part = CDS(
+        id="WT_CDS",
+        name="WT CDS",
+        sequence=wt_seq,
+        translation_rate=0.5,
+        degradation_rate=0.01,
+    )
     catalogue = [wt_part]
 
     res = compare_kinetics(mut_seq, catalogue, part_type="cds")
@@ -118,7 +123,13 @@ def test_compare_kinetics_missense_mutation():
     wt_seq = "ATGCTGGCGACCCGT"  # Met-Leu-Ala-Thr-Arg
     mut_seq = "ATGTGGGCGACCCGT"  # Met-Trp-Ala-Thr-Arg (Leu -> Trp missense mutation)
 
-    wt_part = CDS(id="WT_CDS", name="WT CDS", sequence=wt_seq, translation_rate=0.5, degradation_rate=0.01)
+    wt_part = CDS(
+        id="WT_CDS",
+        name="WT CDS",
+        sequence=wt_seq,
+        translation_rate=0.5,
+        degradation_rate=0.01,
+    )
     catalogue = [wt_part]
 
     res = compare_kinetics(mut_seq, catalogue, part_type="cds")
@@ -127,4 +138,3 @@ def test_compare_kinetics_missense_mutation():
     assert res["wt_degradation_rate"] == 0.01
     assert res["mut_degradation_rate"] > res["wt_degradation_rate"]
     assert res["mut_degradation_rate"] >= 0.15
-

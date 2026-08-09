@@ -1,7 +1,8 @@
 """Unit tests for apply_standard_axes centralized plot formatting function."""
 
 import matplotlib
-matplotlib.use('QtAgg')
+
+matplotlib.use("QtAgg")
 from matplotlib.figure import Figure
 
 from analysis.prediction.graphing_utils import apply_standard_axes
@@ -45,4 +46,3 @@ def test_apply_standard_axes_formatting():
     assert fig.patch.get_facecolor() == matplotlib.colors.to_rgba("#ffffff")
     assert ax.get_facecolor() == matplotlib.colors.to_rgba("#F8F9FA")
     assert ax.xaxis.label.get_color() == "#333333"
-

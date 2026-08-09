@@ -11,7 +11,7 @@ from ..parts.components import CDS, Promoter
 
 class PartsCatalogueService:
     """Service layer for managing the parts catalogue.
-    
+
     Adheres to the Dependency Inversion Principle by depending on the
     PartRepository abstraction rather than a concrete implementation.
     """
@@ -72,36 +72,46 @@ class PartsCatalogueService:
         """Fetch description from UniProt and image from RCSB PDB."""
         if not isinstance(part, CDS):
             return
-            
+
         gene = part.name
-        
+
         # 1. Fetch description & PDB cross-references
         url = f"https://rest.uniprot.org/uniprotkb/search?query=gene:{gene}+AND+taxonomy_id:2&format=json&size=1"
         try:
             req = urllib.request.Request(url)
             with urllib.request.urlopen(req, timeout=3) as response:
                 data = json.load(response)
-                if data.get('results'):
-                    res = data['results'][0]
+                if data.get("results"):
+                    res = data["results"][0]
                     # Description
-                    funcs = [c for c in res.get('comments', []) if c.get('commentType') == 'FUNCTION']
-                    if funcs and funcs[0].get('texts'):
-                        part.description = funcs[0]['texts'][0]['value']
-                        
+                    funcs = [
+                        c
+                        for c in res.get("comments", [])
+                        if c.get("commentType") == "FUNCTION"
+                    ]
+                    if funcs and funcs[0].get("texts"):
+                        part.description = funcs[0]["texts"][0]["value"]
+
                     # PDB IDs
-                    pdbs = [x['id'] for x in res.get('uniProtKBCrossReferences', []) if x['database'] == 'PDB']
+                    pdbs = [
+                        x["id"]
+                        for x in res.get("uniProtKBCrossReferences", [])
+                        if x["database"] == "PDB"
+                    ]
                     if pdbs:
                         pdb_id = pdbs[0].lower()
                         # 2. Fetch image from RCSB PDB
                         img_url = f"https://cdn.rcsb.org/images/structures/{pdb_id}_assembly-1.jpeg"
-                        img_path = os.path.join(os.path.dirname(__file__), "images", f"{part.id}.jpeg")
+                        img_path = os.path.join(
+                            os.path.dirname(__file__), "images", f"{part.id}.jpeg"
+                        )
                         try:
                             img_req = urllib.request.Request(img_url)
                             with urllib.request.urlopen(img_req, timeout=3) as img_resp:
                                 with open(img_path, "wb") as f:
                                     f.write(img_resp.read())
                             # Store relative path or absolute path. Relative is better for portability.
-                            part.properties['image_path'] = f"images/{part.id}.jpeg"
+                            part.properties["image_path"] = f"images/{part.id}.jpeg"
                         except Exception as e:
                             print(f"Failed to fetch image for {gene} ({pdb_id}): {e}")
         except Exception as e:
@@ -118,7 +128,9 @@ class PartsCatalogueService:
         CelloKineticsDatabase.get_parameters(dummy_id)
 
         # 1. Load sequence data from UCF JSON
-        ucf_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "api", "cello_ucf.json")
+        ucf_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "api", "cello_ucf.json"
+        )
         sequences = {}
         if os.path.exists(ucf_path):
             try:
@@ -127,7 +139,7 @@ class PartsCatalogueService:
                     for item in ucf_data:
                         if item.get("collection") == "parts":
                             sequences[item.get("name")] = item.get("dnasequence", "")
-            except Exception as e: 
+            except Exception as e:
                 print(f"Failed to parse sequences from UCF: {e}")
 
         # Fetch UCF data directly to ensure we have all 14 parts
@@ -136,7 +148,7 @@ class PartsCatalogueService:
             name = part_id
             desc = params.get("description", f"{part_id} logic gate part (Cello 2.0)")
             seq = params.get("sequence", "")
-            
+
             # Determine if it's a CDS or Promoter based on params
             if "y_max" in params or "y_min" in params:
                 part = Promoter(
@@ -161,21 +173,21 @@ class PartsCatalogueService:
                     degradation_rate=params.get("degradation_rate"),
                     product=params.get("product", ""),
                 )
-            
+
             if isinstance(part, CDS):
                 self._enrich_part(part)
-                
+
             self._repository.save(part)
 
         ucf_params = CelloKineticsDatabase._ucf.parameters
         for part_id, params in ucf_params.items():
             if self._repository.get(part_id):
                 continue
-                
+
             name = part_id
             desc = f"{part_id} from Cello UCF"
             seq = sequences.get(part_id, "")
-            
+
             if "y_max" in params or "y_min" in params:
                 part = Promoter(
                     id=part_id,
@@ -199,8 +211,8 @@ class PartsCatalogueService:
                     degradation_rate=params.get("degradation_rate"),
                     product=params.get("product", ""),
                 )
-            
+
             if isinstance(part, CDS):
                 self._enrich_part(part)
-                
+
             self._repository.save(part)

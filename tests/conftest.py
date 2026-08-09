@@ -12,8 +12,8 @@ if str(src_dir) not in sys.path:
 if str(plugin_dir) not in sys.path:
     sys.path.insert(0, str(plugin_dir))
 
-import pytest
-from PyQt6.QtWidgets import QLabel, QPushButton, QSplitter, QWidget
+import pytest  # noqa: E402
+from PyQt6.QtWidgets import QLabel, QPushButton, QSplitter, QWidget  # noqa: E402
 
 # Mock biopro_sdk before it gets imported
 mock_biopro_sdk_plugin = MagicMock()
@@ -24,8 +24,7 @@ class DummyTaskBase:
         pass
 
 
-from PyQt6.QtCore import pyqtSignal
-
+from PyQt6.QtCore import pyqtSignal  # noqa: E402
 
 class DummyPluginBase(QWidget):
     status_message = pyqtSignal(str)
@@ -52,8 +51,7 @@ class DummyLabel(QLabel):
     pass
 
 
-from PyQt6.QtWidgets import QComboBox, QLineEdit, QListWidget, QSpinBox
-
+from PyQt6.QtWidgets import QComboBox, QLineEdit, QListWidget, QSpinBox  # noqa: E402
 
 class DummyComboBox(QComboBox):
     pass
@@ -138,9 +136,7 @@ sys.modules["biopro.shared"] = MagicMock()
 sys.modules["biopro.shared.ui"] = MagicMock()
 sys.modules["biopro.shared.ui.ui_components"] = mock_components
 
-from analysis.state import SynBioState
-
-
+from analysis.state import SynBioState  # noqa: E402
 @pytest.fixture
 def empty_state():
     """Returns a fresh SynBioState with empty circuit data."""

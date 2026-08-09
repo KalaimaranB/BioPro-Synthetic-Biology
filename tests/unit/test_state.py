@@ -1,7 +1,5 @@
 """Tests for SynBioState serialization and round-tripping."""
 
-import pytest
-
 from analysis.state import CircuitState, SynBioState, ViewState
 
 
@@ -15,7 +13,9 @@ class TestCircuitState:
         assert state.simulation_results == {}
 
     def test_to_dict(self):
-        state = CircuitState(parts=[{"id": "p1"}], connections=[{"src": "p1", "dst": "p2"}])
+        state = CircuitState(
+            parts=[{"id": "p1"}], connections=[{"src": "p1", "dst": "p2"}]
+        )
         d = state.to_dict()
         assert d["parts"] == [{"id": "p1"}]
         assert d["connections"] == [{"src": "p1", "dst": "p2"}]

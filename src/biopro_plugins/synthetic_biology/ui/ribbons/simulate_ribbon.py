@@ -22,6 +22,7 @@ class SimulateRibbon(QWidget):
 
     def _setup_ui(self):
         from PyQt6.QtWidgets import QComboBox
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(16, 12, 16, 12)
         layout.setSpacing(8)
@@ -34,11 +35,13 @@ class SimulateRibbon(QWidget):
 
         layout.addWidget(QLabel("Method:"))
         self.method_combo = QComboBox()
-        self.method_combo.addItems([
-            "Steady-State Transfer Curve",
-            "Deterministic (ODE)",
-            "Stochastic (Gillespie)",
-        ])
+        self.method_combo.addItems(
+            [
+                "Steady-State Transfer Curve",
+                "Deterministic (ODE)",
+                "Stochastic (Gillespie)",
+            ]
+        )
         layout.addWidget(self.method_combo)
 
         self.run_btn = PrimaryButton("▶️ Run Simulation")

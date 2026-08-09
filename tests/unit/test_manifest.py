@@ -25,12 +25,15 @@ class TestManifest:
         else:
             with open(DEPRECATED_MANIFEST_PATH, encoding="utf-8") as f:
                 import json
+
                 self.manifest = json.load(f)
                 self.project = self.manifest
                 self.plugin = self.manifest
 
     def test_manifest_exists(self):
-        assert TOML_PATH.exists() or DEPRECATED_MANIFEST_PATH.exists(), "pyproject.toml or manifest.json.deprecated must exist at plugin root"
+        assert TOML_PATH.exists() or DEPRECATED_MANIFEST_PATH.exists(), (
+            "pyproject.toml or manifest.json.deprecated must exist at plugin root"
+        )
 
     def test_required_fields_present(self):
         assert "name" in self.project

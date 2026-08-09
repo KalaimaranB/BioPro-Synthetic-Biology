@@ -1,12 +1,23 @@
 """QGraphicsView for rendering SBOLv style genetic circuits."""
 
 import hashlib
-import hashlib
 from PyQt6.QtCore import QPointF, Qt
 from PyQt6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen, QPolygonF
-from PyQt6.QtWidgets import QGraphicsPathItem, QGraphicsPolygonItem, QGraphicsScene, QGraphicsView
+from PyQt6.QtWidgets import (
+    QGraphicsPathItem,
+    QGraphicsPolygonItem,
+    QGraphicsScene,
+    QGraphicsView,
+)
 
-from biopro.plugins.synthetic_biology.analysis.parts.components import CDS, RBS, Promoter, Terminator, Insulator, sgRNA
+from biopro.plugins.synthetic_biology.analysis.parts.components import (
+    CDS,
+    RBS,
+    Promoter,
+    Terminator,
+    Insulator,
+    sgRNA,
+)
 
 
 class CircuitCanvas(QGraphicsView):
@@ -63,14 +74,16 @@ class CircuitCanvas(QGraphicsView):
 
         total_width = sum(part_widths)
         start_x = -total_width / 2
-        self.scene.addLine(start_x - 50, 0, start_x + total_width + 50, 0, QPen(self.c_backbone, 3))
+        self.scene.addLine(
+            start_x - 50, 0, start_x + total_width + 50, 0, QPen(self.c_backbone, 3)
+        )
 
-        part_positions = {} # Map part index to cx
+        part_positions = {}  # Map part index to cx
 
         x_offset = start_x
         for i, part in enumerate(self._parts):
             w = part_widths[i]
-            
+
             if isinstance(part, Promoter):
                 cx = self._draw_promoter(x_offset, part.name, w)
             elif isinstance(part, RBS):
@@ -85,14 +98,14 @@ class CircuitCanvas(QGraphicsView):
                 cx = self._draw_sgrna(x_offset, part.name, w)
             else:
                 cx = self._draw_generic(x_offset, part.name, w)
-                
+
             part_positions[i] = cx
 
             x_offset += w
 
         # Draw Chemical Connections (Repression Lines)
         # Find all CDS products
-        cds_map = {} # product_name -> cx
+        cds_map = {}  # product_name -> cx
         for i, part in enumerate(self._parts):
             if isinstance(part, CDS):
                 product = getattr(part, "product", part.name.replace(" ", "_"))
@@ -100,7 +113,7 @@ class CircuitCanvas(QGraphicsView):
             elif isinstance(part, sgRNA):
                 # sgRNA also acts as a repressor product
                 cds_map[part.name] = part_positions[i]
-                
+
         # Draw connections to promoters
         for i, part in enumerate(self._parts):
             if isinstance(part, Promoter):
@@ -108,8 +121,10 @@ class CircuitCanvas(QGraphicsView):
                 for rep in repressors:
                     if rep in cds_map:
                         color = self._get_color_for_repressor(rep)
-                        self._draw_repression_line(cds_map[rep], part_positions[i], color)
-                        
+                        self._draw_repression_line(
+                            cds_map[rep], part_positions[i], color
+                        )
+
     def _get_color_for_repressor(self, rep: str) -> QColor:
         """Deterministically generate a vibrant color based on a string hash."""
         hash_val = int(hashlib.md5(rep.encode()).hexdigest(), 16)
@@ -129,7 +144,9 @@ class CircuitCanvas(QGraphicsView):
         item.setPen(QPen(self.c_promoter, 3))
         self.scene.addItem(item)
 
-        arrow = QPolygonF([QPointF(cx + 25, -45), QPointF(cx + 35, -40), QPointF(cx + 25, -35)])
+        arrow = QPolygonF(
+            [QPointF(cx + 25, -45), QPointF(cx + 35, -40), QPointF(cx + 25, -35)]
+        )
         arrow_item = QGraphicsPolygonItem(arrow)
         arrow_item.setBrush(QBrush(self.c_promoter))
         arrow_item.setPen(QPen(Qt.PenStyle.NoPen))
@@ -162,10 +179,15 @@ class CircuitCanvas(QGraphicsView):
     def _draw_cds(self, x: float, name: str, cell_w: float):
         """Draw SBOLv block arrow."""
         cx = x + cell_w / 2 - 40
-        poly = QPolygonF([
-            QPointF(cx, -15), QPointF(cx + 60, -15),
-            QPointF(cx + 80, 0), QPointF(cx + 60, 15), QPointF(cx, 15)
-        ])
+        poly = QPolygonF(
+            [
+                QPointF(cx, -15),
+                QPointF(cx + 60, -15),
+                QPointF(cx + 80, 0),
+                QPointF(cx + 60, 15),
+                QPointF(cx, 15),
+            ]
+        )
         item = QGraphicsPolygonItem(poly)
         item.setBrush(QBrush(self.c_cds))
         item.setPen(QPen(self.c_cds.darker(), 1))
@@ -175,7 +197,7 @@ class CircuitCanvas(QGraphicsView):
         text.setDefaultTextColor(self.c_text)
         tw = text.boundingRect().width()
         text.setPos(x + (cell_w - tw) / 2, 25)
-        return cx + 30 # center of the arrow
+        return cx + 30  # center of the arrow
 
     def _draw_terminator(self, x: float, name: str, cell_w: float):
         """Draw SBOLv T-shape."""
@@ -199,7 +221,9 @@ class CircuitCanvas(QGraphicsView):
     def _draw_generic(self, x: float, name: str, cell_w: float):
         """Draw generic box."""
         cx = x + cell_w / 2 - 20
-        self.scene.addRect(cx, -10, 40, 20, QPen(self.c_text), QBrush(QColor("#bdc3c7")))
+        self.scene.addRect(
+            cx, -10, 40, 20, QPen(self.c_text), QBrush(QColor("#bdc3c7"))
+        )
         text = self.scene.addText(name, self._font)
         text.setDefaultTextColor(self.c_text)
         tw = text.boundingRect().width()
@@ -212,13 +236,15 @@ class CircuitCanvas(QGraphicsView):
         # Start at CDS top
         path.moveTo(source_x, -15)
         # Curve up and over to Promoter
-        arch_height = -100 - abs(source_x - target_x) * 0.15 # Dynamic height to avoid overlaps
+        arch_height = (
+            -100 - abs(source_x - target_x) * 0.15
+        )  # Dynamic height to avoid overlaps
         path.quadTo((source_x + target_x) / 2, arch_height, target_x, -45)
-        
+
         item = QGraphicsPathItem(path)
         item.setPen(QPen(color, 2, Qt.PenStyle.DashLine))
         self.scene.addItem(item)
-        
+
         # Repression "T" head
         head = QPainterPath()
         head.moveTo(target_x - 8, -45)
@@ -231,37 +257,55 @@ class CircuitCanvas(QGraphicsView):
         """Draw SBOLv Insulator (outer box)."""
         cx = x + cell_w / 2
         # A simple square on the backbone
-        item = QGraphicsPolygonItem(QPolygonF([QPointF(cx - 10, -10), QPointF(cx + 10, -10), QPointF(cx + 10, 10), QPointF(cx - 10, 10)]))
+        item = QGraphicsPolygonItem(
+            QPolygonF(
+                [
+                    QPointF(cx - 10, -10),
+                    QPointF(cx + 10, -10),
+                    QPointF(cx + 10, 10),
+                    QPointF(cx - 10, 10),
+                ]
+            )
+        )
         item.setBrush(QBrush(self.c_insulator))
         item.setPen(QPen(self.c_insulator, 2))
         self.scene.addItem(item)
-        
+
         # Inner box
-        inner = QGraphicsPolygonItem(QPolygonF([QPointF(cx - 5, -5), QPointF(cx + 5, -5), QPointF(cx + 5, 5), QPointF(cx - 5, 5)]))
+        inner = QGraphicsPolygonItem(
+            QPolygonF(
+                [
+                    QPointF(cx - 5, -5),
+                    QPointF(cx + 5, -5),
+                    QPointF(cx + 5, 5),
+                    QPointF(cx - 5, 5),
+                ]
+            )
+        )
         inner.setBrush(QBrush(self.c_backbone))
         inner.setPen(QPen(Qt.PenStyle.NoPen))
         self.scene.addItem(inner)
-        
+
         text = self.scene.addText(name, self._font)
         text.setDefaultTextColor(self.c_text)
         tw = text.boundingRect().width()
         text.setPos(x + (cell_w - tw) / 2, 25)
         return cx
-        
+
     def _draw_sgrna(self, x: float, name: str, cell_w: float):
         """Draw SBOLv non-coding RNA (wavy line / diamond)."""
         cx = x + cell_w / 2
-        
+
         path = QPainterPath()
         path.moveTo(cx - 15, 0)
         # Wavy line for RNA
         path.quadTo(cx - 7, -10, cx, 0)
         path.quadTo(cx + 7, 10, cx + 15, 0)
-        
+
         item = QGraphicsPathItem(path)
         item.setPen(QPen(self.c_sgrna, 3))
         self.scene.addItem(item)
-        
+
         text = self.scene.addText(name, self._font)
         text.setDefaultTextColor(self.c_text)
         tw = text.boundingRect().width()

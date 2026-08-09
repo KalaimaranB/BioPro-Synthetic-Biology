@@ -1,6 +1,4 @@
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QSplitter, QScrollArea
-)
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSplitter, QScrollArea
 from PyQt6.QtCore import Qt
 
 from ...analysis.catalogue.service import PartsCatalogueService
@@ -25,25 +23,29 @@ class CatalogueView(QWidget):
         # Main Splitter
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
         layout.addWidget(self.splitter)
-        
+
         # Left Side: Scroll Area with FlowLayout for Cards
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
         self.scroll_area.setMinimumWidth(500)
-        
+
         self.cards_container = QWidget()
-        self.flow_layout = FlowLayout(self.cards_container, margin=10, hSpacing=10, vSpacing=10)
+        self.flow_layout = FlowLayout(
+            self.cards_container, margin=10, hSpacing=10, vSpacing=10
+        )
         self.scroll_area.setWidget(self.cards_container)
-        
+
         self.splitter.addWidget(self.scroll_area)
-        
+
         # Right Side: Part Inspector
         self.inspector = PartInspector(catalogue_service=self.service)
         self.inspector.part_saved.connect(self._on_part_saved)
         self.inspector.part_deleted.connect(self._on_part_deleted)
         self.splitter.addWidget(self.inspector)
-        
+
         # Splitter sizing and 70:30 stretch constraints
         self.splitter.setChildrenCollapsible(False)
         self.splitter.setStretchFactor(0, 7)
@@ -62,12 +64,12 @@ class CatalogueView(QWidget):
             item = self.flow_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-                
+
         # Add 'Create New Part' card first
         create_card = PartCard(None)
         create_card.clicked.connect(self._on_card_clicked)
         self.flow_layout.addWidget(create_card)
-        
+
         # Add all existing parts
         parts = self.service.get_all_parts()
         for part in parts:

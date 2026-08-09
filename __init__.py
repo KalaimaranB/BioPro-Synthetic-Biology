@@ -7,10 +7,6 @@ biological logic gates and synthetic genetic circuits.
 __version__ = "0.1.0"
 __plugin_id__ = "synthetic_biology"
 
-import os
-import sys
-
-
 
 
 def get_panel_class():

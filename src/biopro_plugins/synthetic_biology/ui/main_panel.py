@@ -120,8 +120,7 @@ class SynBioPanel(PluginBase):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        from PyQt6.QtCore import Qt
-        from PyQt6.QtWidgets import QHBoxLayout, QPushButton, QStackedWidget, QTabBar, QWidget
+        from PyQt6.QtWidgets import QStackedWidget, QTabBar, QWidget
 
         from .canvas import CircuitCanvas
         from .ribbons import BiologicalViewRibbon, DesignRibbon, SimulateRibbon
@@ -143,8 +142,6 @@ class SynBioPanel(PluginBase):
         self._tab_bar.addTab("Parts Catalogue")
         self._tab_bar.currentChanged.connect(self._on_tab_changed)
         layout.addWidget(self._tab_bar)
-
-
 
         # ── Ribbon Stack ──────────────────────────────────────────────
         self._ribbon_stack = QStackedWidget()
@@ -202,7 +199,7 @@ class SynBioPanel(PluginBase):
         self._circuit_canvas.add_part(part)
         self._properties_view.set_parts(self._parts_cache)
         self._simulate_view.set_parts(self._parts_cache)
-        
+
         # Save to local catalogue and refresh view
         catalogue = self._factory.get("parts_catalogue")
         if catalogue:
@@ -221,8 +218,6 @@ class SynBioPanel(PluginBase):
             self._simulate_view.plot_steady_state()
         else:
             self._simulate_view.plot_time_series(max_time=max_time, method=method)
-
-
 
     def _on_tab_changed(self, index: int) -> None:
         """Handle main tab changes to update ribbon and central view."""
@@ -257,7 +252,9 @@ class SynBioPanel(PluginBase):
             )
 
         if hasattr(self, "_ribbon_stack"):
-            self._ribbon_stack.setStyleSheet(f"background: {Colors.BG_DARK}; border-bottom: 1px solid {Colors.BORDER};")
+            self._ribbon_stack.setStyleSheet(
+                f"background: {Colors.BG_DARK}; border-bottom: 1px solid {Colors.BORDER};"
+            )
 
         # Deep recursion for sub-widgets
         for child in self.findChildren(QWidget):
