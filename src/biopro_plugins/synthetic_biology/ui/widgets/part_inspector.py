@@ -29,11 +29,15 @@ from biopro.ui.theme import Colors
 
 
 class WTGraphDialog(QDialog):
-    """Modal popup dialog presenting comparative matplotlib transfer curve (WT vs Mutation)."""
+    """Modal popup dialog presenting comparative matplotlib transfer curve
+    (WT vs Mutation).
+    """
 
     def __init__(self, figure, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Comparative Biophysical Transfer Curve (WT vs Mutation)")
+        self.setWindowTitle(
+            "Comparative Biophysical Transfer Curve (WT vs Mutation)"
+        )
         self.resize(720, 520)
         self._setup_ui(figure)
 
@@ -55,7 +59,9 @@ class WTGraphDialog(QDialog):
 
 
 class ModelDetailsDialog(QDialog):
-    """Modal popup dialog showing academic, mathematical, and biophysical model breakdowns."""
+    """Modal popup dialog showing academic, mathematical, and biophysical model
+    breakdowns.
+    """
 
     def __init__(self, model_key: str, parent=None):
         super().__init__(parent)
@@ -88,74 +94,117 @@ class ModelDetailsDialog(QDialog):
 
     def _generate_html_content(self) -> str:
         if "thermodynamic pwm" in self.model_key or "promoter" in self.model_key:
-            return f"""
-            <h2 style='color: {Colors.ACCENT_PRIMARY}; margin-top: 0;'>⚙️ Promoter Thermodynamic PWM Model</h2>
-            <p><b>Overview:</b> Evaluates RNA Polymerase (RNAP &sigma;<sup>70</sup> holoenzyme) binding kinetics and open-complex formation using Position Weight Matrices (PWM) and steric spacer strain functions.</p>
-            
-            <h3 style='color: #4caf50;'>1. Hexamer Motif Recognition (-35 & -10 Boxes)</h3>
-            <p>The sliding window algorithm scans the query DNA string to locate the window matching the two canonical hexamers:</p>
-            <ul>
-                <li><b>-35 Box:</b> Consensus <code>TTGACA</code> (positions -35 to -30 relative to TSS)</li>
-                <li><b>-10 Box (Pribnow Box):</b> Consensus <code>TATAAT</code> (positions -12 to -7 relative to TSS)</li>
-            </ul>
-            <p>Position-specific thermodynamic mismatch energy penalties (&Delta;&Delta;G in k<sub>B</sub>T) are accumulated for nucleotide deviations based on empirical binding preference matrices.</p>
-
-            <h3 style='color: #4caf50;'>2. Spacer Length Steric Strain</h3>
-            <p>The optimal spacer between the -35 and -10 hexamers is <b>17 bp</b>. Deviations (15–19 bp) introduce torsional strain on the &sigma;<sub>4</sub> and &sigma;<sub>2</sub> subdomains:</p>
-            <ul>
-                <li>Spacer = 17 bp: &Delta;G<sub>spacer</sub> = 0.0 k<sub>B</sub>T</li>
-                <li>Spacer = 16 or 18 bp (&plusmn;1 bp): &Delta;G<sub>spacer</sub> = 1.8 k<sub>B</sub>T</li>
-                <li>Spacer = 15 or 19 bp (&plusmn;2 bp): &Delta;G<sub>spacer</sub> = 4.5 k<sub>B</sub>T</li>
-            </ul>
-
-            <h3 style='color: #4caf50;'>3. Mathematical Parameter Mapping</h3>
-            <p>The total binding penalty score (&Delta;G<sub>penalty</sub> = P<sub>-35</sub> + P<sub>-10</sub> + P<sub>spacer</sub>) is mapped to transfer curve parameters:</p>
-            <p><b>Maximum Promoter Expression (y<sub>max</sub>):</b></p>
-            <div style='background: {Colors.BG_MEDIUM}; padding: 8px; border-radius: 4px; font-family: monospace;'>
-            y<sub>max</sub> = y<sub>min_max</sub> + (y<sub>max_ref</sub> - y<sub>min_max</sub>) &middot; exp(-0.35 &middot; &Delta;G<sub>penalty</sub>)
-            </div>
-            <p><b>Repression Threshold / Dissociation Constant (K<sub>d</sub>):</b></p>
-            <div style='background: {Colors.BG_MEDIUM}; padding: 8px; border-radius: 4px; font-family: monospace;'>
-            K<sub>d</sub> = min(100.0, K<sub>d_base</sub> &middot; exp(0.40 &middot; &Delta;G<sub>penalty</sub>))
-            </div>
-            """
+            return (
+                f"<h2 style='color: {Colors.ACCENT_PRIMARY}; margin-top: 0;'>⚙️ "
+                "Promoter Thermodynamic PWM Model</h2>"
+                "<p><b>Overview:</b> Evaluates RNA Polymerase (RNAP &sigma;<sup>70"
+                "</sup> holoenzyme) binding kinetics and open-complex formation using "
+                "Position Weight Matrices (PWM) and steric spacer strain "
+                "functions.</p>"
+                "<h3 style='color: #4caf50;'>1. Hexamer Motif Recognition (-35 & "
+                "-10 Boxes)</h3>"
+                "<p>The sliding window algorithm scans the query DNA string to locate "
+                "the window matching the two canonical hexamers:</p>"
+                "<ul>"
+                "<li><b>-35 Box:</b> Consensus <code>TTGACA</code> (positions -35 to "
+                "-30 relative to TSS)</li>"
+                "<li><b>-10 Box (Pribnow Box):</b> Consensus <code>TATAAT</code> "
+                "(positions -12 to -7 relative to TSS)</li>"
+                "</ul>"
+                "<p>Position-specific thermodynamic mismatch energy penalties "
+                "(&Delta;&Delta;G in k<sub>B</sub>T) are accumulated for nucleotide "
+                "deviations based on empirical binding preference matrices.</p>"
+                "<h3 style='color: #4caf50;'>2. Spacer Length Steric Strain</h3>"
+                "<p>The optimal spacer between the -35 and -10 hexamers is "
+                "<b>17 bp</b>. Deviations (15&ndash;19 bp) introduce torsional "
+                "strain on the &sigma;<sub>4</sub> and &sigma;<sub>2</sub> "
+                "subdomains:</p>"
+                "<ul>"
+                "<li>Spacer = 17 bp: &Delta;G<sub>spacer</sub> = 0.0 "
+                "k<sub>B</sub>T</li>"
+                "<li>Spacer = 16 or 18 bp (&plusmn;1 bp): &Delta;G<sub>spacer</sub> = "
+                "1.8 k<sub>B</sub>T</li>"
+                "<li>Spacer = 15 or 19 bp (&plusmn;2 bp): &Delta;G<sub>spacer</sub> = "
+                "4.5 k<sub>B</sub>T</li>"
+                "</ul>"
+                "<h3 style='color: #4caf50;'>3. Mathematical Parameter Mapping</h3>"
+                "<p>The total binding penalty score (&Delta;G<sub>penalty</sub> = "
+                "P<sub>-35</sub> + P<sub>-10</sub> + P<sub>spacer</sub>) is mapped to "
+                "transfer curve parameters:</p>"
+                "<p><b>Maximum Promoter Expression (y<sub>max</sub>):</b></p>"
+                f"<div style='background: {Colors.BG_MEDIUM}; padding: 8px; "
+                "border-radius: 4px; font-family: monospace;'>"
+                "y<sub>max</sub> = y<sub>min_max</sub> + (y<sub>max_ref</sub> - "
+                "y<sub>min_max</sub>) &middot; exp(-0.35 &middot; &Delta;G<sub>penalty"
+                "</sub>)"
+                "</div>"
+                "<p><b>Repression Threshold / Dissociation Constant (K<sub>d</sub>"
+                "):</b></p>"
+                f"<div style='background: {Colors.BG_MEDIUM}; padding: 8px; "
+                "border-radius: 4px; font-family: monospace;'>"
+                "K<sub>d</sub> = min(100.0, K<sub>d_base</sub> &middot; "
+                "exp(0.40 &middot; &Delta;G<sub>penalty</sub>))"
+                "</div>"
+            )
         elif (
             "cai" in self.model_key
             or "blosum62" in self.model_key
             or "cds" in self.model_key
         ):
-            return f"""
-            <h2 style='color: {Colors.ACCENT_PRIMARY}; margin-top: 0;'>🧱 CDS CAI & BLOSUM62 Stability Model</h2>
-            <p><b>Overview:</b> Evaluates protein expression kinetics using a dual-engine architecture: <i>E. coli</i> Codon Adaptation Index (CAI) for translation speed and BLOSUM62 substitution scoring for 3D folding stability.</p>
-
-            <h3 style='color: #4caf50;'>1. Ribosomal Translation Speed (CAI Model)</h3>
-            <p>Scans the 3-bp codon sequence against host tRNA abundance profiles (w<sub>i</sub> relative adaptiveness values):</p>
-            <div style='background: {Colors.BG_MEDIUM}; padding: 8px; border-radius: 4px; font-family: monospace;'>
-            CAI = exp( (1 / N<sub>sense</sub>) &sum; ln(w<sub>i</sub>) )
-            </div>
-            <p>Codon bias directly determines translation elongation rate <code>translation_rate</code> (0.005 to 1.0 min<sup>-1</sup>). Rare codons cause ribosomal stalling and mRNA degradation.</p>
-
-            <h3 style='color: #4caf50;'>2. Thermodynamic Folding Stability (BLOSUM62 Model)</h3>
-            <p>Translates DNA to protein and aligns against characterized CDS reference sequences. Substitutions are scored via the BLOSUM62 matrix:</p>
-            <ul>
-                <li><b>Conservative Mutations (e.g., L &harr; I, K &harr; R):</b> Positive matrix scores (&Delta;S<sub>i</sub> &approx; 0&ndash;2); minimal folding impact; normal degradation rate (&approx; 0.01 min<sup>-1</sup>).</li>
-                <li><b>Non-Conservative Mutations (e.g., G &harr; W, D &harr; F):</b> Negative matrix scores (&Delta;S<sub>i</sub> &approx; 10&ndash;13); severe structural disruption triggering intracellular proteolysis by host Lon/ClpXP proteases (up to 0.5 min<sup>-1</sup>).</li>
-            </ul>
-            """
+            return (
+                f"<h2 style='color: {Colors.ACCENT_PRIMARY}; margin-top: 0;'>🧱 CDS "
+                "CAI & BLOSUM62 Stability Model</h2>"
+                "<p><b>Overview:</b> Evaluates protein expression kinetics using a "
+                "dual-engine architecture: <i>E. coli</i> Codon Adaptation Index (CAI) "
+                "for translation speed and BLOSUM62 substitution scoring for 3D "
+                "folding stability.</p>"
+                "<h3 style='color: #4caf50;'>1. Ribosomal Translation Speed (CAI "
+                "Model)</h3>"
+                "<p>Scans the 3-bp codon sequence against host tRNA abundance "
+                "profiles (w<sub>i</sub> relative adaptiveness values):</p>"
+                f"<div style='background: {Colors.BG_MEDIUM}; padding: 8px; "
+                "border-radius: 4px; font-family: monospace;'>"
+                "CAI = exp( (1 / N<sub>sense</sub>) &sum; ln(w<sub>i</sub>) )"
+                "</div>"
+                "<p>Codon bias directly determines translation elongation rate "
+                "<code>translation_rate</code> (0.005 to 1.0 min<sup>-1</sup>). Rare "
+                "codons cause ribosomal stalling and mRNA degradation.</p>"
+                "<h3 style='color: #4caf50;'>2. Thermodynamic Folding Stability "
+                "(BLOSUM62 Model)</h3>"
+                "<p>Translates DNA to protein and aligns against characterized CDS "
+                "reference sequences. Substitutions are scored via the BLOSUM62 "
+                "matrix:</p>"
+                "<ul>"
+                "<li><b>Conservative Mutations (e.g., L &harr; I, K &harr; R):</b> "
+                "Positive matrix scores (&Delta;S<sub>i</sub> &approx; 0&ndash;2); "
+                "minimal folding impact; normal degradation rate (&approx; 0.01 min"
+                "<sup>-1</sup>).</li>"
+                "<li><b>Non-Conservative Mutations (e.g., G &harr; W, D &harr; F):</b> "
+                "Negative matrix scores (&Delta;S<sub>i</sub> &approx; 10&ndash;13); "
+                "severe structural disruption triggering intracellular proteolysis "
+                "by host Lon/ClpXP proteases (up to 0.5 min<sup>-1</sup>).</li>"
+                "</ul>"
+            )
         else:
-            return f"""
-            <h2 style='color: {Colors.ACCENT_PRIMARY}; margin-top: 0;'>🔍 k-Nearest Neighbors (k-NN) Fallback Model</h2>
-            <p><b>Overview:</b> Legacy alignment fallback utilizing Levenshtein edit distance and inverse-distance weighting across characterized parts in the catalogue.</p>
-
-            <h3 style='color: #4caf50;'>1. Sequence Alignment & Distance Metric</h3>
-            <p>Computes string edit distance (substitutions, insertions, deletions) between the query sequence and characterized repository parts.</p>
-
-            <h3 style='color: #4caf50;'>2. Inverse-Distance Weighting</h3>
-            <div style='background: {Colors.BG_MEDIUM}; padding: 8px; border-radius: 4px; font-family: monospace;'>
-            w<sub>i</sub> = 1 / distance<sub>i</sub>
-            </div>
-            <p>Averages top-<i>k</i> nearest neighbors weighted by sequence proximity to predict continuous parameters.</p>
-            """
+            return (
+                f"<h2 style='color: {Colors.ACCENT_PRIMARY}; margin-top: 0;'>🔍 "
+                "k-Nearest Neighbors (k-NN) Fallback Model</h2>"
+                "<p><b>Overview:</b> Legacy alignment fallback utilizing Levenshtein "
+                "edit distance and inverse-distance weighting across characterized "
+                "parts in the catalogue.</p>"
+                "<h3 style='color: #4caf50;'>1. Sequence Alignment & Distance "
+                "Metric</h3>"
+                "<p>Computes string edit distance (substitutions, insertions, "
+                "deletions) between the query sequence and characterized repository "
+                "parts.</p>"
+                "<h3 style='color: #4caf50;'>2. Inverse-Distance Weighting</h3>"
+                f"<div style='background: {Colors.BG_MEDIUM}; padding: 8px; "
+                "border-radius: 4px; font-family: monospace;'>"
+                "w<sub>i</sub> = 1 / distance<sub>i</sub>"
+                "</div>"
+                "<p>Averages top-<i>k</i> nearest neighbors weighted by sequence "
+                "proximity to predict continuous parameters.</p>"
+            )
 
 
 class PartInspector(QWidget):
@@ -253,7 +302,9 @@ class PartInspector(QWidget):
             QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
         )
         self.prediction_status_lbl.setStyleSheet(
-            f"color: {Colors.ACCENT_PRIMARY}; font-weight: bold; padding: 4px; border: 1px solid {Colors.ACCENT_PRIMARY}; border-radius: 4px; margin-top: 6px;"
+            f"color: {Colors.ACCENT_PRIMARY}; font-weight: bold; padding: 4px; "
+            f"border: 1px solid {Colors.ACCENT_PRIMARY}; border-radius: 4px; "
+            "margin-top: 6px;"
         )
         self.prediction_status_lbl.setVisible(False)
         self.props_layout.addRow(self.prediction_status_lbl)
@@ -262,13 +313,16 @@ class PartInspector(QWidget):
         self.prediction_info_card = QLabel()
         self.prediction_info_card.setWordWrap(True)
         self.prediction_info_card.setOpenExternalLinks(False)
-        self.prediction_info_card.linkActivated.connect(self._open_model_details_dialog)
+        self.prediction_info_card.linkActivated.connect(
+            self._open_model_details_dialog
+        )
         self.prediction_info_card.setSizePolicy(
             QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
         )
         self.prediction_info_card.setStyleSheet(
             f"background: {Colors.BG_DARK}; border: 1px solid {Colors.BORDER}; "
-            f"color: {Colors.FG_SECONDARY}; border-radius: 6px; padding: 8px; font-size: 11px; margin-top: 4px;"
+            f"color: {Colors.FG_SECONDARY}; border-radius: 6px; padding: 8px; "
+            "font-size: 11px; margin-top: 4px;"
         )
         self.prediction_info_card.setVisible(False)
         self.props_layout.addRow(self.prediction_info_card)
@@ -297,14 +351,17 @@ class PartInspector(QWidget):
 
         self.predict_btn = QPushButton("⚡ Predict Parameters (k-NN)")
         self.predict_btn.setStyleSheet(
-            f"background: {Colors.BG_MEDIUM}; color: {Colors.ACCENT_PRIMARY}; border: 1px solid {Colors.ACCENT_PRIMARY}; font-weight: bold; padding: 6px;"
+            f"background: {Colors.BG_MEDIUM}; color: {Colors.ACCENT_PRIMARY}; "
+            f"border: 1px solid {Colors.ACCENT_PRIMARY}; font-weight: bold; "
+            "padding: 6px;"
         )
         self.predict_btn.clicked.connect(self._run_prediction)
         self.seq_layout.addWidget(self.predict_btn)
 
         self.seq_graph_btn = QPushButton("📊 Graph WT vs Mutation")
         self.seq_graph_btn.setStyleSheet(
-            f"background: {Colors.ACCENT_PRIMARY}; color: {Colors.BG_DARKEST}; font-weight: bold; padding: 6px; margin-top: 4px;"
+            f"background: {Colors.ACCENT_PRIMARY}; color: {Colors.BG_DARKEST}; "
+            "font-weight: bold; padding: 6px; margin-top: 4px;"
         )
         self.seq_graph_btn.clicked.connect(self._on_graph_wt_vs_mutation)
         self.seq_layout.addWidget(self.seq_graph_btn)
@@ -327,14 +384,16 @@ class PartInspector(QWidget):
 
         self.save_btn = QPushButton("Save / Update Part")
         self.save_btn.setStyleSheet(
-            f"background: {Colors.ACCENT_PRIMARY}; color: {Colors.BG_DARKEST}; font-weight: bold; padding: 6px;"
+            f"background: {Colors.ACCENT_PRIMARY}; color: {Colors.BG_DARKEST}; "
+            "font-weight: bold; padding: 6px;"
         )
         self.save_btn.clicked.connect(self._on_save)
         self.btn_layout.addWidget(self.save_btn)
 
         self.delete_btn = QPushButton("Delete Part")
         self.delete_btn.setStyleSheet(
-            f"background: {Colors.ACCENT_PRIMARY}; color: {Colors.BG_DARKEST}; font-weight: bold; padding: 6px;"
+            f"background: {Colors.ACCENT_PRIMARY}; color: {Colors.BG_DARKEST}; "
+            "font-weight: bold; padding: 6px;"
         )
         self.delete_btn.clicked.connect(self._on_delete)
         self.btn_layout.addWidget(self.delete_btn)
@@ -423,7 +482,8 @@ class PartInspector(QWidget):
             self.prediction_info_card.setVisible(False)
             self.struct_lbl.setText("No structure generated for this part.")
             self.struct_lbl.setStyleSheet(
-                f"background: {Colors.BG_DARK}; border: 1px solid {Colors.BORDER}; color: {Colors.FG_SECONDARY};"
+                f"background: {Colors.BG_DARK}; border: 1px solid {Colors.BORDER}; "
+                f"color: {Colors.FG_SECONDARY};"
             )
         else:
             self.header_lbl.setText(f"{part.name} ({part.id})")
@@ -521,7 +581,8 @@ class PartInspector(QWidget):
                 return
 
         self.struct_lbl.setStyleSheet(
-            f"background: {Colors.BG_DARK}; border: 1px solid {Colors.BORDER}; color: {Colors.FG_SECONDARY};"
+            f"background: {Colors.BG_DARK}; border: 1px solid {Colors.BORDER}; "
+            f"color: {Colors.FG_SECONDARY};"
         )
         self.struct_lbl.setText("No structure available.\\n(Generic Placeholder)")
 
@@ -576,7 +637,9 @@ class PartInspector(QWidget):
         self.part_saved.emit(part)
 
     def _on_sequence_changed(self):
-        """Auto-trigger parameter prediction if in New Theoretical Part mode with a sequence."""
+        """Auto-trigger parameter prediction if in New Theoretical Part mode
+        with a sequence.
+        """
         if self.current_part is None or getattr(self.current_part, "is_custom", True):
             seq = self.seq_edit.toPlainText().strip()
             if len(seq) >= 10:
@@ -604,7 +667,7 @@ class PartInspector(QWidget):
                     from analysis.prediction.sequence_predictor import SequencePredictor
                     from analysis.api.kinetics import CelloKineticsDatabase
                 except ImportError:
-                    from biopro.plugins.synthetic_biology.analysis.prediction.sequence_predictor import (
+                    from biopro.plugins.synthetic_biology.analysis.prediction.sequence_predictor import (  # noqa: E501
                         SequencePredictor,
                     )
                     from biopro.plugins.synthetic_biology.analysis.api.kinetics import (
@@ -666,31 +729,37 @@ class PartInspector(QWidget):
             self.prediction_status_lbl.setText(status_msg)
         else:
             self.prediction_status_lbl.setText(
-                f"⚡ [Predicted via {k_used}-NN] Top match: {top_id} (distance: {top_dist})"
+                f"⚡ [Predicted via {k_used}-NN] Top match: {top_id} "
+                f"(distance: {top_dist})"
             )
         self.prediction_status_lbl.setVisible(True)
 
         # Inject Educational Copy based on prediction model used
         self._active_model_type = model_type
-        learn_more_link = "<br><a href='learn_more' style='color: #00bcd4; font-weight: bold; text-decoration: underline;'>Click here to learn more.</a>"
+        learn_more_link = (
+            "<br><a href='learn_more' style='color: #00bcd4; font-weight: bold; "
+            "text-decoration: underline;'>Click here to learn more.</a>"
+        )
 
         if "thermodynamic pwm" in model_type:
             info_text = (
-                "⚙️ <b>How this works (The Physics Engine):</b> Imagine this DNA is an 'ON' switch for a factory, "
-                "and a microscopic worker needs to grab two specific handles to turn it on. This model physically "
-                f"measures those handles.{learn_more_link}"
+                "⚙️ <b>How this works (The Physics Engine):</b> Imagine this DNA is an "
+                "'ON' switch for a factory, and a microscopic worker needs to grab two "
+                "specific handles to turn it on. This model physically measures those "
+                f"handles.{learn_more_link}"
             )
         elif "cai" in model_type or "blosum62" in model_type:
             info_text = (
-                "🧱 <b>How this works (The 3D Lego Model):</b> This DNA is an instruction manual to build a 3D protein structure. "
-                "This model checks translation speed and structural folding stability."
+                "🧱 <b>How this works (The 3D Lego Model):</b> This DNA is an "
+                "instruction manual to build a 3D protein structure. This model "
+                "checks translation speed and structural folding stability."
                 f"{learn_more_link}"
             )
         else:
             info_text = (
-                "🔍 <b>How this works (The Spellchecker):</b> This model acts like a smart spellchecker. "
-                "It compares your sequence to a library of known parts using string edit distance."
-                f"{learn_more_link}"
+                "🔍 <b>How this works (The Spellchecker):</b> This model acts like a "
+                "smart spellchecker. It compares your sequence to a library of known "
+                f"parts using string edit distance.{learn_more_link}"
             )
 
         self.prediction_info_card.setText(info_text)
@@ -707,7 +776,8 @@ class PartInspector(QWidget):
         confirm = QMessageBox.question(
             self,
             "Confirm Part Deletion",
-            f"Are you sure you want to delete the part '{part_name}'? This action cannot be undone.",
+            f"Are you sure you want to delete the part '{part_name}'? "
+            "This action cannot be undone.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -724,7 +794,9 @@ class PartInspector(QWidget):
         dialog.exec()
 
     def _on_graph_wt_vs_mutation(self):
-        """Trigger wild type lookup, dual parameter extraction, and comparative graphing."""
+        """Trigger wild type lookup, dual parameter extraction, and comparative
+        graphing.
+        """
         seq = self.seq_edit.toPlainText().strip()
         if not seq:
             QMessageBox.warning(
@@ -747,7 +819,7 @@ class PartInspector(QWidget):
                 try:
                     from analysis.api.kinetics import CelloKineticsDatabase
                 except ImportError:
-                    from biopro.plugins.synthetic_biology.analysis.api.kinetics import (
+                    from biopro.plugins.synthetic_biology.analysis.api.kinetics import (  # noqa: E501
                         CelloKineticsDatabase,
                     )
 
@@ -790,10 +862,10 @@ class PartInspector(QWidget):
                         generate_transfer_curve,
                     )
                 except ImportError:
-                    from biopro.plugins.synthetic_biology.analysis.prediction.sequence_predictor import (
+                    from biopro.plugins.synthetic_biology.analysis.prediction.sequence_predictor import (  # noqa: E501
                         compare_kinetics,
                     )
-                    from biopro.plugins.synthetic_biology.analysis.prediction.graphing_utils import (
+                    from biopro.plugins.synthetic_biology.analysis.prediction.graphing_utils import (  # noqa: E501
                         generate_transfer_curve,
                     )
 

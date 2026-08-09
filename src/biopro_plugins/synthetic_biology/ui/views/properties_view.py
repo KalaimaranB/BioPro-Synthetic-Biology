@@ -51,9 +51,12 @@ class PropertiesView(QWidget):
             from biopro.ui.theme import Colors
 
             self.part_list.setStyleSheet(
-                f"QListWidget {{ background: {Colors.BG_DARKEST}; color: {Colors.FG_PRIMARY}; border: none; }}"
-                f"QListWidget::item {{ padding: 8px; border-bottom: 1px solid {Colors.BORDER}; }}"
-                f"QListWidget::item:selected {{ background: {Colors.BG_MEDIUM}; border-left: 3px solid {Colors.ACCENT_PRIMARY}; }}"
+                f"QListWidget {{ background: {Colors.BG_DARKEST}; "
+                f"color: {Colors.FG_PRIMARY}; border: none; }}"
+                f"QListWidget::item {{ padding: 8px; "
+                f"border-bottom: 1px solid {Colors.BORDER}; }}"
+                f"QListWidget::item:selected {{ background: {Colors.BG_MEDIUM}; "
+                f"border-left: 3px solid {Colors.ACCENT_PRIMARY}; }}"
             )
             self.inspector_scroll.setStyleSheet(
                 f"QScrollArea {{ border: none; background: {Colors.BG_DARK}; }}"
@@ -116,7 +119,8 @@ class PropertiesView(QWidget):
 
         # External Links
         link_label = QLabel(
-            f"<a href='http://parts.igem.org/Part:{part.id}' style='color: #00bcd4;'>View Part on iGEM Registry</a>"
+            f"<a href='http://parts.igem.org/Part:{part.id}' "
+            "style='color: #00bcd4;'>View Part on iGEM Registry</a>"
         )
         link_label.setOpenExternalLinks(True)
         self.form_layout.addRow(link_label)
@@ -257,7 +261,8 @@ class PropertiesView(QWidget):
             from biopro.ui.theme import Colors
 
             spin.setStyleSheet(
-                f"background: {Colors.BG_DARKEST}; color: {Colors.FG_PRIMARY}; border: 1px solid {Colors.BORDER}; padding: 4px;"
+                f"background: {Colors.BG_DARKEST}; color: {Colors.FG_PRIMARY}; "
+                f"border: 1px solid {Colors.BORDER}; padding: 4px;"
             )
         except ImportError:
             pass

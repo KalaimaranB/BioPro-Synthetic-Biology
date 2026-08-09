@@ -38,7 +38,7 @@ except ImportError:
     try:
         from analysis.prediction.graphing_utils import apply_standard_axes
     except ImportError:
-        from biopro.plugins.synthetic_biology.analysis.prediction.graphing_utils import (
+        from biopro.plugins.synthetic_biology.analysis.prediction.graphing_utils import (  # noqa: E501
             apply_standard_axes,
         )
 
@@ -107,7 +107,8 @@ class SimulateView(QWidget):
 
         self.splitter.addWidget(self.control_panel)
 
-        # Configure Splitter initial sizes: 80% left canvas (800px), 20% right panel (200px)
+        # Configure Splitter initial sizes: 80% left canvas (800px), 20% right panel
+        # (200px)
         self.splitter.setSizes([800, 200])
 
         # Initially hide species selector until a time-series simulation is run
@@ -144,12 +145,14 @@ class SimulateView(QWidget):
             self.species_list.setStyleSheet(
                 f"QListWidget {{ background: {dark_panel}; color: {fg_pri}; "
                 f"border: 1px solid {border}; border-radius: 4px; padding: 4px; }}"
-                f"QListWidget::item {{ padding: 6px; border-bottom: 1px solid {border}; }}"
+                f"QListWidget::item {{ padding: 6px; "
+                f"border-bottom: 1px solid {border}; }}"
                 f"QListWidget::item:hover {{ background: {dark_bg}; }}"
             )
             btn_style = (
-                f"background: {dark_panel}; color: {accent}; border: 1px solid {accent}; "
-                f"font-size: 11px; font-weight: bold; padding: 4px; border-radius: 3px;"
+                f"background: {dark_panel}; color: {accent}; "
+                f"border: 1px solid {accent}; font-size: 11px; font-weight: bold; "
+                f"padding: 4px; border-radius: 3px;"
             )
             self.select_all_btn.setStyleSheet(btn_style)
             self.clear_all_btn.setStyleSheet(btn_style)
@@ -183,7 +186,9 @@ class SimulateView(QWidget):
         self.update_plot()
 
     def update_plot(self):
-        """Redraw the simulation figure on the matplotlib canvas based on species selection."""
+        """Redraw the simulation figure on the matplotlib canvas based on species
+        selection.
+        """
         if self._last_simulation_result is None:
             return
 
@@ -206,7 +211,8 @@ class SimulateView(QWidget):
             ax.text(
                 0.5,
                 0.5,
-                "No species selected.\nCheck items in the right-hand panel to view traces.",
+                "No species selected.\nCheck items in the right-hand panel "
+                "to view traces.",
                 ha="center",
                 va="center",
                 color="white",
@@ -264,7 +270,9 @@ class SimulateView(QWidget):
         self.canvas.draw()
 
     def plot_steady_state(self):
-        """Plot the transfer function (Input Repressor vs Output Expression) for Promoters."""
+        """Plot the transfer function (Input Repressor vs Output Expression) for
+        Promoters.
+        """
         from ...analysis.simulation.transfer_curve import calculate_steady_state_curve
 
         self.control_panel.setVisible(False)
@@ -272,8 +280,9 @@ class SimulateView(QWidget):
 
         self.info_label.setText(
             "<b>Steady-State Transfer Curve:</b> Demonstrates the transfer function "
-            "y = y_min + (y_max - y_min) / (1 + (R / K_d)^n) showing how promoter output expression "
-            "changes as a function of input repressor concentration R."
+            "y = y_min + (y_max - y_min) / (1 + (R / K_d)^n) showing how promoter "
+            "output expression changes as a function of input repressor "
+            "concentration R."
         )
         self.figure.clear()
         ax = self.figure.add_subplot(111)
@@ -360,9 +369,15 @@ class SimulateView(QWidget):
             if len(valid_promoters) == 1:
                 p0 = valid_promoters[0]
                 ymin0 = p0.y_min if p0.y_min is not None else 0.0
-                title = f"Steady-State Transfer Curve: {p0.id} (Kd={p0.K_d}, ymax={p0.y_max}, ymin={ymin0}, n={p0.n})"
+                title = (
+                    f"Steady-State Transfer Curve: {p0.id} "
+                    f"(Kd={p0.K_d}, ymax={p0.y_max}, ymin={ymin0}, n={p0.n})"
+                )
             else:
-                title = f"Steady-State Transfer Functions ({len(valid_promoters)} Promoters)"
+                title = (
+                    "Steady-State Transfer Functions "
+                    f"({len(valid_promoters)} Promoters)"
+                )
 
             try:
                 apply_standard_axes(
@@ -390,8 +405,9 @@ class SimulateView(QWidget):
             else "Stochastic Simulation (Gillespie)"
         )
         self.info_label.setText(
-            f"<b>{method_name}:</b> Shows how the concentrations of your genetic circuit components "
-            "change dynamically over time as proteins are produced and degraded."
+            f"<b>{method_name}:</b> Shows how the concentrations of your genetic "
+            "circuit components change dynamically over time as proteins are "
+            "produced and degraded."
         )
         self.figure.clear()
         ax = self.figure.add_subplot(111)
@@ -465,7 +481,10 @@ class SimulateView(QWidget):
 
                 if reps:
                     rep_name = reps[0]  # primary repressor
-                    equation = f"{y_min} + ({y_max} - {y_min}) / (1 + ({rep_name} / {K_d})^{n})"
+                    equation = (
+                        f"{y_min} + ({y_max} - {y_min}) / "
+                        f"(1 + ({rep_name} / {K_d})^{n})"
+                    )
                 else:
                     equation = f"{y_max}"  # Constitutive
 
@@ -485,7 +504,8 @@ class SimulateView(QWidget):
                     f"  J_prod_{product_name}: => {product_name}; {equation};"
                 )
                 antimony_lines.append(
-                    f"  J_deg_{product_name}: {product_name} => ; {deg_rate} * {product_name};"
+                    f"  J_deg_{product_name}: {product_name} => ; "
+                    f"{deg_rate} * {product_name};"
                 )
 
         antimony_lines.append("end")

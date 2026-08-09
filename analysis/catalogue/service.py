@@ -45,7 +45,7 @@ class PartsCatalogueService:
         gene = part.name
 
         # 1. Fetch description & PDB cross-references
-        url = f"https://rest.uniprot.org/uniprotkb/search?query=gene:{gene}+AND+taxonomy_id:2&format=json&size=1"
+        url = f"https://rest.uniprot.org/uniprotkb/search?query=gene:{gene}+AND+taxonomy_id:2&format=json&size=1"  # noqa: E501
         try:
             req = urllib.request.Request(url)
             with urllib.request.urlopen(req, timeout=3) as response:
@@ -79,7 +79,8 @@ class PartsCatalogueService:
                             with urllib.request.urlopen(img_req, timeout=3) as img_resp:
                                 with open(img_path, "wb") as f:
                                     f.write(img_resp.read())
-                            # Store relative path or absolute path. Relative is better for portability.
+                            # Store relative path or absolute path.
+                            # Relative is better for portability.
                             part.properties["image_path"] = f"images/{part.id}.jpeg"
                         except Exception as e:
                             print(f"Failed to fetch image for {gene} ({pdb_id}): {e}")

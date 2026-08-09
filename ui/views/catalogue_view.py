@@ -10,7 +10,9 @@ from biopro.plugins.synthetic_biology.ui.widgets.part_inspector import PartInspe
 
 
 class CatalogueView(QWidget):
-    """View displaying the parts catalogue using a card-based layout and details inspector."""
+    """View displaying the parts catalogue using a card-based layout and details
+    inspector.
+    """
 
     def __init__(self, catalogue_service: PartsCatalogueService, parent=None):
         super().__init__(parent)

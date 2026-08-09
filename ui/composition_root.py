@@ -7,7 +7,14 @@ Dependency Inversion Principle.
 
 from typing import Any
 
-from biopro.plugins.synthetic_biology.analysis.state import SynBioState
+try:
+    from ..analysis.state import SynBioState
+except ImportError:
+    try:
+        from analysis.state import SynBioState
+    except ImportError:
+        # pyrefly: ignore [missing-import]
+        from biopro.plugins.synthetic_biology.analysis.state import SynBioState
 
 
 class ServiceFactory:
@@ -24,23 +31,46 @@ class ServiceFactory:
         self.parent_widget = parent_widget
         self._services: dict[str, Any] = {}
 
-    def build_all(self) -> None:
+    def build_all(self, catalogue_path: str | None = None) -> None:
         """Instantiates all services and wires them up."""
-        from analysis.api.client import IGemClient, SynBioHubClient
-        from analysis.catalogue.repository import JsonPartRepository
-        from analysis.catalogue.service import PartsCatalogueService
+        import os
+
+        try:
+            from ..analysis.api.client import IGemClient, SynBioHubClient
+            from ..analysis.catalogue.repository import JsonPartRepository
+            from ..analysis.catalogue.service import PartsCatalogueService
+        except ImportError:
+            try:
+                from analysis.api.client import IGemClient, SynBioHubClient
+                from analysis.catalogue.repository import JsonPartRepository
+                from analysis.catalogue.service import PartsCatalogueService
+            except ImportError:
+                from biopro.plugins.synthetic_biology.analysis.api.client import (
+                    IGemClient,
+                    SynBioHubClient,
+                )
+                from biopro.plugins.synthetic_biology.analysis.catalogue.repository import (  # noqa: E501
+                    JsonPartRepository,
+                )
+                from biopro.plugins.synthetic_biology.analysis.catalogue.service import (  # noqa: E501
+                    PartsCatalogueService,
+                )
 
         self._services["igem_client"] = IGemClient()
         self._services["synbiohub_client"] = SynBioHubClient()
 
         # Setup the Parts Catalogue
-        from pathlib import Path
-
-        # os.getcwd() evaluates to '/' when running inside a macOS app bundle.
-        # Instead, we should save it relative to the plugin's root directory,
-        # or inside the user's ~/.biopro data folder. For now, we'll keep it in the plugin root.
-        plugin_root = Path(__file__).parent.parent
-        catalogue_path = str(plugin_root / "catalogue.json")
+        if not catalogue_path:
+            cwd = os.getcwd()
+            if cwd != "/" and not cwd.startswith("/System") and os.access(cwd, os.W_OK):
+                catalogue_path = os.path.join(cwd, "catalogue.json")
+            else:
+                user_data_dir = os.path.expanduser("~/.biopro/synthetic_biology")
+                try:
+                    os.makedirs(user_data_dir, exist_ok=True)
+                    catalogue_path = os.path.join(user_data_dir, "catalogue.json")
+                except OSError:
+                    catalogue_path = os.path.expanduser("~/catalogue.json")
 
         repo = JsonPartRepository(catalogue_path)
         catalogue_service = PartsCatalogueService(repo)

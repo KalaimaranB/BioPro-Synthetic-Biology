@@ -1,4 +1,6 @@
-"""Unit tests for the SequencePredictor (PromoterBiophysicsStrategy, CDSStructuralStrategy & k-NN fallback)."""
+"""Unit tests for the SequencePredictor (PromoterBiophysicsStrategy,
+CDSStructuralStrategy & k-NN fallback).
+"""
 
 import os
 import sys
@@ -11,11 +13,18 @@ if "sbol3" not in sys.modules:
 from analysis.catalogue.repository import JsonPartRepository
 from analysis.catalogue.service import PartsCatalogueService
 from analysis.parts.components import CDS, Promoter
-from analysis.prediction.sequence_predictor import (
-    SequencePredictor,
-    levenshtein_distance,
-    translate_dna_to_protein,
-)
+try:
+    from analysis.prediction.sequence_predictor import (
+        SequencePredictor,
+        levenshtein_distance,
+        translate_dna_to_protein,
+    )
+except ImportError:
+    from biopro_plugins.synthetic_biology.analysis.prediction.sequence_predictor import (  # noqa: E501
+        SequencePredictor,
+        levenshtein_distance,
+        translate_dna_to_protein,
+    )
 
 
 def test_levenshtein_distance():
@@ -36,7 +45,9 @@ def test_translate_dna_to_protein():
 
 
 def test_promoter_biophysics_perfect_consensus():
-    """Test biophysical PWM prediction for a promoter with perfect -35 and -10 consensus motifs."""
+    """Test biophysical PWM prediction for a promoter with perfect -35 and -10
+    consensus motifs.
+    """
     spacer_17 = "AGCTAGCTAGCTAGCTA"  # 17 bp
     perfect_seq = "CGTAC" + "TTGACA" + spacer_17 + "TATAAT" + "GCTAG"
 
@@ -70,7 +81,9 @@ def test_promoter_biophysics_mutated_sequence():
 
 
 def test_promoter_biophysics_spacer_strain():
-    """Test that deviations from optimal 17bp spacer length add structural strain penalty."""
+    """Test that deviations from optimal 17bp spacer length add structural strain
+    penalty.
+    """
     spacer_17 = "AGCTAGCTAGCTAGCTA"
     spacer_15 = "AGCTAGCTAGCTAGC"
 
@@ -89,7 +102,9 @@ def test_promoter_biophysics_spacer_strain():
 
 
 def test_cds_cai_translation_rate():
-    """Test that optimal codon usage (high CAI) predicts higher translation_rate than rare codons."""
+    """Test that optimal codon usage (high CAI) predicts higher translation_rate than
+    rare codons.
+    """
     # Optimal E. coli codons: ATG CTG GCG ACC CGT (Met Leu Ala Thr Arg)
     optimal_cds = "ATGCTGGCGACCCGT"
     # Rare E. coli codons: ATG CTA GCA ACA AGA (Met Leu Ala Thr Arg)
@@ -129,7 +144,8 @@ def test_cds_blosum62_degradation_rate():
 
     assert res_cons["is_predicted"] is True
     assert res_noncons["is_predicted"] is True
-    # Non-conservative mutation should have higher structural penalty and higher degradation_rate
+    # Non-conservative mutation should have higher structural penalty and higher
+    # degradation_rate
     assert (
         res_noncons["details"]["structural_penalty_norm"]
         > res_cons["details"]["structural_penalty_norm"]
@@ -141,7 +157,9 @@ def test_cds_blosum62_degradation_rate():
 
 
 def test_cds_frameshift_fallback_to_knn():
-    """Test that non-triplet CDS DNA length (frameshift error) safely falls back to k-NN strategy."""
+    """Test that non-triplet CDS DNA length (frameshift error) safely falls back to
+    k-NN strategy.
+    """
     invalid_cds = "ATGAAATTTGG"  # 11 bp (not divisible by 3)
     c1 = CDS(
         id="C1",

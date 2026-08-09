@@ -44,7 +44,11 @@ class IGemClient:
         """Fetch and parse an iGEM part from its XML endpoint."""
         url = f"{self.BASE_URL}{part_id}"
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 BioPro-Plugin"
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36 BioPro-Plugin"
+            )
         }
         try:
             response = requests.get(url, headers=headers, timeout=10)

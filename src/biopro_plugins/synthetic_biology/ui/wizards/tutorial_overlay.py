@@ -1,4 +1,6 @@
-"""Full-screen dimmed interactive tutorial overlay with pop-out mascot for Synthetic Biology workspace."""
+"""Full-screen dimmed interactive tutorial overlay with pop-out mascot for
+Synthetic Biology workspace.
+"""
 
 from typing import List, Dict, Optional
 
@@ -29,22 +31,48 @@ from PyQt6.QtWidgets import (
 SYNTHETIC_BIOLOGY_TUTORIAL_STEPS: List[Dict[str, str]] = [
     {
         "title": "System Initialization Protocol",
-        "text": "Should the user initiate the Synthetic Biology module, the system will prepare to evaluate transcriptional and translational biophysics. Proceed to the Parts Catalogue to establish the wild type sequence baseline.",
+        "text": (
+            "Should the user initiate the Synthetic Biology module, the system will "
+            "prepare to evaluate transcriptional and translational biophysics. "
+            "Proceed to the Parts Catalogue to establish the wild type sequence "
+            "baseline."
+        ),
         "icon": "⚙️",
     },
     {
         "title": "Transcriptional Regulation (Promoters)",
-        "text": "Upon selecting a promoter sequence, the engine will apply a Thermodynamic Position Weight Matrix. This calculates the change in Gibbs free energy associated with the RNA polymerase holoenzyme binding to the minus 10 and minus 35 consensus motifs. Torsional strain penalties will be applied if the spacer length deviates from 17 base pairs.",
+        "text": (
+            "Upon selecting a promoter sequence, the engine will apply a "
+            "Thermodynamic Position Weight Matrix. This calculates the change in "
+            "Gibbs free energy associated with the RNA polymerase holoenzyme "
+            "binding to the minus 10 and minus 35 consensus motifs. Torsional "
+            "strain penalties will be applied if the spacer length deviates from "
+            "17 base pairs."
+        ),
         "icon": "🧬",
     },
     {
         "title": "Translational Kinetics & Stability (CDS)",
-        "text": "If a coding sequence is processed, the system will evaluate translation elongation rates utilizing the Codon Adaptation Index. Concurrently, the BLOSUM62 substitution matrix will evaluate structural stability. Should the user introduce a missense mutation, the matrix will calculate a severe thermodynamic penalty and drastically scale the degradation rate parameter.",
+        "text": (
+            "If a coding sequence is processed, the system will evaluate "
+            "translation elongation rates utilizing the Codon Adaptation Index. "
+            "Concurrently, the BLOSUM62 substitution matrix will evaluate "
+            "structural stability. Should the user introduce a missense mutation, "
+            "the matrix will calculate a severe thermodynamic penalty and drastically "
+            "scale the degradation rate parameter."
+        ),
         "icon": "⚡",
     },
     {
         "title": "Comparative Visualization",
-        "text": "Should the user invoke the graphing module, a Levenshtein distance algorithm will scan the local database to isolate the wild type origin. The engine will subsequently feed the extracted kinetic parameters into the Repressive Hill Equation and the differential equation solver to plot comparative steady state protein accumulation. Click Finish to execute these protocols.",
+        "text": (
+            "Should the user invoke the graphing module, a Levenshtein distance "
+            "algorithm will scan the local database to isolate the wild type origin. "
+            "The engine will subsequently feed the extracted kinetic parameters "
+            "into the Repressive Hill Equation and the differential equation solver "
+            "to plot comparative steady state protein accumulation. Click Finish "
+            "to execute these protocols."
+        ),
         "icon": "📊",
     },
 ]
@@ -290,7 +318,8 @@ class AcademyTutorialDialog(QDialog):
 
         card_layout.addLayout(bottom_box)
 
-        # 2. Pop-out Mascot (positioned at x=0, extending 60px outside content_card on left)
+        # 2. Pop-out Mascot (positioned at x=0, extending 60px outside content_card on
+        # left)
         self.mascot_label = QLabel(self.center_container)
         self.mascot_label.setGeometry(0, 25, 120, 200)
         pixmap = create_default_mascot_pixmap(120, 200)
@@ -314,7 +343,9 @@ class AcademyTutorialDialog(QDialog):
             self.center_container.move(90, 175)
 
     def paintEvent(self, event):
-        """Draw full-screen semi-transparent black dimmed overlay (rgba(0, 0, 0, 150))."""
+        """Draw full-screen semi-transparent black dimmed overlay
+        (rgba(0, 0, 0, 150)).
+        """
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.fillRect(self.rect(), QColor(0, 0, 0, 150))

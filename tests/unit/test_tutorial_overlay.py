@@ -10,10 +10,16 @@ if "sbol3" not in sys.modules:
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
 
-from ui.wizards.tutorial_overlay import (
-    AcademyTutorialDialog,
-    SYNTHETIC_BIOLOGY_TUTORIAL_STEPS,
-)
+try:
+    from ui.wizards.tutorial_overlay import (
+        AcademyTutorialDialog,
+        SYNTHETIC_BIOLOGY_TUTORIAL_STEPS,
+    )
+except ImportError:
+    from biopro.plugins.synthetic_biology.ui.wizards.tutorial_overlay import (
+        AcademyTutorialDialog,
+        SYNTHETIC_BIOLOGY_TUTORIAL_STEPS,
+    )
 
 app = QApplication.instance() or QApplication([])
 

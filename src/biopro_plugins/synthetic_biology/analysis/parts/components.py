@@ -98,7 +98,9 @@ class RBS(BiologicalPart):
 
 @dataclass
 class Insulator(BiologicalPart):
-    """An insulator sequence (e.g., Ribozyme) that decouples transcription from translation."""
+    """An insulator sequence (e.g., Ribozyme) that decouples transcription
+    from translation.
+    """
 
     cleavage_efficiency: Optional[float] = None
 

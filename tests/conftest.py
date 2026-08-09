@@ -7,10 +7,16 @@ root_dir = Path(__file__).parent.parent
 src_dir = root_dir / "src"
 plugin_dir = src_dir / "biopro_plugins" / "synthetic_biology"
 
-if str(src_dir) not in sys.path:
-    sys.path.insert(0, str(src_dir))
-if str(plugin_dir) not in sys.path:
-    sys.path.insert(0, str(plugin_dir))
+if str(src_dir) in sys.path:
+    sys.path.remove(str(src_dir))
+if str(root_dir) in sys.path:
+    sys.path.remove(str(root_dir))
+if str(plugin_dir) in sys.path:
+    sys.path.remove(str(plugin_dir))
+
+sys.path.insert(0, str(root_dir))
+sys.path.insert(0, str(src_dir))
+sys.path.insert(0, str(plugin_dir))
 
 import pytest  # noqa: E402
 from PyQt6.QtWidgets import QLabel, QPushButton, QSplitter, QWidget  # noqa: E402
@@ -107,7 +113,17 @@ sys.modules["biopro_sdk.plugin.workflow"] = MagicMock()
 
 # Mock biopro core and UI as well
 mock_biopro = MagicMock()
+mock_biopro.__path__ = []
 sys.modules["biopro"] = mock_biopro
+mock_biopro_plugins = MagicMock()
+mock_biopro_plugins.__path__ = []
+sys.modules["biopro.plugins"] = mock_biopro_plugins
+
+import biopro_plugins.synthetic_biology  # noqa: E402, F401
+
+sys.modules["biopro.plugins.synthetic_biology"] = sys.modules[
+    "biopro_plugins.synthetic_biology"
+]
 sys.modules["biopro.ui"] = MagicMock()
 
 

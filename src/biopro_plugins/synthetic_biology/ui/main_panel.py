@@ -246,14 +246,21 @@ class SynBioPanel(PluginBase):
         if hasattr(self, "_tab_bar"):
             self._tab_bar.setStyleSheet(
                 f"QTabBar {{ background: {Colors.BG_DARKEST}; border: none; }}"
-                f"QTabBar::tab {{ background: {Colors.BG_DARKEST}; color: {Colors.FG_SECONDARY}; padding: 10px 20px; border: none; border-bottom: 2px solid transparent; font-size: {Fonts.SIZE_SMALL}px; font-weight: 600; }}"
-                f"QTabBar::tab:selected {{ color: {Colors.ACCENT_PRIMARY}; border-bottom: 2px solid {Colors.ACCENT_PRIMARY}; background: {Colors.BG_DARKEST}; }}"
-                f"QTabBar::tab:hover {{ color: {Colors.FG_PRIMARY}; background: {Colors.BG_MEDIUM}; }}"
+                f"QTabBar::tab {{ background: {Colors.BG_DARKEST}; "
+                f"color: {Colors.FG_SECONDARY}; padding: 10px 20px; border: none; "
+                f"border-bottom: 2px solid transparent; "
+                f"font-size: {Fonts.SIZE_SMALL}px; font-weight: 600; }}"
+                f"QTabBar::tab:selected {{ color: {Colors.ACCENT_PRIMARY}; "
+                f"border-bottom: 2px solid {Colors.ACCENT_PRIMARY}; "
+                f"background: {Colors.BG_DARKEST}; }}"
+                f"QTabBar::tab:hover {{ color: {Colors.FG_PRIMARY}; "
+                f"background: {Colors.BG_MEDIUM}; }}"
             )
 
         if hasattr(self, "_ribbon_stack"):
             self._ribbon_stack.setStyleSheet(
-                f"background: {Colors.BG_DARK}; border-bottom: 1px solid {Colors.BORDER};"
+                f"background: {Colors.BG_DARK}; "
+                f"border-bottom: 1px solid {Colors.BORDER};"
             )
 
         # Deep recursion for sub-widgets

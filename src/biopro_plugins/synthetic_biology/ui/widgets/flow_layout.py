@@ -3,7 +3,9 @@ from PyQt6.QtCore import QPoint, QRect, QSize, Qt
 
 
 class FlowLayout(QLayout):
-    """A layout that arranges widgets left-to-right, wrapping to the next line when out of space."""
+    """A layout that arranges widgets left-to-right, wrapping to the next line when
+    out of space.
+    """
 
     def __init__(self, parent=None, margin=-1, hSpacing=-1, vSpacing=-1):
         super().__init__(parent)

@@ -33,7 +33,9 @@ def test_steady_state_boundary_values():
 
 
 def test_steady_state_monotonicity():
-    """Test that a repressive promoter output decreases monotonically with increasing repressor."""
+    """Test that a repressive promoter output decreases monotonically with increasing
+    repressor.
+    """
     res = calculate_steady_state_curve(K_d=0.07, y_max=3.8, y_min=0.06, n=1.6)
     y = res["y"]
 
@@ -43,7 +45,9 @@ def test_steady_state_monotonicity():
 
 
 def test_hill_coefficient_effect():
-    """Test that higher Hill coefficient n creates a steeper transition curve around K_d."""
+    """Test that higher Hill coefficient n creates a steeper transition curve
+    around K_d.
+    """
     res_n1 = calculate_steady_state_curve(K_d=1.0, y_max=10.0, y_min=0.0, n=1.0)
     res_n4 = calculate_steady_state_curve(K_d=1.0, y_max=10.0, y_min=0.0, n=4.0)
 

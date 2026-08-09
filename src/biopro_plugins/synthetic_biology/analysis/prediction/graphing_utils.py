@@ -34,16 +34,19 @@ def apply_standard_axes(
     is_log_x: bool = False,
     is_log_y: bool = False,
 ) -> None:
-    """Apply centralized base formatting to Matplotlib axes and figure for Light Theme aesthetics.
+    """Apply centralized base formatting to Matplotlib axes and figure for Light
+    Theme aesthetics.
 
     Steps:
     1. Set figure background to #ffffff and axes facecolor to #F8F9FA.
     2. Set crisp dark text (#333333) for title, axis labels, and tick labels.
-    3. Hide top and right spines to create a clean modern look: ax.spines['top'].set_visible(False).
+    3. Hide top and right spines to create a clean modern look:
+       ax.spines['top'].set_visible(False).
     4. Set bottom and left spine colors to dark gray (#333333).
     5. Set label font size to 12 and tick label font size to 10.
     6. Implement autoscale with protective margins (x=0.02, y=0.05).
-    7. Enable clean light dashed gridlines: ax.grid(True, color='#D3D3D3', linestyle='--', alpha=0.7).
+    7. Enable clean light dashed gridlines:
+       ax.grid(True, color='#D3D3D3', linestyle='--', alpha=0.7).
     8. Execute fig.tight_layout() to prevent label truncation.
     """
     light_bg_fig = "#ffffff"
@@ -106,25 +109,29 @@ def generate_transfer_curve(
     part_type: str = "promoter",
     title: Optional[str] = None,
 ) -> Figure:
-    """Generate a comparative transfer/accumulation curve figure contrasting wild type vs mutation.
+    """Generate a comparative transfer/accumulation curve figure contrasting wild type
+    vs mutation.
 
     Biophysical & Mathematical Rationale:
     1. Promoters (Repressive Hill Equation):
-       Steady state promoter output expression P is modeled as a function of repressor concentration [R]:
+       Steady state promoter output expression P is modeled as a function of
+       repressor concentration [R]:
        P = y_min + (y_max - y_min) / (1 + ([R] / K_d)^n)
-       - Logarithmic array of repressor concentrations [R] is generated via numpy.logspace.
-       - Lower binding penalty in wild-type allows higher maximum promoter activity (y_max)
-         and distinct repression threshold (K_d) compared to mutated sequence.
+       - Logarithmic array of repressor concentrations [R] is generated via
+         numpy.logspace.
+       - Lower binding penalty in wild-type allows higher maximum promoter activity
+         (y_max) and distinct repression threshold (K_d) compared to mutated sequence.
 
     2. Coding Sequences (CDS Protein Accumulation Kinetics):
        Simple protein concentration over time t is modeled via first-order kinetics:
        dP/dt = alpha - gamma * P
        Analytical solution assuming initial P(0) = 0:
        P(t) = (alpha / gamma) * (1 - exp(-gamma * t))
-       where alpha is derived from translation_rate (min^-1) and gamma is degradation_rate (min^-1).
+       where alpha is derived from translation_rate (min^-1) and gamma is
+       degradation_rate (min^-1).
        - Linear array of time points t (min) is generated via numpy.linspace.
-       - Codon bias (CAI) and BLOSUM62 folding stability determine translation speed alpha
-         and proteolytic degradation rate gamma respectively.
+       - Codon bias (CAI) and BLOSUM62 folding stability determine translation speed
+         alpha and proteolytic degradation rate gamma respectively.
 
     3. Visual Styling:
        - Wild Type (WT): Solid green line ('g-' / '#4caf50').
@@ -132,7 +139,8 @@ def generate_transfer_curve(
        - Styled legend, grid, title, and axis labels.
 
     Args:
-        wt_params: Dictionary containing wild type kinetic parameters (K_d, y_max, y_min, n or translation_rate, degradation_rate).
+        wt_params: Dictionary containing wild type kinetic parameters (K_d, y_max,
+            y_min, n or translation_rate, degradation_rate).
         mut_params: Dictionary containing mutated sequence kinetic parameters.
         part_type: Part classification ("promoter" or "cds").
         title: Optional custom plot title.
@@ -218,7 +226,8 @@ def generate_transfer_curve(
         # Time array using numpy.linspace
         t = np.linspace(0, 100, 500)
 
-        # Analytical solution for dP/dt = alpha - gamma * P -> P(t) = (alpha/gamma) * (1 - exp(-gamma*t))
+        # Analytical solution for dP/dt = alpha - gamma * P ->
+        # P(t) = (alpha/gamma) * (1 - exp(-gamma*t))
         wt_steady = wt_alpha / max(1e-5, wt_gamma)
         mut_steady = mut_alpha / max(1e-5, mut_gamma)
 

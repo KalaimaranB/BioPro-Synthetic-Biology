@@ -49,10 +49,10 @@ class ServiceFactory:
                     IGemClient,
                     SynBioHubClient,
                 )
-                from biopro.plugins.synthetic_biology.analysis.catalogue.repository import (
+                from biopro.plugins.synthetic_biology.analysis.catalogue.repository import (  # noqa: E501
                     JsonPartRepository,
                 )
-                from biopro.plugins.synthetic_biology.analysis.catalogue.service import (
+                from biopro.plugins.synthetic_biology.analysis.catalogue.service import (  # noqa: E501
                     PartsCatalogueService,
                 )
 

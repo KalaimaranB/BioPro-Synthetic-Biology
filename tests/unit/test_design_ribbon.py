@@ -48,7 +48,9 @@ def test_design_ribbon_ui_setup():
 
 
 def test_update_part_selector_role_filtering():
-    """Test that update_part_selector filters database parts matching the selected role."""
+    """Test that update_part_selector filters database parts matching the selected
+    role.
+    """
     p1 = Promoter(id="P_tet", name="TetR Promoter")
     c1 = CDS(id="GFP_cds", name="GFP CDS")
     cat = DummyCatalogueService([p1, c1])

@@ -1,13 +1,24 @@
-"""Unit tests for the comparative graphing module (WT reverse lookup, dual parameter extraction, and curve generation)."""
+"""Unit tests for the comparative graphing module (WT reverse lookup, dual
+parameter extraction, and curve generation).
+"""
 
 from matplotlib.figure import Figure
 
 from analysis.parts.components import Promoter, CDS
-from analysis.prediction.sequence_predictor import (
-    identify_wildtype,
-    compare_kinetics,
-)
-from analysis.prediction.graphing_utils import generate_transfer_curve
+try:
+    from analysis.prediction.sequence_predictor import (
+        identify_wildtype,
+        compare_kinetics,
+    )
+    from analysis.prediction.graphing_utils import generate_transfer_curve
+except ImportError:
+    from biopro_plugins.synthetic_biology.analysis.prediction.sequence_predictor import (  # noqa: E501
+        identify_wildtype,
+        compare_kinetics,
+    )
+    from biopro_plugins.synthetic_biology.analysis.prediction.graphing_utils import (
+        generate_transfer_curve,
+    )
 
 
 def test_identify_wildtype():
@@ -38,7 +49,9 @@ def test_identify_wildtype():
 
 
 def test_identify_wildtype_no_candidates():
-    """Test identify_wildtype returns None if sequence is identical to all or database is empty."""
+    """Test identify_wildtype returns None if sequence is identical to all or
+    database is empty.
+    """
     seq = "CGTACTTGACAAGCTAGCTAGCTAGCTATATAATGCTAG"
     exact_part = Promoter(id="P1", name="P1", sequence=seq)
 
@@ -119,7 +132,9 @@ def test_generate_transfer_curve_cds():
 
 
 def test_compare_kinetics_missense_mutation():
-    """Test missense mutation heavily penalizes degradation_rate and differentiates curves."""
+    """Test missense mutation heavily penalizes degradation_rate and differentiates
+    curves.
+    """
     wt_seq = "ATGCTGGCGACCCGT"  # Met-Leu-Ala-Thr-Arg
     mut_seq = "ATGTGGGCGACCCGT"  # Met-Trp-Ala-Thr-Arg (Leu -> Trp missense mutation)
 

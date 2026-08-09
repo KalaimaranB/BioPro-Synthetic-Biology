@@ -129,7 +129,8 @@ class PartInspector(QWidget):
         # Save Button
         self.save_btn = QPushButton("Save / Update Part")
         self.save_btn.setStyleSheet(
-            f"background: {Colors.ACCENT_PRIMARY}; color: {Colors.BG_DARKEST}; font-weight: bold;"
+            f"background: {Colors.ACCENT_PRIMARY}; color: {Colors.BG_DARKEST}; "
+            "font-weight: bold;"
         )
         self.save_btn.clicked.connect(self._on_save)
         self.layout.addWidget(self.save_btn)
@@ -213,7 +214,8 @@ class PartInspector(QWidget):
             self.desc_lbl.setText("")
             self.struct_lbl.setText("No structure generated for this part.")
             self.struct_lbl.setStyleSheet(
-                f"background: {Colors.BG_DARK}; border: 1px solid {Colors.BORDER}; color: {Colors.FG_SECONDARY};"
+                f"background: {Colors.BG_DARK}; border: 1px solid {Colors.BORDER}; "
+                f"color: {Colors.FG_SECONDARY};"
             )
         else:
             self.header_lbl.setText(f"{part.name} ({part.id})")
@@ -311,7 +313,8 @@ class PartInspector(QWidget):
                 return
 
         self.struct_lbl.setStyleSheet(
-            f"background: {Colors.BG_DARK}; border: 1px solid {Colors.BORDER}; color: {Colors.FG_SECONDARY};"
+            f"background: {Colors.BG_DARK}; border: 1px solid {Colors.BORDER}; "
+            f"color: {Colors.FG_SECONDARY};"
         )
         self.struct_lbl.setText("No structure available.\\n(Generic Placeholder)")
 

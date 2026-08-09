@@ -127,7 +127,9 @@ class DesignRibbon(QWidget):
             pass
 
     def update_part_selector(self, selected_role: str) -> None:
-        """Dynamically populate part_selector_combo based on selected_role from database or fallbacks."""
+        """Dynamically populate part_selector_combo based on selected_role from
+        database or fallbacks.
+        """
         self.part_selector_combo.blockSignals(True)
         self.part_selector_combo.clear()
 
@@ -168,7 +170,8 @@ class DesignRibbon(QWidget):
                 )
                 self.part_selector_combo.addItem(display_name, userData=p)
 
-        # Case B: Catalogue database empty or no matching parts -> Fall back to predefined popular iGEM parts
+        # Case B: Catalogue database empty or no matching parts -> Fall back to
+        # predefined popular iGEM parts
         else:
             fallback_list = self.COMMON_PARTS.get(selected_role_clean, [])
             if fallback_list:

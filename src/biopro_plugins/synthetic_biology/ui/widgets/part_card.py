@@ -41,7 +41,8 @@ class PartCard(QFrame):
             lbl = QLabel("+ Add New Part")
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl.setStyleSheet(
-                f"color: {Colors.FG_PRIMARY}; font-size: {Fonts.SIZE_SMALL + 2}px; font-weight: bold;"
+                f"color: {Colors.FG_PRIMARY}; "
+                f"font-size: {Fonts.SIZE_SMALL + 2}px; font-weight: bold;"
             )
             layout.addWidget(lbl)
         else:
@@ -59,14 +60,16 @@ class PartCard(QFrame):
 
             type_lbl = QLabel(self.part_type)
             type_lbl.setStyleSheet(
-                f"color: {Colors.FG_SECONDARY}; font-size: {Fonts.SIZE_SMALL - 1}px; font-weight: bold;"
+                f"color: {Colors.FG_SECONDARY}; "
+                f"font-size: {Fonts.SIZE_SMALL - 1}px; font-weight: bold;"
             )
             layout.addWidget(type_lbl)
 
             name_lbl = QLabel(self.part_name)
             name_lbl.setWordWrap(True)
             name_lbl.setStyleSheet(
-                f"color: {Colors.FG_PRIMARY}; font-size: {Fonts.SIZE_SMALL + 2}px; font-weight: bold;"
+                f"color: {Colors.FG_PRIMARY}; "
+                f"font-size: {Fonts.SIZE_SMALL + 2}px; font-weight: bold;"
             )
             layout.addWidget(name_lbl)
 

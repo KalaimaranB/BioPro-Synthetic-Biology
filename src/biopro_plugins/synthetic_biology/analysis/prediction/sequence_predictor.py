@@ -1,13 +1,16 @@
 """Biologically aware sequence prediction engine for BioPro Synthetic Biology.
 
 Uses the Strategy Pattern to route prediction queries:
-1. PromoterBiophysicsStrategy: Calculates thermodynamic binding affinity scores based on
-   RNA Polymerase sigma-70 Position Weight Matrices (PWM) for the -35 and -10 consensus motifs
-   and spacer length strain penalties. Maps binding energy to transfer curve parameters (K_d, y_max, y_min, n).
-2. CDSStructuralStrategy: Predicts translation_rate using a host-specific Codon Adaptation Index (CAI)
-   and degradation_rate using BLOSUM62 amino acid substitution matrix scoring (protein folding stability proxy).
-3. KNNPredictionStrategy: Legacy sequence similarity approach using Levenshtein distance alignment
-   and inverse-distance weighting across characterized parts catalogue as a safe fallback.
+1. PromoterBiophysicsStrategy: Calculates thermodynamic binding affinity scores
+   based on RNA Polymerase sigma-70 Position Weight Matrices (PWM) for the -35
+   and -10 consensus motifs and spacer length strain penalties. Maps binding energy
+   to transfer curve parameters (K_d, y_max, y_min, n).
+2. CDSStructuralStrategy: Predicts translation_rate using a host-specific Codon
+   Adaptation Index (CAI) and degradation_rate using BLOSUM62 amino acid
+   substitution matrix scoring (protein folding stability proxy).
+3. KNNPredictionStrategy: Legacy sequence similarity approach using Levenshtein
+   distance alignment and inverse-distance weighting across characterized parts
+   catalogue as a safe fallback.
 """
 
 from abc import ABC, abstractmethod
@@ -109,7 +112,9 @@ STANDARD_GENETIC_CODE = {
 
 
 def translate_dna_to_protein(dna_seq: str) -> str:
-    """Translates a DNA coding sequence into an amino acid string using standard genetic code."""
+    """Translates a DNA coding sequence into an amino acid string using standard
+    genetic code.
+    """
     seq = dna_seq.upper().strip()
     if not seq or len(seq) % 3 != 0:
         raise ValueError(f"CDS DNA length ({len(seq)}) is not a multiple of 3.")
@@ -459,7 +464,8 @@ class PredictionStrategy(ABC):
 class KNNPredictionStrategy(PredictionStrategy):
     """k-Nearest Neighbors prediction strategy using Levenshtein distance.
 
-    Useful for non-promoters/non-CDS parts or as a safe fallback when biophysical scanning fails.
+    Useful for non-promoters/non-CDS parts or as a safe fallback when biophysical
+    scanning fails.
     """
 
     def predict(
@@ -491,7 +497,9 @@ class KNNPredictionStrategy(PredictionStrategy):
         if not valid_candidates:
             return {
                 "is_predicted": False,
-                "error": f"No candidate parts with sequence found for type '{part_type}'.",
+                "error": (
+                    f"No candidate parts with sequence found for type '{part_type}'."
+                ),
                 "parameters": {},
             }
 
@@ -576,29 +584,37 @@ class KNNPredictionStrategy(PredictionStrategy):
             "k_neighbors_used": len(top_k),
             "top_match_id": top_id,
             "top_match_distance": top_dist,
-            "status_message": f"⚡ [Predicted via {len(top_k)}-NN] Top match: {top_id} (distance: {top_dist})",
+            "status_message": (
+                f"⚡ [Predicted via {len(top_k)}-NN] Top match: {top_id} "
+                f"(distance: {top_dist})"
+            ),
             "parameters": predicted_params,
             "neighbors": weights_info,
         }
 
 
 class PromoterBiophysicsStrategy(PredictionStrategy):
-    """Biologically aware Position Weight Matrix (PWM) prediction strategy for Promoters.
+    """Biologically aware Position Weight Matrix (PWM) prediction strategy for
+    Promoters.
 
     Biophysical Rationale:
-    1. Bacterial transcription initiation by RNA Polymerase (sigma-70 holoenzyme) requires
-       recognition of two specific hexameric DNA motifs:
+    1. Bacterial transcription initiation by RNA Polymerase (sigma-70 holoenzyme)
+       requires recognition of two specific hexameric DNA motifs:
        - -35 Box: Consensus 'TTGACA' (positions -35 to -30)
        - -10 Box (Pribnow box): Consensus 'TATAAT' (positions -12 to -7)
-    2. Optimal spacer distance between the -35 and -10 hexamers is 17 bp (acceptable range: 15 to 19 bp).
-       Deviations from 17 bp introduce torsional and structural strain on the sigma-70 subdomains (sigma_4 and sigma_2).
-    3. The sliding window algorithm scans the query DNA string to locate the window minimizing total binding penalty:
-       Penalty_total = Penalty_-35(PWM) + Penalty_-10(PWM) + Penalty_spacer(length_strain)
+    2. Optimal spacer distance between the -35 and -10 hexamers is 17 bp
+       (acceptable range: 15 to 19 bp). Deviations from 17 bp introduce torsional
+       and structural strain on the sigma-70 subdomains (sigma_4 and sigma_2).
+    3. The sliding window algorithm scans the query DNA string to locate the window
+       minimizing total binding penalty:
+       Penalty_total = Penalty_-35(PWM) + Penalty_-10(PWM) + Penalty_spacer
     4. Thermodynamic Parameter Mapping:
-       - y_max: RNAP open-complex formation rate. High binding affinity (low penalty) -> High y_max (up to ~250 RPU).
-         Weak binding (high penalty) -> Exponentially suppressed y_max.
-       - K_d: Repression threshold / dissociation constant. Strong RNAP binding (low penalty) -> Low K_d (~0.05 RPU).
-         Weak RNAP binding -> Higher K_d needed for repressor competition.
+       - y_max: RNAP open-complex formation rate. High binding affinity (low penalty)
+         -> High y_max (up to ~250 RPU). Weak binding (high penalty) -> Exponentially
+         suppressed y_max.
+       - K_d: Repression threshold / dissociation constant. Strong RNAP binding
+         (low penalty) -> Low K_d (~0.05 RPU). Weak RNAP binding -> Higher K_d
+         needed for repressor competition.
        - y_min: Basal leakiness (relatively stable around 0.01 - 0.05 RPU).
        - n: Hill coefficient / cooperativity (default 2.0).
     """
@@ -644,7 +660,9 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
     def _compute_hexamer_penalty(
         self, hexamer: str, pwm_table: List[Dict[str, float]]
     ) -> float:
-        """Compute thermodynamic penalty for a 6 bp hexamer sequence against PWM matrix."""
+        """Compute thermodynamic penalty for a 6 bp hexamer sequence against PWM
+        matrix.
+        """
         penalty = 0.0
         clean_hex = hexamer.upper()
         for i in range(min(len(clean_hex), 6)):
@@ -654,9 +672,11 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
         return penalty
 
     def _scan_sliding_window(self, sequence: str) -> Optional[Dict[str, Any]]:
-        """Scan input DNA string across all sliding window positions and spacer lengths.
+        """Scan input DNA string across all sliding window positions and spacer
+        lengths.
 
-        Returns the best matching window minimizing the total thermodynamic binding penalty.
+        Returns the best matching window minimizing the total thermodynamic
+        binding penalty.
         """
         seq = sequence.upper()
         seq_len = len(seq)
@@ -702,8 +722,10 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
     def _map_penalty_to_parameters(self, penalty: float) -> Dict[str, float]:
         """Map thermodynamic binding penalty (kB*T) to transfer curve parameters:
 
-        - y_max: Exponential decay with penalty from reference maximum (250 RPU) down to floor (0.05 RPU).
-        - K_d: Exponential increase with penalty from base threshold (0.05 RPU) up to ceiling (100 RPU).
+        - y_max: Exponential decay with penalty from reference maximum (250 RPU)
+          down to floor (0.05 RPU).
+        - K_d: Exponential increase with penalty from base threshold (0.05 RPU) up
+          to ceiling (100 RPU).
         - y_min: Basal leakiness, relatively stable around 0.01 - 0.05 RPU.
         - n: Hill coefficient, default 2.0.
         """
@@ -737,8 +759,9 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
         clean_query = "".join(c for c in query_sequence.upper() if c in "ACGTN")
         if not clean_query or len(clean_query) < self.MIN_WINDOW_LEN:
             raise ValueError(
-                f"Promoter sequence length ({len(clean_query)} bp) is below the minimum required "
-                f"window size ({self.MIN_WINDOW_LEN} bp) for -35/-10 biophysical scanning."
+                f"Promoter sequence length ({len(clean_query)} bp) is below the "
+                f"minimum required window size ({self.MIN_WINDOW_LEN} bp) for "
+                "-35/-10 biophysical scanning."
             )
 
         # Check for exact characterized candidate match first
@@ -806,28 +829,38 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
 
 
 class CDSStructuralStrategy(PredictionStrategy):
-    """Biologically aware CDS prediction strategy using CAI and BLOSUM62 stability models.
+    """Biologically aware CDS prediction strategy using CAI and BLOSUM62
+    stability models.
 
     Biochemical Rationale:
     1. Translation Rate (Codon Adaptation Index - CAI Model):
-       In E. coli, highly expressed proteins use optimal codons corresponding to abundant tRNAs.
-       CAI is calculated as the geometric mean of relative adaptiveness values w_i for all sense codons:
+       In E. coli, highly expressed proteins use optimal codons corresponding
+       to abundant tRNAs. CAI is calculated as the geometric mean of relative
+       adaptiveness values w_i for all sense codons:
        CAI = exp( (1 / N_sense) * sum( ln(w_i) ) )
-       High CAI -> Fast ribosomal translation rate (translation_rate ~ 0.5 - 1.0 min^-1).
-       Low CAI -> Translational bottlenecks due to rare tRNAs (translation_rate ~ 0.01 - 0.1 min^-1).
+       High CAI -> Fast ribosomal translation rate (translation_rate ~ 0.5 - 1.0
+       min^-1).
+       Low CAI -> Translational bottlenecks due to rare tRNAs (translation_rate
+       ~ 0.01 - 0.1 min^-1).
 
     2. Degradation Rate (BLOSUM62 Folding Stability Proxy Model):
-       Structural stability (Delta Delta G) of the translated amino acid chain is evaluated by comparing
-       the query protein sequence against characterized CDS reference parts using BLOSUM62 matrix scores.
-       - Conservative substitutions (e.g. Leucine <-> Isoleucine, Lysine <-> Arginine) have positive/mild scores,
-         imposing minimal folding penalty and maintaining baseline degradation rates (~0.01 min^-1).
-       - Non-conservative substitutions (e.g. Glycine <-> Tryptophan, Aspartate <-> Phenylalanine) disrupt hydrophobic
-         cores or salt-bridges, yielding massive structural instability penalties. Misfolded proteins are recognized
-         by host intracellular proteases (ClpXP/Lon) and rapidly degraded (degradation_rate up to ~0.5 min^-1).
+       Structural stability (Delta Delta G) of the translated amino acid chain is
+       evaluated by comparing the query protein sequence against characterized CDS
+       reference parts using BLOSUM62 matrix scores.
+       - Conservative substitutions (e.g. Leucine <-> Isoleucine, Lysine <-> Arginine)
+         have positive/mild scores, imposing minimal folding penalty and maintaining
+         baseline degradation rates (~0.01 min^-1).
+       - Non-conservative substitutions (e.g. Glycine <-> Tryptophan, Aspartate <->
+         Phenylalanine) disrupt hydrophobic cores or salt-bridges, yielding massive
+         structural instability penalties. Misfolded proteins are recognized by host
+         intracellular proteases (ClpXP/Lon) and rapidly degraded (degradation_rate
+         up to ~0.5 min^-1).
     """
 
     def _calculate_cai(self, dna_seq: str) -> float:
-        """Calculate E. coli Codon Adaptation Index (CAI) across all 3-bp codon windows."""
+        """Calculate E. coli Codon Adaptation Index (CAI) across all 3-bp codon
+        windows.
+        """
         seq = dna_seq.upper().strip()
         w_values = []
         for i in range(0, len(seq), 3):
@@ -845,7 +878,9 @@ class CDSStructuralStrategy(PredictionStrategy):
         return max(0.01, min(1.0, cai))
 
     def _map_cai_to_translation_rate(self, cai: float) -> float:
-        """Map CAI score (0.01 - 1.0) to continuous translation_rate parameter (min^-1)."""
+        """Map CAI score (0.01 - 1.0) to continuous translation_rate parameter
+        (min^-1).
+        """
         rate_min = 0.005
         rate_max = 1.0
         rate = rate_min + (rate_max - rate_min) * (cai**1.5)
@@ -895,10 +930,11 @@ class CDSStructuralStrategy(PredictionStrategy):
         """Map structural instability penalty to protein degradation_rate (min^-1).
 
         Biophysical Rationale:
-        When a missense mutation alters the translated amino acid sequence (substitutions > 0),
-        protein folding stability is compromised, exposing hydrophobic residues to intracellular
-        proteases (Lon/ClpXP). A structural degradation penalty scales with BLOSUM62 mismatch score
-        to significantly increase degradation_rate (e.g., 0.10 - 0.45 min^-1 for missense mutations),
+        When a missense mutation alters the translated amino acid sequence
+        (substitutions > 0), protein folding stability is compromised, exposing
+        hydrophobic residues to intracellular proteases (Lon/ClpXP). A structural
+        degradation penalty scales with BLOSUM62 mismatch score to significantly
+        increase degradation_rate (e.g., 0.10 - 0.45 min^-1 for missense mutations),
         resulting in a flattened steady-state expression curve.
         """
         if substitutions > 0 or penalty_norm > 0:
@@ -921,16 +957,19 @@ class CDSStructuralStrategy(PredictionStrategy):
 
         if len(clean_query) % 3 != 0:
             raise ValueError(
-                f"CDS DNA sequence length ({len(clean_query)} bp) is not a multiple of 3."
+                f"CDS DNA sequence length ({len(clean_query)} bp) is not a "
+                "multiple of 3."
             )
 
         # Translate query DNA to amino acid string using standard bacterial genetic code
         protein_query = translate_dna_to_protein(clean_query)
 
-        # Check if an explicit reference sequence was provided (e.g. from compare_kinetics)
+        # Check if an explicit reference sequence was provided
+        # (e.g. from compare_kinetics)
         ref_seq_arg = kwargs.get("ref_sequence") or kwargs.get("wildtype_sequence")
 
-        # If no explicit reference is provided, check candidate parts for exact characterized match
+        # If no explicit reference is provided, check candidate parts for exact
+        # characterized match
         if not ref_seq_arg:
             for part in candidate_parts:
                 p_type = getattr(part, "part_type", "").lower()
@@ -947,7 +986,9 @@ class CDSStructuralStrategy(PredictionStrategy):
                             "k_neighbors_used": "CAI & BLOSUM62 Stability Model",
                             "top_match_id": part.id,
                             "top_match_distance": 0,
-                            "status_message": "⚡ [Predicted via CAI & BLOSUM62 Stability Model]",
+                            "status_message": (
+                                "⚡ [Predicted via CAI & BLOSUM62 Stability Model]"
+                            ),
                             "parameters": {
                                 "translation_rate": float(val_trans)
                                 if val_trans is not None
@@ -985,7 +1026,8 @@ class CDSStructuralStrategy(PredictionStrategy):
                     structural_penalty = 0.0
                     sub_count = 0
 
-        # Case B: Find closest CDS candidate in repository for BLOSUM62 structural comparison
+        # Case B: Find closest CDS candidate in repository for BLOSUM62 structural
+        # comparison
         else:
             valid_cds_candidates = [
                 p
@@ -995,7 +1037,8 @@ class CDSStructuralStrategy(PredictionStrategy):
             ]
 
             if valid_cds_candidates:
-                # Prefer candidates with distance > 0 so query sequence isn't compared against itself
+                # Prefer candidates with distance > 0 so query sequence isn't
+                # compared against itself
                 non_self = [
                     p
                     for p in valid_cds_candidates
@@ -1062,11 +1105,13 @@ class SequencePredictor:
     """Central prediction routing facade using the Strategy Pattern.
 
     Routes prediction requests:
-    - part_type == "promoter": Routes to PromoterBiophysicsStrategy. If sequence length is
-      insufficient or error occurs, safely falls back to KNNPredictionStrategy.
-    - part_type == "cds": Routes to CDSStructuralStrategy. If translation or sequence errors occur,
-      safely falls back to KNNPredictionStrategy.
-    - other part_types (RBS, Terminator, etc.): Routes directly to KNNPredictionStrategy.
+    - part_type == "promoter": Routes to PromoterBiophysicsStrategy. If sequence
+      length is insufficient or error occurs, safely falls back to
+      KNNPredictionStrategy.
+    - part_type == "cds": Routes to CDSStructuralStrategy. If translation or
+      sequence errors occur, safely falls back to KNNPredictionStrategy.
+    - other part_types (RBS, Terminator, etc.): Routes directly to
+      KNNPredictionStrategy.
     """
 
     _promoter_biophysics_strategy = PromoterBiophysicsStrategy()
@@ -1088,7 +1133,8 @@ class SequencePredictor:
             query_sequence: The novel DNA sequence string.
             candidate_parts: List of BiologicalPart objects from the repository.
             part_type: "promoter", "cds", etc.
-            k: Number of nearest neighbors to average if k-NN fallback is used (default 3).
+            k: Number of nearest neighbors to average if k-NN fallback is used
+                (default 3).
 
         Returns:
             Dictionary containing predicted parameter values and prediction metadata.
@@ -1118,7 +1164,8 @@ class SequencePredictor:
                     **kwargs,
                 )
             except Exception:
-                # Safe fallback to legacy k-NN strategy for untranslatable or frameshifted CDS
+                # Safe fallback to legacy k-NN strategy for untranslatable or
+                # frameshifted CDS
                 return cls._knn_strategy.predict(
                     query_sequence=query_sequence,
                     candidate_parts=candidate_parts,
@@ -1151,7 +1198,9 @@ class SequencePredictor:
         catalogue_db: Any,
         part_type: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Dual parameter extraction contrasting wild type baseline vs mutated sequence."""
+        """Dual parameter extraction contrasting wild type baseline vs mutated
+        sequence.
+        """
         return compare_kinetics(mutated_sequence, catalogue_db, part_type=part_type)
 
 
@@ -1171,8 +1220,8 @@ def identify_wildtype(
         part_type: Optional part_type filter ("promoter", "cds", etc.).
 
     Returns:
-        Dictionary containing wild type sequence, id, name, part_type, distance, and part reference,
-        or None if no candidate is found with distance > 0.
+        Dictionary containing wild type sequence, id, name, part_type, distance,
+        and part reference, or None if no candidate is found with distance > 0.
     """
     clean_mut = (mutated_sequence or "").upper().strip()
     if not clean_mut:
@@ -1243,9 +1292,10 @@ def compare_kinetics(
     """Dual parameter extraction for wild type baseline vs mutated sequence.
 
     1. Identifies wild type baseline using identify_wildtype.
-    2. Routes both wild type sequence and mutated sequence through the respective biophysics strategy
-       (PromoterBiophysicsStrategy or CDSStructuralStrategy).
-    3. Returns dictionary containing kinetic parameters for both sequences (e.g. wt_ymax, wt_kd, mut_ymax, mut_kd).
+    2. Routes both wild type sequence and mutated sequence through the respective
+       biophysics strategy (PromoterBiophysicsStrategy or CDSStructuralStrategy).
+    3. Returns dictionary containing kinetic parameters for both sequences (e.g.
+       wt_ymax, wt_kd, mut_ymax, mut_kd).
 
     Args:
         mutated_sequence: Query mutated DNA sequence.
@@ -1262,7 +1312,8 @@ def compare_kinetics(
     wt_info = identify_wildtype(clean_mut, catalogue_db, part_type=part_type)
     if not wt_info:
         raise ValueError(
-            "No wild type sequence candidate found in catalogue database with edit distance > 0."
+            "No wild type sequence candidate found in catalogue database with "
+            "edit distance > 0."
         )
 
     wt_seq = wt_info["sequence"]
