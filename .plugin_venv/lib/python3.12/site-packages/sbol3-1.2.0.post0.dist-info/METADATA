@@ -1,0 +1,24 @@
+Metadata-Version: 2.1
+Name: sbol3
+Version: 1.2.0.post0
+Summary: Python implementation of SBOL 3 standard
+Home-page: https://github.com/SynBioDex/pySBOL3
+Author: Tom Mitchell
+Author-email: tcmitchell@users.noreply.github.com
+License: MIT License
+Keywords: synthetic biology
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+License-File: LICENSE.txt
+Requires-Dist: rdflib ==6.*,>=6.1.1
+Requires-Dist: python-dateutil ~=2.9
+Requires-Dist: pyshacl ~=0.25
+

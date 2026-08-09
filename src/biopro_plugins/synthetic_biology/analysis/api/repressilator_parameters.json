@@ -1,0 +1,51 @@
+{
+  "citation": "Elowitz, M., Leibler, S. A synthetic oscillatory network of transcriptional regulators. Nature 403, 335–338 (2000). https://doi.org/10.1038/35002125",
+  "notes": "Parameters adapted from the original Elowitz & Leibler deterministic ODE model. Values are in approximate molecules per cell or scaled units, rather than Cello's RPU.",
+  "parts": {
+    "BBa_R0010": {
+      "description": "promoter (lacI regulated)",
+      "sequence": "caatacgcaaaccgcctctccccgcgcgttggccgattcattaatgcagctggcacgacaggtttcccgactggaaagcgggcagtgagcgcaacgcaattaatgtgagttagctcactcattaggcaccccaggctttacactttatgcttccggctcgtatgttgtgtggaattgtgagcggataacaatttcacacaa",
+      "y_min": 0.5,
+      "y_max": 250.0,
+      "K_d": 40.0,
+      "n": 2.0
+    },
+    "BBa_R0040": {
+      "description": "TetR repressible promoter",
+      "sequence": "tccctatcagtgatagagattgacatccctatcagtgatagagatactgagcac",
+      "y_min": 0.5,
+      "y_max": 250.0,
+      "K_d": 40.0,
+      "n": 2.0
+    },
+    "BBa_R0051": {
+      "description": "lambda cI repressible promoter",
+      "sequence": "aatatataaaaaaagattattaaaaatttattagttaaataagagacaaataaagttaac",
+      "y_min": 0.5,
+      "y_max": 250.0,
+      "K_d": 40.0,
+      "n": 2.0
+    },
+    "BBa_C0012": {
+      "description": "lacI repressor from E. coli (+LVA)",
+      "sequence": "atggtgaatgtgaaaccagtaacgttatacgatgtcgcagagtatgccggtgtctcttatcagaccgtttcccgcgtggtgaaccaggccagccacgtttctgcgaaaacgcgggaaaaagtggaagcggcgatggcggagctgaattacattcccaaccgcgtggcacaacaactggcgggcaaacagtcgttgctgattggcgttgccacctccagtctggccctgcacgcgccgtcgcaaattgtcgcggcgattaaatctcgcgccgatcaactgggtgccagcgtggtggtgtcgatggtagaacgaagcggcgtcgaagcctgtaaagcggcggtgcacaatcttctcgcgcaacgcgtcagtgggctgatcattaactatccgctggatgaccaggatgccattgctgtggaagctgcctgcactaatgttccggcgttatttcttgatgtctctgaccagacacccatcaacagtattattttctcccatgaagacggtacgcgactgggcgtggagcatctggtcgcattgggtcaccagcaaatcgcgctgttagcgggcccattaagttctgtctcggcgcgtctgcgtctggctggctggcataaatatctcactcgcaatcaaattcagccgatagcggaacgggaaggcgactggagtgccatgtccggttttcaacaaaccatgcaaatgctgaatgagggcatcgttcccactgcgatgctggttgccaacgatcagatggcgctgggcgcaatgcgcgccattaccgagtccgggctgcgcgttggtgcggatatctcggtagtgggatacgacgataccgaagacagctcatgttatatcccgccgttaaccaccatcaaacaggattttcgcctgctggggcaaaccagcgtggaccgcttgctgcaactctctcagggccaggcggtgaagggcaatcagctgttgcccgtctcactggtgaaaagaaaaaccaccctggcgcccaatacgcaaaccgcctctccccgcgcgttggccgattcattaatgcagctggcacgacaggtttcccgactggaaagcgggcagtgagcgcaacgcaattaatgtgagttagctcactcattaggcaccccaggctttacactttatgcttccggctcgtataatgtgtgga",
+      "translation_rate": 0.1,
+      "degradation_rate": 0.01,
+      "product": "LacI"
+    },
+    "BBa_C0040": {
+      "description": "tetR repressor from transposon Tn10 (+LVA)",
+      "sequence": "atgtccagattagataaaagtaaagtgattaacagcgcattagagctgcttaatgaggtcggaatcgaaggtttaacaacccgtaaactcgcccagaagctaggtgtagagcagcctacattgtattggcatgtaaaaaataagcgggctttgctcgacgccttagccattgagatgttagataggcaccatactcactttgccctttagaaggggaaagctggcaagattttttacgtaataacgctaaaagttttagatgtgctttactaagtcactcgaatgcgactggcgtgtta",
+      "translation_rate": 0.1,
+      "degradation_rate": 0.01,
+      "product": "TetR"
+    },
+    "BBa_C0051": {
+      "description": "cI repressor from E. coli phage lambda (+LVA)",
+      "sequence": "atgagcacaaaaaagaaaccattaacacaagagcagcttgaggacgcacgtcgccttaaagcaatttatgaaaaaaagaaaaatgaacttggcttatcccaggaatctgtcgcagacaagatggggatggggcagtcaggcgttggtgctttatttaatggcatcaatgcattaaatgcttataacgccgcattgcttgcaaaaattctcaaagttagcgttgaagaatttagcccttcaatcgccagagaaatctacgagatgtatgaagcggttagtatgcagccgtcacttagaagtgagtatgagtaccctgttttttctcatgttcaggcagggatgttctcacctgagcttagaacctttaccaaaggtgatgcggagagatgggtaagcacaaccaaaaaagccagtgattctgcattctggcttgaggttgaaggtaattccatgaccgcaccaacaggctccaagccaagctttcctgacggaatgttaattctcgttgaccctgagcaggctgttgagccaggtgatttctgcatagccagacttgggggtgatgagtttaccttcaagaaactgatcagggatagcggtcaggtgtttttacaaccactaaacccacagtacccaatgatcccatgcaatgagagttgttccgttgtggggaaagttatcgctagtcagtggcctgaagagacgtttggc",
+      "translation_rate": 0.1,
+      "degradation_rate": 0.01,
+      "product": "cI"
+    }
+  }
+}

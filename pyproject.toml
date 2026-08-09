@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "biopro-synthetic-biology"
+version = "0.1.0"
+description = "Biological logic gate construction, orthogonality checking, and kinetic simulation for synthetic genetic circuits."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Kalaimaran Balasothy" }
+]
+dependencies = [
+    "PyQt6>=6.5",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "networkx>=3.1",
+    "sbol3>=1.1",
+    "mesa>=2.0",
+    "pandas>=2.0",
+    "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+simulation = [
+    "tellurium>=2.2",
+]
+dev = [
+    "pytest",
+    "pytest-qt",
+    "ruff",
+    "pre-commit",
+]
+
+[tool.biopro.plugin]
+id = "synthetic_biology"
+min_core_version = "2.0.0"
+entry_point = "biopro_plugins.synthetic_biology:initialize"
+requires = ["task_scheduler", "logger", "event_bus"]
+authors = [
+    { name = "Kalaimaran Balasothy", role = "Lead Developer", permissions = ["sign_code"] }
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+markers = ["unit", "integration", "functional", "ui", "slow"]
+testpaths = ["tests"]
+pythonpath = ["src", "src/biopro_plugins/synthetic_biology"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F"]
+
+[tool.pyright]
+include = ["src", "tests"]
+extraPaths = ["src", "src/biopro_plugins/synthetic_biology"]
