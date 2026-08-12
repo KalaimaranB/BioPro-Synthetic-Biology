@@ -35,9 +35,7 @@ class WTGraphDialog(QDialog):
 
     def __init__(self, figure, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(
-            "Comparative Biophysical Transfer Curve (WT vs Mutation)"
-        )
+        self.setWindowTitle("Comparative Biophysical Transfer Curve (WT vs Mutation)")
         self.resize(720, 520)
         self._setup_ui(figure)
 
@@ -313,9 +311,7 @@ class PartInspector(QWidget):
         self.prediction_info_card = QLabel()
         self.prediction_info_card.setWordWrap(True)
         self.prediction_info_card.setOpenExternalLinks(False)
-        self.prediction_info_card.linkActivated.connect(
-            self._open_model_details_dialog
-        )
+        self.prediction_info_card.linkActivated.connect(self._open_model_details_dialog)
         self.prediction_info_card.setSizePolicy(
             QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
         )

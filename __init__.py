@@ -8,7 +8,6 @@ __version__ = "0.1.0"
 __plugin_id__ = "synthetic_biology"
 
 
-
 def get_panel_class():
     """Returns the main QWidget class that should be injected into the UI.
 

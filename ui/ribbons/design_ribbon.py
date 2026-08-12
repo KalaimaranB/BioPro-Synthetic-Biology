@@ -70,9 +70,7 @@ class DesignRibbon(QWidget):
                 "Terminator",
             ]
         )
-        self.role_combo.setSizeAdjustPolicy(
-            QComboBox.SizeAdjustPolicy.AdjustToContents
-        )
+        self.role_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
         self.role_combo.setMinimumWidth(160)
         layout.addWidget(self.role_combo)
 

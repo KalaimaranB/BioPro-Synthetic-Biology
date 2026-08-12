@@ -13,7 +13,7 @@ try:
 except ImportError:
     try:
         from analysis.parts.components import BiologicalPart
-        
+
     except ImportError:
         # pyrefly: ignore [missing-import]
         from biopro.plugins.synthetic_biology.analysis.parts.components import (

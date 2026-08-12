@@ -13,6 +13,7 @@ if "sbol3" not in sys.modules:
 from analysis.catalogue.repository import JsonPartRepository
 from analysis.catalogue.service import PartsCatalogueService
 from analysis.parts.components import CDS, Promoter
+
 try:
     from analysis.prediction.sequence_predictor import (
         SequencePredictor,

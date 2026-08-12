@@ -5,6 +5,7 @@ parameter extraction, and curve generation).
 from matplotlib.figure import Figure
 
 from analysis.parts.components import Promoter, CDS
+
 try:
     from analysis.prediction.sequence_predictor import (
         identify_wildtype,

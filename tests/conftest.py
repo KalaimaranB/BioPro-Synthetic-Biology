@@ -32,6 +32,7 @@ class DummyTaskBase:
 
 from PyQt6.QtCore import pyqtSignal  # noqa: E402
 
+
 class DummyPluginBase(QWidget):
     status_message = pyqtSignal(str)
 
@@ -58,6 +59,7 @@ class DummyLabel(QLabel):
 
 
 from PyQt6.QtWidgets import QComboBox, QLineEdit, QListWidget, QSpinBox  # noqa: E402
+
 
 class DummyComboBox(QComboBox):
     pass
@@ -153,6 +155,8 @@ sys.modules["biopro.shared.ui"] = MagicMock()
 sys.modules["biopro.shared.ui.ui_components"] = mock_components
 
 from analysis.state import SynBioState  # noqa: E402
+
+
 @pytest.fixture
 def empty_state():
     """Returns a fresh SynBioState with empty circuit data."""

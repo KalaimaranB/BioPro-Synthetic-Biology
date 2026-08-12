@@ -1,5 +1,6 @@
-"""Simulation package for BioPro Synthetic Biology."""
+"""Predictive genetic circuit simulation module using NetworkX and SciPy."""
 
-from .transfer_curve import calculate_steady_state_curve
+from .circuit_engine import CircuitSimulationEngine
+from .async_worker import CircuitSimWorker
 
-__all__ = ["calculate_steady_state_curve"]
+__all__ = ["CircuitSimulationEngine", "CircuitSimWorker"]
