@@ -20,7 +20,8 @@ dependencies = [
     "mesa>=2.0",
     "pandas>=2.0",
     "matplotlib>=3.8",
-    "biopython>=1.79",
+    "biopython>=1.80",
+    "pyqtgraph>=0.13",
 ]
 
 [project.optional-dependencies]
