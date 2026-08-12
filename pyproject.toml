@@ -20,6 +20,7 @@ dependencies = [
     "mesa>=2.0",
     "pandas>=2.0",
     "matplotlib>=3.8",
+    "biopython>=1.79",
 ]
 
 [project.optional-dependencies]
