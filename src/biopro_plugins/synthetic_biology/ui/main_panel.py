@@ -123,13 +123,30 @@ class SynBioPanel(PluginBase):
         from PyQt6.QtWidgets import QStackedWidget, QTabBar, QWidget
 
         from .canvas import CircuitCanvas
+        from .controllers import (
+            CircuitSimulationController,
+            CRISPRDesignController,
+            PlasmidAssemblyController,
+        )
         from .ribbons import BiologicalViewRibbon, DesignRibbon, SimulateRibbon
         from .ribbons.catalogue_ribbon import CatalogueRibbon
+        from .views.catalogue_view import CatalogueView
+        from .views.crispr_view import CRISPRDesignView
+        from .views.plasmid_assembly_view import PlasmidAssemblyView
         from .views.properties_view import PropertiesView
         from .views.simulate_view import SimulateView
-        from .views.catalogue_view import CatalogueView
 
         self._parts_cache = []
+
+        # ── Controllers & Attached Views ──────────────────────────────
+        self._plasmid_controller = PlasmidAssemblyController(self.state)
+        self._crispr_controller = CRISPRDesignController(self.state)
+        self._circuit_controller = CircuitSimulationController(self.state)
+
+        self.plasmid_view = PlasmidAssemblyView(self.state, self._plasmid_controller)
+        self.crispr_view = CRISPRDesignView(self.state, self._crispr_controller)
+        self.plasmid_tab = self.plasmid_view
+        self.crispr_tab = self.crispr_view
 
         # ── Top Tab Bar ───────────────────────────────────────────────
         self._tab_bar = QTabBar()
@@ -137,6 +154,8 @@ class SynBioPanel(PluginBase):
         self._tab_bar.setDocumentMode(True)
         self._tab_bar.addTab("Design")
         self._tab_bar.addTab("Biological View")
+        self._tab_bar.addTab("Plasmid Assembly")
+        self._tab_bar.addTab("CRISPR Design")
         self._tab_bar.addTab("Simulate")
         self._tab_bar.addTab("Quantitative Data")
         self._tab_bar.addTab("Parts Catalogue")
@@ -148,12 +167,16 @@ class SynBioPanel(PluginBase):
 
         self._design_ribbon = DesignRibbon(self._factory)
         self._bio_ribbon = BiologicalViewRibbon(self._factory)
+        self._plasmid_ribbon = QWidget()
+        self._crispr_ribbon = QWidget()
         self._sim_ribbon = SimulateRibbon(self._factory)
-        self._data_ribbon = QWidget()  # Empty ribbon for the data view
+        self._data_ribbon = QWidget()
         self._catalogue_ribbon = CatalogueRibbon(self._factory)
 
         self._ribbon_stack.addWidget(self._design_ribbon)
         self._ribbon_stack.addWidget(self._bio_ribbon)
+        self._ribbon_stack.addWidget(self._plasmid_ribbon)
+        self._ribbon_stack.addWidget(self._crispr_ribbon)
         self._ribbon_stack.addWidget(self._sim_ribbon)
         self._ribbon_stack.addWidget(self._data_ribbon)
         self._ribbon_stack.addWidget(self._catalogue_ribbon)
@@ -168,6 +191,9 @@ class SynBioPanel(PluginBase):
         self._catalogue_view = CatalogueView(self._factory.get("parts_catalogue"))
 
         self._central_stack.addWidget(self._circuit_canvas)
+        self._central_stack.addWidget(self._circuit_canvas)
+        self._central_stack.addWidget(self.plasmid_view)
+        self._central_stack.addWidget(self.crispr_view)
         self._central_stack.addWidget(self._simulate_view)
         self._central_stack.addWidget(self._properties_view)
         self._central_stack.addWidget(self._catalogue_view)
@@ -224,7 +250,15 @@ class SynBioPanel(PluginBase):
         self._ribbon_stack.setCurrentIndex(index)
 
         # Switch central view based on tab index
-        if index == 2:
+        if index == 0:
+            self._central_stack.setCurrentWidget(self._circuit_canvas)
+        elif index == 1:
+            self._central_stack.setCurrentWidget(self._circuit_canvas)
+        elif index == 2:
+            self._central_stack.setCurrentWidget(self.plasmid_view)
+        elif index == 3:
+            self._central_stack.setCurrentWidget(self.crispr_view)
+        elif index == 4:
             self._central_stack.setCurrentWidget(self._simulate_view)
             if not self._parts_cache:
                 catalogue = self._factory.get("parts_catalogue")
@@ -232,9 +266,9 @@ class SynBioPanel(PluginBase):
                     self._parts_cache = catalogue.get_all_parts()
                 self._simulate_view.set_parts(self._parts_cache)
             self._simulate_view.plot_steady_state()
-        elif index == 3:
+        elif index == 5:
             self._central_stack.setCurrentWidget(self._properties_view)
-        elif index == 4:
+        elif index == 6:
             self._central_stack.setCurrentWidget(self._catalogue_view)
         else:
             self._central_stack.setCurrentWidget(self._circuit_canvas)
