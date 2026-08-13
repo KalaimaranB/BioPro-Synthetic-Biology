@@ -8,7 +8,7 @@ CircuitSimulationController signals & slots.
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import (
@@ -44,11 +44,18 @@ class CircuitSimulationView(QWidget):
     simulation_requested = pyqtSignal(list, list, object)
 
     def __init__(
-        self, state: SynBioState, controller: CircuitSimulationController, parent=None
+        self,
+        state: Optional[SynBioState] = None,
+        controller: Optional[CircuitSimulationController] = None,
+        parent=None,
     ):
         super().__init__(parent)
-        self.state = state
-        self.controller = controller
+        self.state = state if state is not None else SynBioState()
+        self.controller = (
+            controller
+            if controller is not None
+            else CircuitSimulationController(self.state)
+        )
 
         self._active_components: List[CircuitComponent] = []
         self._active_edges: List[CircuitEdge] = []
@@ -276,7 +283,7 @@ class CircuitSimulationView(QWidget):
             result.species_concentrations.items()
         ):
             color = color_palette[idx % len(color_palette)]
-            pen = pg.makePen(color=color, width=2.5)
+            pen = pg.mkPen(color=color, width=2.5)
             self.plot_widget.plot(t_points, conc_values, name=species_name, pen=pen)
 
     @pyqtSlot(str)
