@@ -25,7 +25,40 @@ except ImportError:
 
 from ...analysis.parts.base import BiologicalPart
 from ...analysis.parts.components import CDS, Promoter, Terminator, RBS
-from biopro.ui.theme import Colors
+try:
+    from biopro.ui.theme import Colors, Fonts, theme_manager
+except ImportError:
+    try:
+        from biopro_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
+    except ImportError:
+
+        class Colors:
+            BG_DARKEST = "#0d1117"
+            BG_DARK = "#161b22"
+            BG_MEDIUM = "#21262d"
+            BG_LIGHT = "#30363d"
+            FG_PRIMARY = "#e6edf3"
+            FG_SECONDARY = "#8b949e"
+            FG_DISABLED = "#484f58"
+            BORDER = "#30363d"
+            ACCENT_PRIMARY = "#00bcd4"
+            ACCENT_PRIMARY_HOVER = "#0097a7"
+            ACCENT_NEGATIVE = "#ef5350"
+
+        class Fonts:
+            SIZE_SMALL = 11
+
+        class _DummySignal:
+            def connect(self, cb):
+                pass
+
+            def disconnect(self, cb):
+                pass
+
+        class _DummyThemeManager:
+            theme_changed = _DummySignal()
+
+        theme_manager = _DummyThemeManager()
 
 
 class WTGraphDialog(QDialog):
@@ -325,10 +358,8 @@ class PartInspector(QWidget):
 
         # "Graph WT vs Mutation" Button in Inspector Panel below Prediction Badge
         self.graph_wt_btn = QPushButton("Graph WT vs Mutation")
-        self.graph_wt_btn.setStyleSheet(
-            f"background: {Colors.ACCENT_PRIMARY}; color: {Colors.BG_DARKEST}; "
-            f"font-weight: bold; padding: 6px; margin-top: 6px; border-radius: 4px;"
-        )
+        self.graph_wt_btn.setProperty("variant", "primary")
+        self.graph_wt_btn.setObjectName("PrimaryButton")
         self.graph_wt_btn.clicked.connect(self._on_graph_wt_vs_mutation)
         self.props_layout.addRow(self.graph_wt_btn)
 
@@ -346,19 +377,14 @@ class PartInspector(QWidget):
         self.seq_layout.addWidget(self.seq_edit)
 
         self.predict_btn = QPushButton("⚡ Predict Parameters (k-NN)")
-        self.predict_btn.setStyleSheet(
-            f"background: {Colors.BG_MEDIUM}; color: {Colors.ACCENT_PRIMARY}; "
-            f"border: 1px solid {Colors.ACCENT_PRIMARY}; font-weight: bold; "
-            "padding: 6px;"
-        )
+        self.predict_btn.setProperty("variant", "secondary")
+        self.predict_btn.setObjectName("SecondaryButton")
         self.predict_btn.clicked.connect(self._run_prediction)
         self.seq_layout.addWidget(self.predict_btn)
 
         self.seq_graph_btn = QPushButton("📊 Graph WT vs Mutation")
-        self.seq_graph_btn.setStyleSheet(
-            f"background: {Colors.ACCENT_PRIMARY}; color: {Colors.BG_DARKEST}; "
-            "font-weight: bold; padding: 6px; margin-top: 4px;"
-        )
+        self.seq_graph_btn.setProperty("variant", "primary")
+        self.seq_graph_btn.setObjectName("PrimaryButton")
         self.seq_graph_btn.clicked.connect(self._on_graph_wt_vs_mutation)
         self.seq_layout.addWidget(self.seq_graph_btn)
 
@@ -379,25 +405,78 @@ class PartInspector(QWidget):
         self.btn_layout = QHBoxLayout()
 
         self.save_btn = QPushButton("Save / Update Part")
-        self.save_btn.setStyleSheet(
-            f"background: {Colors.ACCENT_PRIMARY}; color: {Colors.BG_DARKEST}; "
-            "font-weight: bold; padding: 6px;"
-        )
+        self.save_btn.setProperty("variant", "primary")
+        self.save_btn.setObjectName("PrimaryButton")
         self.save_btn.clicked.connect(self._on_save)
         self.btn_layout.addWidget(self.save_btn)
 
         self.delete_btn = QPushButton("Delete Part")
-        self.delete_btn.setStyleSheet(
-            f"background: {Colors.ACCENT_PRIMARY}; color: {Colors.BG_DARKEST}; "
-            "font-weight: bold; padding: 6px;"
-        )
+        self.delete_btn.setProperty("variant", "danger")
+        self.delete_btn.setObjectName("DangerButton")
         self.delete_btn.clicked.connect(self._on_delete)
         self.btn_layout.addWidget(self.delete_btn)
 
         self.layout.addLayout(self.btn_layout)
 
+        self.refresh_styles()
         self.clear()
         self._on_type_changed(self.type_combo.currentText())
+
+    def refresh_styles(self) -> None:
+        """Apply theme-based styles dynamically without hardcoded colors."""
+        hover_primary = getattr(Colors, "ACCENT_PRIMARY_HOVER", "#0097a7")
+        danger_color = getattr(
+            Colors, "ACCENT_NEGATIVE", getattr(Colors, "ACCENT_DANGER", "#ef5350")
+        )
+        sec_hover_bg = getattr(
+            Colors, "BG_LIGHT", getattr(Colors, "BG_DARK", "#161b22")
+        )
+        bg_darkest = getattr(Colors, "BG_DARKEST", "#0d1117")
+        bg_medium = getattr(Colors, "BG_MEDIUM", "#21262d")
+        fg_primary = getattr(Colors, "FG_PRIMARY", "#e6edf3")
+        border = getattr(Colors, "BORDER", "#30363d")
+        accent_primary = getattr(Colors, "ACCENT_PRIMARY", "#00bcd4")
+
+        btn_qss = f"""
+            QPushButton#PrimaryButton, QPushButton[variant="primary"] {{
+                background-color: {accent_primary};
+                color: {bg_darkest};
+                border: 1px solid {accent_primary};
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }}
+            QPushButton#PrimaryButton:hover, QPushButton[variant="primary"]:hover {{
+                background-color: {hover_primary};
+                border-color: {hover_primary};
+                color: {bg_darkest};
+            }}
+            QPushButton#SecondaryButton, QPushButton[variant="secondary"] {{
+                background-color: {bg_medium};
+                color: {fg_primary};
+                border: 1px solid {border};
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }}
+            QPushButton#SecondaryButton:hover, QPushButton[variant="secondary"]:hover {{
+                background-color: {sec_hover_bg};
+                border-color: {accent_primary};
+            }}
+            QPushButton#DangerButton, QPushButton[variant="danger"] {{
+                background-color: {danger_color};
+                color: white;
+                border: 1px solid {danger_color};
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }}
+            QPushButton#DangerButton:hover, QPushButton[variant="danger"]:hover {{
+                background-color: #d32f2f;
+                border-color: #d32f2f;
+            }}
+        """
+        self.setStyleSheet(btn_qss)
 
     def _on_type_changed(self, text):
         part_type = text.lower()

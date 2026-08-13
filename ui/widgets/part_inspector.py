@@ -21,7 +21,25 @@ from biopro.plugins.synthetic_biology.analysis.parts.components import (
     Terminator,
     RBS,
 )
-from biopro.ui.theme import Colors
+try:
+    from biopro.ui.theme import Colors
+except ImportError:
+    try:
+        from biopro_sdk.plugin.theme_fallback import Colors
+    except ImportError:
+
+        class Colors:
+            BG_DARKEST = "#0d1117"
+            BG_DARK = "#161b22"
+            BG_MEDIUM = "#21262d"
+            BG_LIGHT = "#30363d"
+            FG_PRIMARY = "#e6edf3"
+            FG_SECONDARY = "#8b949e"
+            FG_DISABLED = "#484f58"
+            BORDER = "#30363d"
+            ACCENT_PRIMARY = "#00bcd4"
+            ACCENT_PRIMARY_HOVER = "#0097a7"
+            ACCENT_NEGATIVE = "#ef5350"
 
 
 class PartInspector(QWidget):
@@ -128,9 +146,15 @@ class PartInspector(QWidget):
 
         # Save Button
         self.save_btn = QPushButton("Save / Update Part")
+        self.save_btn.setProperty("variant", "primary")
+        self.save_btn.setObjectName("PrimaryButton")
+        hover_primary = getattr(Colors, "ACCENT_PRIMARY_HOVER", "#0097a7")
         self.save_btn.setStyleSheet(
-            f"background: {Colors.ACCENT_PRIMARY}; color: {Colors.BG_DARKEST}; "
-            "font-weight: bold;"
+            f"QPushButton {{ background: {Colors.ACCENT_PRIMARY}; "
+            f"color: {Colors.BG_DARKEST}; font-weight: bold; border-radius: 4px; "
+            f"padding: 6px; }}\n"
+            f"QPushButton:hover {{ background: {hover_primary}; "
+            f"color: {Colors.BG_DARKEST}; }}"
         )
         self.save_btn.clicked.connect(self._on_save)
         self.layout.addWidget(self.save_btn)

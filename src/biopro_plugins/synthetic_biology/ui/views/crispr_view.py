@@ -30,6 +30,35 @@ from ...analysis.state import SynBioState
 from ..controllers.crispr_controller import CRISPRDesignController
 
 
+try:
+    from biopro.ui.theme import Colors, Fonts, theme_manager
+except ImportError:
+    try:
+        from biopro_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
+    except ImportError:
+
+        class Colors:
+            BG_DARKEST = "#0d1117"
+            BG_DARK = "#161b22"
+            BG_MEDIUM = "#21262d"
+            FG_PRIMARY = "#e6edf3"
+            FG_SECONDARY = "#8b949e"
+            BORDER = "#30363d"
+            ACCENT_PRIMARY = "#00bcd4"
+
+        class Fonts:
+            SIZE_SMALL = 11
+
+        class _DummySignal:
+            def connect(self, cb):
+                pass
+
+        class _DummyThemeManager:
+            theme_changed = _DummySignal()
+
+        theme_manager = _DummyThemeManager()
+
+
 class CRISPRDesignView(QWidget):
     """PyQt6 View for CRISPR/Cas9 target discovery and off-target CFD score
     inspection.
@@ -41,11 +70,48 @@ class CRISPRDesignView(QWidget):
         self, state: SynBioState, controller: CRISPRDesignController, parent=None
     ):
         super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.state = state
         self.controller = controller
 
         self._init_ui()
         self._connect_signals()
+
+        theme_manager.theme_changed.connect(self.refresh_styles)
+
+    def refresh_styles(self) -> None:
+        """Dynamically update styling on theme change."""
+        view_qss = f"""
+            QComboBox {{
+                background: {Colors.BG_DARK};
+                color: {Colors.FG_PRIMARY};
+                border: 1px solid {Colors.BORDER};
+                border-radius: 4px;
+                padding: 4px 8px;
+            }}
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border-left: none;
+            }}
+            QComboBox::down-arrow {{
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid {Colors.FG_PRIMARY};
+                margin-right: 6px;
+            }}
+            QSplitter::handle {{
+                background-color: {Colors.BORDER};
+            }}
+            QSplitter::handle:hover {{
+                background-color: {Colors.ACCENT_PRIMARY};
+            }}
+        """
+        self.setStyleSheet(view_qss)
+        self.update()
 
     def _init_ui(self):
         self.setObjectName("crispr_design_view")
@@ -53,14 +119,9 @@ class CRISPRDesignView(QWidget):
         layout.setContentsMargins(12, 12, 12, 12)
 
         splitter = QSplitter(Qt.Orientation.Vertical)
-        splitter.setStyleSheet("QSplitter::handle { background-color: #334155; }")
 
         # Top Control Box: Target Sequence Input & PAM Config
         top_widget = QGroupBox("CRISPR Target Sequence & PAM Selection")
-        top_widget.setStyleSheet(
-            "QGroupBox { font-weight: bold; color: #38BDF8; "
-            "border: 1px solid #334155; padding-top: 12px; }"
-        )
         top_layout = QVBoxLayout(top_widget)
 
         config_layout = QHBoxLayout()
@@ -76,16 +137,9 @@ class CRISPRDesignView(QWidget):
                 "Cas9-EQR (NGAG)",
             ]
         )
-        self.pam_combo.setStyleSheet(
-            "background-color: #1E293B; color: white; padding: 4px;"
-        )
         config_layout.addWidget(self.pam_combo)
 
         self.btn_scan = QPushButton("🔍 Scan Guide RNA Candidates")
-        self.btn_scan.setStyleSheet(
-            "background-color: #2563EB; color: white; font-weight: bold; "
-            "padding: 6px 12px; border-radius: 4px;"
-        )
         self.btn_scan.clicked.connect(self._on_scan_clicked)
         config_layout.addWidget(self.btn_scan)
 
@@ -99,10 +153,7 @@ class CRISPRDesignView(QWidget):
         self.target_seq_edit.setText(
             "ATGAGTAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAAATTTTCTGTCAGTGGAGAGGGTGAAGGTGATGCAACATACGGAAAACTTACCCTTAAATTTATTTGCACTACTGGAAAACTACCTGTTCCATGGCCAACACTTGTCACTACTTTCGGTTATGGTGTTCAATGCTTTGCG"
         )
-        self.target_seq_edit.setStyleSheet(
-            "background-color: #0F172A; color: #34D399; font-family: monospace; "
-            "border: 1px solid #334155;"
-        )
+        self.target_seq_edit.setStyleSheet("font-family: monospace;")
         top_layout.addWidget(self.target_seq_edit)
 
         splitter.addWidget(top_widget)
@@ -131,19 +182,6 @@ class CRISPRDesignView(QWidget):
         )
         self.grna_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.grna_table.itemSelectionChanged.connect(self._on_table_selection_changed)
-        self.grna_table.setStyleSheet("""
-            QTableWidget {
-                background-color: #0F172A;
-                color: #F8FAFC;
-                border: 1px solid #334155;
-                gridline-color: #1E293B;
-            }
-            QHeaderView::section {
-                background-color: #1E293B;
-                color: #38BDF8;
-                font-weight: bold;
-            }
-        """)
         bottom_layout.addWidget(self.grna_table, stretch=2)
 
         # CFD Off-target Detail Inspector
@@ -153,10 +191,7 @@ class CRISPRDesignView(QWidget):
             "Select a guide RNA row to view detailed CFD off-target mismatch "
             "breakdown..."
         )
-        self.detail_display.setStyleSheet(
-            "background-color: #0F172A; color: #F8FAFC; font-family: monospace; "
-            "border: 1px solid #334155;"
-        )
+        self.detail_display.setStyleSheet("font-family: monospace;")
         bottom_layout.addWidget(self.detail_display, stretch=1)
 
         splitter.addWidget(bottom_widget)

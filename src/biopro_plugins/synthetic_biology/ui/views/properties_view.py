@@ -46,26 +46,39 @@ class PropertiesView(QWidget):
         self.inspector_scroll.setWidget(self.inspector_widget)
         layout.addWidget(self.inspector_scroll)
 
-        # Apply theme styles once for global migration to pick up
+        # Apply theme styles
+        self.refresh_styles()
+
+    def refresh_styles(self) -> None:
+        """Apply theme styling dynamically to list and inspector widgets."""
         try:
             from biopro.ui.theme import Colors
-
-            self.part_list.setStyleSheet(
-                f"QListWidget {{ background: {Colors.BG_DARKEST}; "
-                f"color: {Colors.FG_PRIMARY}; border: none; }}"
-                f"QListWidget::item {{ padding: 8px; "
-                f"border-bottom: 1px solid {Colors.BORDER}; }}"
-                f"QListWidget::item:selected {{ background: {Colors.BG_MEDIUM}; "
-                f"border-left: 3px solid {Colors.ACCENT_PRIMARY}; }}"
-            )
-            self.inspector_scroll.setStyleSheet(
-                f"QScrollArea {{ border: none; background: {Colors.BG_DARK}; }}"
-            )
-            self.inspector_widget.setStyleSheet(
-                f"background: {Colors.BG_DARK}; color: {Colors.FG_PRIMARY};"
-            )
         except ImportError:
-            pass
+            try:
+                from biopro_sdk.plugin.theme_fallback import Colors
+            except ImportError:
+                class Colors:
+                    BG_DARKEST = "#0d1117"
+                    BG_DARK = "#161b22"
+                    BG_MEDIUM = "#21262d"
+                    FG_PRIMARY = "#e6edf3"
+                    BORDER = "#30363d"
+                    ACCENT_PRIMARY = "#00bcd4"
+
+        self.part_list.setStyleSheet(
+            f"QListWidget {{ background: {Colors.BG_DARKEST}; "
+            f"color: {Colors.FG_PRIMARY}; border: none; }}"
+            f"QListWidget::item {{ padding: 8px; "
+            f"border-bottom: 1px solid {Colors.BORDER}; }}"
+            f"QListWidget::item:selected {{ background: {Colors.BG_MEDIUM}; "
+            f"border-left: 3px solid {Colors.ACCENT_PRIMARY}; }}"
+        )
+        self.inspector_scroll.setStyleSheet(
+            f"QScrollArea {{ border: none; background: {Colors.BG_DARK}; }}"
+        )
+        self.inspector_widget.setStyleSheet(
+            f"background: {Colors.BG_DARK}; color: {Colors.FG_PRIMARY};"
+        )
 
     def set_parts(self, parts: list):
         """Update the list with a new list of parts."""

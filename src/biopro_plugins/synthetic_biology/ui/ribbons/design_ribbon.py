@@ -102,29 +102,82 @@ class DesignRibbon(QWidget):
     def _apply_theme(self):
         try:
             from biopro.ui.theme import Colors
-
-            combo_style = f"""
-                QComboBox {{
-                    background: {Colors.BG_DARK};
-                    color: {Colors.FG_PRIMARY};
-                    border: 1px solid {Colors.BORDER};
-                    border-radius: 4px;
-                    padding: 4px 8px;
-                }}
-                QComboBox::drop-down {{
-                    border: none;
-                }}
-                QComboBox QAbstractItemView {{
-                    background: {Colors.BG_DARKEST};
-                    color: {Colors.FG_PRIMARY};
-                    selection-background-color: {Colors.ACCENT_PRIMARY};
-                    border: 1px solid {Colors.BORDER};
-                }}
-            """
-            self.role_combo.setStyleSheet(combo_style)
-            self.part_selector_combo.setStyleSheet(combo_style)
         except ImportError:
-            pass
+            try:
+                from biopro_sdk.plugin.theme_fallback import Colors
+            except ImportError:
+                class Colors:
+                    BG_DARKEST = "#0d1117"
+                    BG_DARK = "#161b22"
+                    BG_MEDIUM = "#21262d"
+                    FG_PRIMARY = "#e6edf3"
+                    FG_SECONDARY = "#8b949e"
+                    FG_DISABLED = "#484f58"
+                    BORDER = "#30363d"
+                    ACCENT_PRIMARY = "#00bcd4"
+                    ACCENT_PRIMARY_HOVER = "#0097a7"
+
+        combo_style = f"""
+            QComboBox {{
+                background: {Colors.BG_DARK};
+                color: {Colors.FG_PRIMARY};
+                border: 1px solid {Colors.BORDER};
+                border-radius: 4px;
+                padding: 4px 8px;
+            }}
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border-left: none;
+            }}
+            QComboBox::down-arrow {{
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid {Colors.FG_PRIMARY};
+                margin-right: 6px;
+            }}
+            QComboBox::down-arrow:on {{
+                border-top: none;
+                border-bottom: 5px solid {Colors.FG_PRIMARY};
+            }}
+            QComboBox QAbstractItemView {{
+                background: {Colors.BG_DARKEST};
+                color: {Colors.FG_PRIMARY};
+                selection-background-color: {Colors.ACCENT_PRIMARY};
+                border: 1px solid {Colors.BORDER};
+            }}
+        """
+        self.role_combo.setStyleSheet(combo_style)
+        self.part_selector_combo.setStyleSheet(combo_style)
+
+        hover_color = getattr(Colors, "ACCENT_PRIMARY_HOVER", "#0097a7")
+        fetch_btn_style = f"""
+            QPushButton {{
+                background-color: {Colors.ACCENT_PRIMARY};
+                color: {Colors.BG_DARKEST};
+                border: 1px solid {Colors.ACCENT_PRIMARY};
+                border-radius: 4px;
+                padding: 6px 16px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {hover_color};
+                border-color: {hover_color};
+                color: {Colors.BG_DARKEST};
+            }}
+            QPushButton:pressed {{
+                background-color: {hover_color};
+            }}
+            QPushButton:disabled {{
+                background-color: {Colors.BG_MEDIUM};
+                color: {Colors.FG_DISABLED};
+                border-color: {Colors.BORDER};
+            }}
+        """
+        self.fetch_btn.setStyleSheet(fetch_btn_style)
 
     def update_part_selector(self, selected_role: str) -> None:
         """Dynamically populate part_selector_combo based on selected_role from

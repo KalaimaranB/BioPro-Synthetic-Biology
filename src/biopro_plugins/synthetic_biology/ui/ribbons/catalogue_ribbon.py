@@ -1,6 +1,17 @@
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel
 
-from biopro.ui.theme import Colors, Fonts
+try:
+    from biopro.ui.theme import Colors, Fonts
+except ImportError:
+    try:
+        from biopro_sdk.plugin.theme_fallback import Colors, Fonts
+    except ImportError:
+
+        class Colors:
+            FG_PRIMARY = "#e6edf3"
+
+        class Fonts:
+            SIZE_SMALL = 11
 
 
 class CatalogueRibbon(QWidget):

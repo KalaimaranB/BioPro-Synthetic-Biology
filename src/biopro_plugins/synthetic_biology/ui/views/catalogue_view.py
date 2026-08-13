@@ -7,6 +7,35 @@ from ..widgets.part_card import PartCard
 from ..widgets.part_inspector import PartInspector
 
 
+try:
+    from biopro.ui.theme import Colors, Fonts, theme_manager
+except ImportError:
+    try:
+        from biopro_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
+    except ImportError:
+
+        class Colors:
+            BG_DARKEST = "#0d1117"
+            BG_DARK = "#161b22"
+            BG_MEDIUM = "#21262d"
+            FG_PRIMARY = "#e6edf3"
+            FG_SECONDARY = "#8b949e"
+            BORDER = "#30363d"
+            ACCENT_PRIMARY = "#00bcd4"
+
+        class Fonts:
+            SIZE_SMALL = 11
+
+        class _DummySignal:
+            def connect(self, cb):
+                pass
+
+        class _DummyThemeManager:
+            theme_changed = _DummySignal()
+
+        theme_manager = _DummyThemeManager()
+
+
 class CatalogueView(QWidget):
     """View displaying the parts catalogue using a card-based layout and details
     inspector.
@@ -17,6 +46,7 @@ class CatalogueView(QWidget):
         self.service = catalogue_service
         self._setup_ui()
         self.refresh_catalogue()
+        self.refresh_styles()
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
@@ -33,8 +63,12 @@ class CatalogueView(QWidget):
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
         self.scroll_area.setMinimumWidth(500)
+        self.scroll_area.setStyleSheet(
+            "QScrollArea { background: transparent; border: none; }"
+        )
 
         self.cards_container = QWidget()
+        self.cards_container.setStyleSheet("QWidget { background: transparent; }")
         self.flow_layout = FlowLayout(
             self.cards_container, margin=10, hSpacing=10, vSpacing=10
         )
@@ -98,5 +132,18 @@ class CatalogueView(QWidget):
         self.refresh_catalogue()
 
     def refresh_styles(self):
-        """Apply theme (handled by main panel, but hook is here)"""
-        pass
+        """Apply theme styling dynamically to splitter and inspector."""
+        splitter_qss = f"""
+            QSplitter::handle {{
+                background-color: {Colors.BORDER};
+            }}
+            QSplitter::handle:horizontal {{
+                width: 2px;
+            }}
+            QSplitter::handle:hover {{
+                background-color: {Colors.ACCENT_PRIMARY};
+            }}
+        """
+        self.splitter.setStyleSheet(splitter_qss)
+        if hasattr(self, "inspector") and hasattr(self.inspector, "refresh_styles"):
+            self.inspector.refresh_styles()

@@ -1,4 +1,4 @@
-"""Simulation view for plotting steady-state curves and ODEs with species filtering."""
+"""Simulation view for plotting ODE and Gillespie kinetic simulations."""
 
 import numpy as np
 from PyQt6.QtCore import Qt
@@ -60,7 +60,9 @@ class SimulateView(QWidget):
         layout.setSpacing(10)
 
         # Info Label
-        self.info_label = QLabel("Run a simulation or view steady-state logic curves.")
+        self.info_label = QLabel(
+            "Run kinetic simulations (Deterministic ODE or Stochastic Gillespie)."
+        )
         self.info_label.setWordWrap(True)
         self.info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.info_label)
@@ -117,49 +119,71 @@ class SimulateView(QWidget):
         # Apply dark theme
         self._apply_theme()
 
+    def refresh_styles(self) -> None:
+        """Alias for _apply_theme for theme update signals."""
+        self._apply_theme()
+
     def _apply_theme(self):
         try:
             from biopro.ui.theme import Colors, Fonts
-
-            dark_bg = getattr(Colors, "BG_DARKEST", "#0d1117")
-            dark_panel = getattr(Colors, "BG_DARK", "#161b22")
-            fg_pri = getattr(Colors, "FG_PRIMARY", "#c9d1d9")
-            fg_sec = getattr(Colors, "FG_SECONDARY", "#8b949e")
-            border = getattr(Colors, "BORDER", "#30363d")
-            accent = getattr(Colors, "ACCENT_PRIMARY", "#00bcd4")
-
+        except ImportError:
             try:
-                font_sz = (
-                    int(str(getattr(Fonts, "SIZE_SMALL", 12)).replace("px", "")) + 2
-                )
-            except (ValueError, TypeError, AttributeError):
-                font_sz = 14
+                from biopro_sdk.plugin.theme_fallback import Colors, Fonts
+            except ImportError:
+                class Colors:
+                    BG_DARKEST = "#0d1117"
+                    BG_DARK = "#161b22"
+                    BG_MEDIUM = "#21262d"
+                    FG_PRIMARY = "#e6edf3"
+                    FG_SECONDARY = "#8b949e"
+                    BORDER = "#30363d"
+                    ACCENT_PRIMARY = "#00bcd4"
 
-            self.figure.patch.set_facecolor(dark_bg)
-            self.canvas.setStyleSheet(f"background-color: {dark_bg};")
-            self.info_label.setStyleSheet(f"color: {fg_sec}; font-size: {font_sz}px;")
-            self.species_header.setStyleSheet(
-                f"color: {fg_pri}; font-weight: bold; font-size: 13px;"
-            )
+                class Fonts:
+                    SIZE_SMALL = 11
 
-            self.species_list.setStyleSheet(
-                f"QListWidget {{ background: {dark_panel}; color: {fg_pri}; "
-                f"border: 1px solid {border}; border-radius: 4px; padding: 4px; }}"
-                f"QListWidget::item {{ padding: 6px; "
-                f"border-bottom: 1px solid {border}; }}"
-                f"QListWidget::item:hover {{ background: {dark_bg}; }}"
+        dark_bg = getattr(Colors, "BG_DARKEST", "#0d1117")
+        dark_panel = getattr(Colors, "BG_DARK", "#161b22")
+        fg_pri = getattr(Colors, "FG_PRIMARY", "#c9d1d9")
+        fg_sec = getattr(Colors, "FG_SECONDARY", "#8b949e")
+        border = getattr(Colors, "BORDER", "#30363d")
+        accent = getattr(Colors, "ACCENT_PRIMARY", "#00bcd4")
+
+        try:
+            font_sz = (
+                int(str(getattr(Fonts, "SIZE_SMALL", 12)).replace("px", "")) + 2
             )
-            btn_style = (
-                f"background: {dark_panel}; color: {accent}; "
-                f"border: 1px solid {accent}; font-size: 11px; font-weight: bold; "
-                f"padding: 4px; border-radius: 3px;"
+        except (ValueError, TypeError, AttributeError):
+            font_sz = 14
+
+        self.figure.patch.set_facecolor(dark_bg)
+        self.canvas.setStyleSheet(f"background-color: {dark_bg};")
+        self.info_label.setStyleSheet(f"color: {fg_sec}; font-size: {font_sz}px;")
+        self.species_header.setStyleSheet(
+            f"color: {fg_pri}; font-weight: bold; font-size: 13px;"
+        )
+
+        self.species_list.setStyleSheet(
+            f"QListWidget {{ background: {dark_panel}; color: {fg_pri}; "
+            f"border: 1px solid {border}; border-radius: 4px; padding: 4px; }}"
+            f"QListWidget::item {{ padding: 6px; "
+            f"border-bottom: 1px solid {border}; }}"
+            f"QListWidget::item:hover {{ background: {dark_bg}; }}"
+        )
+        btn_style = (
+            f"background: {dark_panel}; color: {accent}; "
+            f"border: 1px solid {accent}; font-size: 11px; font-weight: bold; "
+            f"padding: 4px; border-radius: 3px;"
+        )
+        self.select_all_btn.setStyleSheet(btn_style)
+        self.clear_all_btn.setStyleSheet(btn_style)
+
+        if hasattr(self, "splitter"):
+            self.splitter.setStyleSheet(
+                f"QSplitter::handle {{ background-color: {border}; }}"
+                f"QSplitter::handle:horizontal {{ width: 2px; }}"
+                f"QSplitter::handle:hover {{ background-color: {accent}; }}"
             )
-            self.select_all_btn.setStyleSheet(btn_style)
-            self.clear_all_btn.setStyleSheet(btn_style)
-        except Exception:
-            self.figure.patch.set_facecolor("#0d1117")
-            self.canvas.setStyleSheet("background-color: #0d1117;")
-            self.info_label.setStyleSheet("color: #8b949e; font-size: 14px;")
 
     def set_parts(self, parts: list):
         """Update the active parts available for simulation."""
@@ -260,134 +284,6 @@ class SimulateView(QWidget):
                     x_label=x_label,
                     y_label=y_label,
                     title=title,
-                )
-            except Exception:
-                for spine in ax.spines.values():
-                    spine.set_color("#30363d")
-                ax.set_facecolor("#0d1117")
-                self.figure.tight_layout()
-
-        self.canvas.draw()
-
-    def plot_steady_state(self):
-        """Plot the transfer function (Input Repressor vs Output Expression) for
-        Promoters.
-        """
-        from ...analysis.simulation.transfer_curve import calculate_steady_state_curve
-
-        self.control_panel.setVisible(False)
-        self._last_simulation_result = None
-
-        self.info_label.setText(
-            "<b>Steady-State Transfer Curve:</b> Demonstrates the transfer function "
-            "y = y_min + (y_max - y_min) / (1 + (R / K_d)^n) showing how promoter "
-            "output expression changes as a function of input repressor "
-            "concentration R."
-        )
-        self.figure.clear()
-        ax = self.figure.add_subplot(111)
-
-        promoters = [p for p in self._parts if isinstance(p, Promoter)]
-
-        # Fallback to Cello default promoters if active parts cache is empty
-        if not promoters:
-            try:
-                try:
-                    from ...analysis.api.kinetics import CelloKineticsDatabase
-                except ImportError:
-                    from analysis.api.kinetics import CelloKineticsDatabase
-
-                CelloKineticsDatabase.get_parameters("AmtR")
-                classic = CelloKineticsDatabase._classic_params
-                for pid, params in classic.items():
-                    if "y_max" in params:
-                        promoters.append(
-                            Promoter(
-                                id=pid,
-                                name=params.get("description", pid),
-                                y_max=params.get("y_max"),
-                                y_min=params.get("y_min", 0.0),
-                                K_d=params.get("K_d"),
-                                n=params.get("n"),
-                            )
-                        )
-            except Exception:
-                pass
-
-        valid_promoters = [
-            p
-            for p in promoters
-            if p.y_max is not None and p.K_d is not None and p.n is not None
-        ]
-
-        if not valid_promoters:
-            ax.text(
-                0.5,
-                0.5,
-                "No Promoters with quantitative parameters (K_d, y_max, n) found.",
-                ha="center",
-                va="center",
-                color="white",
-                fontsize=12,
-            )
-        else:
-            palette = ["#00bcd4", "#4caf50", "#ff9800", "#e91e63", "#9c27b0", "#03a9f4"]
-
-            for idx, p in enumerate(valid_promoters):
-                y_min = p.y_min if p.y_min is not None else 0.0
-                curve_data = calculate_steady_state_curve(
-                    K_d=p.K_d,
-                    y_max=p.y_max,
-                    y_min=y_min,
-                    n=p.n,
-                )
-
-                color = palette[idx % len(palette)]
-                label = f"{p.id} ({p.name})" if p.name != p.id else p.id
-
-                ax.plot(
-                    curve_data["R"],
-                    curve_data["y"],
-                    label=label,
-                    color=color,
-                    linewidth=2.5,
-                )
-
-                # Vertical marker at Kd threshold
-                ax.axvline(
-                    x=curve_data["K_d"],
-                    color=color,
-                    linestyle="--",
-                    alpha=0.4,
-                )
-
-            ax.set_xscale("log")
-            ax.set_yscale("log")
-            x_label = "Input Repressor Concentration R (RPU)"
-            y_label = "Output Promoter Activity y (RPU)"
-
-            if len(valid_promoters) == 1:
-                p0 = valid_promoters[0]
-                ymin0 = p0.y_min if p0.y_min is not None else 0.0
-                title = (
-                    f"Steady-State Transfer Curve: {p0.id} "
-                    f"(Kd={p0.K_d}, ymax={p0.y_max}, ymin={ymin0}, n={p0.n})"
-                )
-            else:
-                title = (
-                    "Steady-State Transfer Functions "
-                    f"({len(valid_promoters)} Promoters)"
-                )
-
-            try:
-                apply_standard_axes(
-                    ax=ax,
-                    fig=self.figure,
-                    x_label=x_label,
-                    y_label=y_label,
-                    title=title,
-                    is_log_x=True,
-                    is_log_y=True,
                 )
             except Exception:
                 for spine in ax.spines.values():

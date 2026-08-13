@@ -1,8 +1,29 @@
-from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel
-from PyQt6.QtCore import pyqtSignal, Qt
+"""Card widget representing a single biological part in the catalogue."""
+
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QFrame, QLabel, QVBoxLayout
 
 from ...analysis.parts.base import BiologicalPart
-from biopro.ui.theme import Colors, Fonts
+
+try:
+    from biopro.ui.theme import Colors, Fonts
+except ImportError:
+    try:
+        from biopro_sdk.plugin.theme_fallback import Colors, Fonts
+    except ImportError:
+
+        class Colors:
+            BG_DARKEST = "#0d1117"
+            BG_DARK = "#161b22"
+            BG_MEDIUM = "#21262d"
+            FG_PRIMARY = "#e6edf3"
+            FG_SECONDARY = "#8b949e"
+            FG_DISABLED = "#484f58"
+            BORDER = "#30363d"
+            ACCENT_PRIMARY = "#00bcd4"
+
+        class Fonts:
+            SIZE_SMALL = 11
 
 
 class PartCard(QFrame):
@@ -12,6 +33,7 @@ class PartCard(QFrame):
 
     def __init__(self, part: BiologicalPart = None, parent=None):
         super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.part_id = part.id if part else ""
         self.part_name = part.name if part else "Create New Part"
         self.part_type = part.part_type.capitalize() if part else ""
@@ -28,16 +50,12 @@ class PartCard(QFrame):
         layout = QVBoxLayout(self)
 
         if self.is_create_card:
-            self.setStyleSheet(f"""
-                PartCard {{
-                    background: {Colors.BG_MEDIUM};
-                    border: 2px dashed {Colors.BORDER};
-                    border-radius: 8px;
-                }}
-                PartCard:hover {{
-                    border-color: {Colors.ACCENT_PRIMARY};
-                }}
-            """)
+            self.setStyleSheet(
+                f"QFrame {{ background-color: transparent; "
+                f"border: 2px dashed {Colors.BORDER}; border-radius: 8px; }}\n"
+                f"QFrame:hover {{ border-color: {Colors.ACCENT_PRIMARY}; "
+                f"background-color: rgba(255, 255, 255, 0.05); }}"
+            )
             lbl = QLabel("+ Add New Part")
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl.setStyleSheet(
@@ -46,17 +64,12 @@ class PartCard(QFrame):
             )
             layout.addWidget(lbl)
         else:
-            self.setStyleSheet(f"""
-                PartCard {{
-                    background: {Colors.BG_DARK};
-                    border: 1px solid {Colors.BORDER};
-                    border-radius: 8px;
-                }}
-                PartCard:hover {{
-                    border-color: {Colors.ACCENT_PRIMARY};
-                    background: {Colors.BG_MEDIUM};
-                }}
-            """)
+            self.setStyleSheet(
+                f"QFrame {{ background-color: transparent; "
+                f"border: 1px solid {Colors.BORDER}; border-radius: 8px; }}\n"
+                f"QFrame:hover {{ border-color: {Colors.ACCENT_PRIMARY}; "
+                f"background-color: rgba(255, 255, 255, 0.05); }}"
+            )
 
             type_lbl = QLabel(self.part_type)
             type_lbl.setStyleSheet(

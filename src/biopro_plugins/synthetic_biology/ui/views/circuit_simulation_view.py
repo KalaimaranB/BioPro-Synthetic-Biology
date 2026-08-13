@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import List, Optional
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
+from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -35,10 +36,39 @@ from ...analysis.simulation.circuit_engine import CircuitSimulationEngine
 from ...analysis.state import SynBioState
 from ..controllers.circuit_controller import CircuitSimulationController
 
+try:
+    from biopro.ui.theme import Colors, Fonts, theme_manager
+except ImportError:
+    try:
+        from biopro_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
+    except ImportError:
+
+        class Colors:
+            BG_DARKEST = "#0d1117"
+            BG_DARK = "#161b22"
+            BG_MEDIUM = "#21262d"
+            FG_PRIMARY = "#e6edf3"
+            FG_SECONDARY = "#8b949e"
+            FG_DISABLED = "#484f58"
+            BORDER = "#30363d"
+            ACCENT_PRIMARY = "#00bcd4"
+
+        class Fonts:
+            SIZE_SMALL = 11
+
+        class _DummySignal:
+            def connect(self, cb):
+                pass
+
+        class _DummyThemeManager:
+            theme_changed = _DummySignal()
+
+        theme_manager = _DummyThemeManager()
+
 
 class CircuitSimulationView(QWidget):
     """PyQt6 View for predictive genetic circuit kinetic simulation
-    and PyQtGraph plotting.
+    and PyQtGraph plotting with dynamic theme support.
     """
 
     simulation_requested = pyqtSignal(list, list, object)
@@ -50,6 +80,7 @@ class CircuitSimulationView(QWidget):
         parent=None,
     ):
         super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.state = state if state is not None else SynBioState()
         self.controller = (
             controller
@@ -63,6 +94,9 @@ class CircuitSimulationView(QWidget):
         self._init_ui()
         self._connect_signals()
 
+        # Connect global theme change signal
+        theme_manager.theme_changed.connect(self.refresh_styles)
+
         # Load default Repressilator preset
         self._load_preset("Repressilator (3-Gene Oscillator)")
 
@@ -72,14 +106,9 @@ class CircuitSimulationView(QWidget):
         layout.setContentsMargins(12, 12, 12, 12)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setStyleSheet("QSplitter::handle { background-color: #334155; }")
 
         # Left Control Panel: Preset selector & parameters
         left_widget = QGroupBox("Circuit Simulation Parameters")
-        left_widget.setStyleSheet(
-            "QGroupBox { font-weight: bold; color: #38BDF8; "
-            "border: 1px solid #334155; padding-top: 12px; }"
-        )
         left_layout = QVBoxLayout(left_widget)
 
         form = QFormLayout()
@@ -92,9 +121,6 @@ class CircuitSimulationView(QWidget):
                 "Single Inverter (NOT Gate)",
             ]
         )
-        self.preset_combo.setStyleSheet(
-            "background-color: #1E293B; color: white; padding: 4px;"
-        )
         self.preset_combo.currentTextChanged.connect(self._load_preset)
         form.addRow("Circuit Preset:", self.preset_combo)
 
@@ -102,34 +128,26 @@ class CircuitSimulationView(QWidget):
         self.t_end_spin.setRange(10.0, 1000.0)
         self.t_end_spin.setValue(100.0)
         self.t_end_spin.setSuffix(" min")
-        self.t_end_spin.setStyleSheet("background-color: #1E293B; color: white;")
         form.addRow("Sim Time (t_end):", self.t_end_spin)
 
         self.num_points_spin = QSpinBox()
         self.num_points_spin.setRange(100, 5000)
         self.num_points_spin.setValue(500)
-        self.num_points_spin.setStyleSheet("background-color: #1E293B; color: white;")
         form.addRow("Time Points:", self.num_points_spin)
 
         self.hill_n_spin = QDoubleSpinBox()
         self.hill_n_spin.setRange(1.0, 5.0)
         self.hill_n_spin.setValue(2.1)
         self.hill_n_spin.setSingleStep(0.1)
-        self.hill_n_spin.setStyleSheet("background-color: #1E293B; color: white;")
         form.addRow("Hill Coeff (n):", self.hill_n_spin)
 
         self.solver_combo = QComboBox()
         self.solver_combo.addItems(["RK45", "Radau", "BDF", "LSODA"])
-        self.solver_combo.setStyleSheet("background-color: #1E293B; color: white;")
         form.addRow("ODE Solver:", self.solver_combo)
 
         left_layout.addLayout(form)
 
         self.btn_run_sim = QPushButton("▶ Run Predictive Simulation")
-        self.btn_run_sim.setStyleSheet(
-            "background-color: #2563EB; color: white; font-weight: bold; "
-            "padding: 10px; border-radius: 6px; margin-top: 12px;"
-        )
         self.btn_run_sim.clicked.connect(self._on_run_sim_clicked)
         left_layout.addWidget(self.btn_run_sim)
 
@@ -141,19 +159,8 @@ class CircuitSimulationView(QWidget):
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Configure PyQtGraph global options for dark theme
-        pg.setConfigOption("background", "#0F172A")
-        pg.setConfigOption("foreground", "#F8FAFC")
         pg.setConfigOption("antialias", True)
-
         self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setTitle(
-            "Predicted Protein & RNA Expression Levels Over Time",
-            color="#38BDF8",
-            size="12pt",
-        )
-        self.plot_widget.setLabel("left", "Concentration (RPU / au)", color="#F8FAFC")
-        self.plot_widget.setLabel("bottom", "Time (minutes)", color="#F8FAFC")
         self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
         self.plot_widget.addLegend(offset=(10, 10))
 
@@ -163,6 +170,65 @@ class CircuitSimulationView(QWidget):
         splitter.setSizes([260, 640])
 
         layout.addWidget(splitter)
+
+        self.refresh_styles()
+
+    def refresh_styles(self) -> None:
+        """Dynamically update PyQtGraph background and UI styling on theme change."""
+        bg_color = self.palette().color(QPalette.ColorRole.Base).name()
+        fg_color = self.palette().color(QPalette.ColorRole.WindowText).name()
+
+        self.plot_widget.setBackground(bg_color)
+        axis_pen = pg.mkPen(color=fg_color, width=1)
+
+        for axis_name in ("left", "bottom", "top", "right"):
+            axis = self.plot_widget.getPlotItem().getAxis(axis_name)
+            axis.setPen(axis_pen)
+            axis.setTextPen(axis_pen)
+
+        title_color = (
+            Colors.ACCENT_PRIMARY
+            if hasattr(Colors, "ACCENT_PRIMARY")
+            else fg_color
+        )
+        self.plot_widget.setTitle(
+            "Predicted Protein & RNA Expression Levels Over Time",
+            color=title_color,
+            size="12pt",
+        )
+        self.plot_widget.setLabel("left", "Concentration (RPU / au)", color=fg_color)
+        self.plot_widget.setLabel("bottom", "Time (minutes)", color=fg_color)
+
+        view_qss = f"""
+            QComboBox {{
+                background: {Colors.BG_DARK};
+                color: {Colors.FG_PRIMARY};
+                border: 1px solid {Colors.BORDER};
+                border-radius: 4px;
+                padding: 4px 8px;
+            }}
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border-left: none;
+            }}
+            QComboBox::down-arrow {{
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid {Colors.FG_PRIMARY};
+                margin-right: 6px;
+            }}
+            QSplitter::handle {{
+                background-color: {Colors.BORDER};
+            }}
+            QSplitter::handle:hover {{
+                background-color: {Colors.ACCENT_PRIMARY};
+            }}
+        """
+        self.setStyleSheet(view_qss)
 
     def _connect_signals(self):
         # Connect View -> Controller

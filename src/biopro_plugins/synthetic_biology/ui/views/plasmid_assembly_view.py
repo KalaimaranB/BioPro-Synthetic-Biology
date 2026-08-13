@@ -35,11 +35,40 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from ...analysis.models.domain import PlasmidVector, Primer
+from ...analysis.models.domain import PlasmidVector
 from ...analysis.parts.base import BiologicalPart
 from ...analysis.parts.components import CDS, RBS, Promoter, Terminator
 from ...analysis.state import SynBioState
 from ..controllers.plasmid_controller import PlasmidAssemblyController
+
+
+try:
+    from biopro.ui.theme import Colors, Fonts, theme_manager
+except ImportError:
+    try:
+        from biopro_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
+    except ImportError:
+
+        class Colors:
+            BG_DARKEST = "#0d1117"
+            BG_DARK = "#161b22"
+            BG_MEDIUM = "#21262d"
+            FG_PRIMARY = "#e6edf3"
+            FG_SECONDARY = "#8b949e"
+            BORDER = "#30363d"
+            ACCENT_PRIMARY = "#00bcd4"
+
+        class Fonts:
+            SIZE_SMALL = 11
+
+        class _DummySignal:
+            def connect(self, cb):
+                pass
+
+        class _DummyThemeManager:
+            theme_changed = _DummySignal()
+
+        theme_manager = _DummyThemeManager()
 
 
 class PartPaletteWidget(QListWidget):
@@ -47,28 +76,9 @@ class PartPaletteWidget(QListWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setDragEnabled(True)
         self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.setStyleSheet("""
-            QListWidget {
-                background-color: #0F172A;
-                color: #F8FAFC;
-                border: 1px solid #334155;
-                border-radius: 8px;
-                padding: 6px;
-            }
-            QListWidget::item {
-                background-color: #1E293B;
-                border: 1px solid #475569;
-                border-radius: 6px;
-                padding: 8px;
-                margin-bottom: 6px;
-            }
-            QListWidget::item:hover {
-                background-color: #334155;
-                border-color: #3B82F6;
-            }
-        """)
 
     def startDrag(self, supportedActions):
         item = self.currentItem()
@@ -80,44 +90,29 @@ class PartPaletteWidget(QListWidget):
             return
 
         mime_data = QMimeData()
-        mime_data.setData(
-            "application/x-synbio-part", json.dumps(part_data).encode("utf-8")
-        )
+        json_bytes = json.dumps(part_dict_serialize(part_data)).encode("utf-8")
+        mime_data.setData("application/x-synbio-part", json_bytes)
 
         drag = QDrag(self)
         drag.setMimeData(mime_data)
         drag.exec(Qt.DropAction.CopyAction)
 
 
+def part_dict_serialize(part_data: dict) -> dict:
+    return part_data
+
+
 class AssemblyCanvasWidget(QListWidget):
-    """Drop-zone canvas accepting dragged genetic parts to assemble constructs."""
+    """Drop zone for assembly order placement."""
 
     parts_changed = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setAcceptDrops(True)
+        self.setDragEnabled(True)
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-        self.setStyleSheet("""
-            QListWidget {
-                background-color: #0F172A;
-                color: #F8FAFC;
-                border: 2px dashed #3B82F6;
-                border-radius: 10px;
-                padding: 10px;
-            }
-            QListWidget::item {
-                background-color: #1E293B;
-                border: 1px solid #3B82F6;
-                border-radius: 6px;
-                padding: 10px;
-                margin-bottom: 8px;
-            }
-            QListWidget::item:selected {
-                background-color: #2563EB;
-                color: #FFFFFF;
-            }
-        """)
 
     def dragEnterEvent(self, event):
         if (
@@ -157,7 +152,6 @@ class PrimerDesignDialog(QDialog):
         self.target_sequence = target_sequence
         self.setWindowTitle("Automated Primer Designer")
         self.setMinimumWidth(520)
-        self.setStyleSheet("background-color: #0F172A; color: #F8FAFC;")
 
         layout = QVBoxLayout(self)
 
@@ -165,84 +159,66 @@ class PrimerDesignDialog(QDialog):
         self.tm_spin = QDoubleSpinBox()
         self.tm_spin.setRange(45.0, 75.0)
         self.tm_spin.setValue(60.0)
-        self.tm_spin.setStyleSheet("background-color: #1E293B; color: white;")
         form.addRow("Target Tm (°C):", self.tm_spin)
 
         self.fwd_overhang_edit = QLineEdit()
         self.fwd_overhang_edit.setPlaceholderText(
             "e.g. GAATTC (Restriction / Gibson Overhang)"
         )
-        self.fwd_overhang_edit.setStyleSheet("background-color: #1E293B; color: white;")
         form.addRow("Forward Overhang 5':", self.fwd_overhang_edit)
 
         self.rev_overhang_edit = QLineEdit()
         self.rev_overhang_edit.setPlaceholderText(
             "e.g. AAGCTT (Restriction / Gibson Overhang)"
         )
-        self.rev_overhang_edit.setStyleSheet("background-color: #1E293B; color: white;")
         form.addRow("Reverse Overhang 5':", self.rev_overhang_edit)
 
         layout.addLayout(form)
 
         self.btn_design = QPushButton("Design Primers")
-        self.btn_design.setStyleSheet(
-            "background-color: #2563EB; color: white; padding: 8px; border-radius: 4px;"
-        )
         self.btn_design.clicked.connect(self._on_design_clicked)
         layout.addWidget(self.btn_design)
 
         self.result_display = QTextEdit()
         self.result_display.setReadOnly(True)
-        self.result_display.setStyleSheet(
-            "background-color: #1E293B; color: #38BDF8; font-family: monospace;"
-        )
+        self.result_display.setStyleSheet("font-family: monospace;")
         layout.addWidget(self.result_display)
 
-        self.controller.primers_ready.connect(self._on_primers_ready)
-
     def _on_design_clicked(self):
-        self.result_display.setText(
-            "Designing primers with nearest-neighbor thermodynamics..."
-        )
-        self.controller.handle_primer_design_request(
-            target_seq=self.target_sequence,
+        if not self.target_sequence:
+            self.result_display.setText("Error: Target sequence is empty.")
+            return
+
+        primers = self.controller.handle_primer_design(
+            sequence=self.target_sequence,
             target_tm=self.tm_spin.value(),
             fwd_overhang=self.fwd_overhang_edit.text().strip(),
             rev_overhang=self.rev_overhang_edit.text().strip(),
         )
 
-    def _on_primers_ready(self, fwd: Primer, rev: Primer):
-        fwd_tm_info = (
-            f"Length: {fwd.length} bp | Tm: {fwd.calculated_tm} °C | "
-            f"GC: {fwd.gc_content}%"
-        )
-        rev_tm_info = (
-            f"Length: {rev.length} bp | Tm: {rev.calculated_tm} °C | "
-            f"GC: {rev.gc_content}%"
-        )
-        text = (
-            f"=== FORWARD PRIMER ===\n"
-            f"Name: {fwd.name}\n"
-            f"Sequence (5'->3'): {fwd.sequence}\n"
-            f"{fwd_tm_info}\n\n"
-            f"=== REVERSE PRIMER ===\n"
-            f"Name: {rev.name}\n"
-            f"Sequence (5'->3'): {rev.sequence}\n"
-            f"{rev_tm_info}\n"
-        )
-        self.result_display.setText(text)
+        out = "=== AUTOMATED PCR PRIMERS DESIGNED ===\n\n"
+        for p in primers:
+            out += (
+                f"[{p.name}]\nSequence 5'->3': {p.sequence}\n"
+                f"Tm: {p.tm:.1f}°C | GC%: {p.gc_content:.1f}%\n\n"
+            )
+        self.result_display.setText(out)
 
 
 class PlasmidAssemblyView(QWidget):
-    """Primary PyQt6 Plasmid Assembly & Feature Map View."""
+    """PyQt6 View for plasmid assembly, Drag-and-Drop part ordering, and Sequence
+    viewer.
+    """
 
     assembly_requested = pyqtSignal(str, list)
     file_parse_requested = pyqtSignal(str, str)
+    primer_requested = pyqtSignal(str, float, str, str)
 
     def __init__(
         self, state: SynBioState, controller: PlasmidAssemblyController, parent=None
     ):
         super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.state = state
         self.controller = controller
 
@@ -252,13 +228,48 @@ class PlasmidAssemblyView(QWidget):
         # Load default library items
         self._populate_part_library()
 
+        theme_manager.theme_changed.connect(self.refresh_styles)
+
+    def refresh_styles(self) -> None:
+        """Dynamically update styling on theme change."""
+        view_qss = f"""
+            QComboBox {{
+                background: {Colors.BG_DARK};
+                color: {Colors.FG_PRIMARY};
+                border: 1px solid {Colors.BORDER};
+                border-radius: 4px;
+                padding: 4px 8px;
+            }}
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border-left: none;
+            }}
+            QComboBox::down-arrow {{
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid {Colors.FG_PRIMARY};
+                margin-right: 6px;
+            }}
+            QSplitter::handle {{
+                background-color: {Colors.BORDER};
+            }}
+            QSplitter::handle:hover {{
+                background-color: {Colors.ACCENT_PRIMARY};
+            }}
+        """
+        self.setStyleSheet(view_qss)
+        self.update()
+
     def _init_ui(self):
         self.setObjectName("plasmid_assembly_view")
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setStyleSheet("QSplitter::handle { background-color: #334155; }")
 
         # Left Panel: Biological Parts Palette
         left_panel = QWidget()
@@ -266,7 +277,7 @@ class PlasmidAssemblyView(QWidget):
         left_layout.setContentsMargins(0, 0, 0, 0)
 
         lbl_palette = QLabel("🧬 Biological Parts Library")
-        lbl_palette.setStyleSheet("font-size: 14px; font-weight: bold; color: #38BDF8;")
+        lbl_palette.setStyleSheet("font-size: 14px; font-weight: bold;")
         left_layout.addWidget(lbl_palette)
 
         self.part_palette = PartPaletteWidget()
@@ -282,32 +293,18 @@ class PlasmidAssemblyView(QWidget):
         # Toolbar
         toolbar = QHBoxLayout()
         self.name_edit = QLineEdit("pBioPro_v1")
-        self.name_edit.setStyleSheet(
-            "background-color: #1E293B; color: white; padding: 6px; border-radius: 4px;"
-        )
         toolbar.addWidget(QLabel("Plasmid Name:"))
         toolbar.addWidget(self.name_edit)
 
         self.btn_import = QPushButton("📁 Import File")
-        self.btn_import.setStyleSheet(
-            "background-color: #475569; color: white; padding: 6px; border-radius: 4px;"
-        )
         self.btn_import.clicked.connect(self._on_import_clicked)
         toolbar.addWidget(self.btn_import)
 
         self.btn_assemble = QPushButton("⚡ Assemble Construct")
-        self.btn_assemble.setStyleSheet(
-            "background-color: #2563EB; color: white; font-weight: bold; "
-            "padding: 6px; border-radius: 4px;"
-        )
         self.btn_assemble.clicked.connect(self._on_assemble_clicked)
         toolbar.addWidget(self.btn_assemble)
 
         self.btn_primer = QPushButton("🧬 Design Primers")
-        self.btn_primer.setStyleSheet(
-            "background-color: #059669; color: white; font-weight: bold; "
-            "padding: 6px; border-radius: 4px;"
-        )
         self.btn_primer.clicked.connect(self._on_primer_clicked)
         toolbar.addWidget(self.btn_primer)
 
@@ -316,7 +313,6 @@ class PlasmidAssemblyView(QWidget):
         lbl_canvas = QLabel(
             "Drop Parts Below to Assemble Genetic Construct (Drag to Reorder):"
         )
-        lbl_canvas.setStyleSheet("color: #94A3B8; margin-top: 6px;")
         center_layout.addWidget(lbl_canvas)
 
         self.assembly_canvas = AssemblyCanvasWidget()
@@ -330,7 +326,7 @@ class PlasmidAssemblyView(QWidget):
         right_layout.setContentsMargins(0, 0, 0, 0)
 
         lbl_map = QLabel("🗺️ Feature Map & Sequence Viewer")
-        lbl_map.setStyleSheet("font-size: 14px; font-weight: bold; color: #38BDF8;")
+        lbl_map.setStyleSheet("font-size: 14px; font-weight: bold;")
         right_layout.addWidget(lbl_map)
 
         self.feature_table = QTableWidget(0, 5)
@@ -340,19 +336,6 @@ class PlasmidAssemblyView(QWidget):
         self.feature_table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
-        self.feature_table.setStyleSheet("""
-            QTableWidget {
-                background-color: #0F172A;
-                color: #F8FAFC;
-                border: 1px solid #334155;
-                gridline-color: #1E293B;
-            }
-            QHeaderView::section {
-                background-color: #1E293B;
-                color: #38BDF8;
-                font-weight: bold;
-            }
-        """)
         right_layout.addWidget(self.feature_table)
 
         self.seq_display = QTextEdit()
@@ -360,10 +343,7 @@ class PlasmidAssemblyView(QWidget):
         self.seq_display.setPlaceholderText(
             "Assembled sequence display (FASTA / GenBank)..."
         )
-        self.seq_display.setStyleSheet(
-            "background-color: #0F172A; color: #34D399; font-family: monospace; "
-            "border: 1px solid #334155;"
-        )
+        self.seq_display.setStyleSheet("font-family: monospace;")
         right_layout.addWidget(self.seq_display)
 
         splitter.addWidget(right_panel)

@@ -11,7 +11,7 @@ except ImportError:
 
 
 class SimulateRibbon(QWidget):
-    """Ribbon for setting simulation parameters and running."""
+    """Ribbon for setting simulation parameters and running simulations."""
 
     run_simulation = pyqtSignal(int, str)
 
@@ -37,7 +37,6 @@ class SimulateRibbon(QWidget):
         self.method_combo = QComboBox()
         self.method_combo.addItems(
             [
-                "Steady-State Transfer Curve",
                 "Deterministic (ODE)",
                 "Stochastic (Gillespie)",
             ]
@@ -53,8 +52,6 @@ class SimulateRibbon(QWidget):
     def _on_run_clicked(self):
         idx = self.method_combo.currentIndex()
         if idx == 0:
-            method = "steady_state"
-        elif idx == 1:
             method = "ode"
         else:
             method = "gillespie"

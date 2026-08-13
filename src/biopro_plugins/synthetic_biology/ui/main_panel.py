@@ -22,34 +22,43 @@ from PyQt6.QtWidgets import (
 try:
     from biopro.ui.theme import Colors, Fonts, theme_manager
 except ImportError:
+    try:
+        from biopro_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
+    except ImportError:
 
-    class Colors:
-        BG_DARKEST = "#0d1117"
-        BG_DARK = "#161b22"
-        BG_MEDIUM = "#21262d"
-        FG_PRIMARY = "#e6edf3"
-        FG_SECONDARY = "#8b949e"
-        FG_DISABLED = "#484f58"
-        BORDER = "#30363d"
-        ACCENT_PRIMARY = "#00bcd4"
-        ACCENT_NEGATIVE = "#ef5350"
+        class Colors:
+            BG_DARKEST = "#0d1117"
+            BG_DARK = "#161b22"
+            BG_MEDIUM = "#21262d"
+            BG_LIGHT = "#30363d"
+            FG_PRIMARY = "#e6edf3"
+            FG_SECONDARY = "#8b949e"
+            FG_DISABLED = "#484f58"
+            BORDER = "#30363d"
+            BORDER_FOCUS = "#58a6ff"
+            ACCENT_PRIMARY = "#00bcd4"
+            ACCENT_PRIMARY_HOVER = "#0097a7"
+            ACCENT_NEGATIVE = "#ef5350"
 
-    class Fonts:
-        SIZE_SMALL = 11
-        SIZE_TITLE = 24
-        FAMILY_UI = "Inter, sans-serif"
+        class Fonts:
+            SIZE_SMALL = 11
+            SIZE_TITLE = 24
+            FAMILY_UI = "Inter, sans-serif"
 
-    class _DummySignal:
-        def connect(self, cb):
-            pass
+        class _DummySignal:
+            def connect(self, cb):
+                pass
 
-        def disconnect(self, cb):
-            pass
+            def disconnect(self, cb):
+                pass
 
-    class _DummyThemeManager:
-        theme_changed = _DummySignal()
+        class _DummyThemeManager:
+            theme_changed = _DummySignal()
 
-    theme_manager = _DummyThemeManager()
+            def apply_style(self, widget, style_template):
+                pass
+
+        theme_manager = _DummyThemeManager()
 
 # Relative imports — all within this plugin
 from ..analysis.state import SynBioState
@@ -133,6 +142,7 @@ class SynBioPanel(PluginBase):
         from .views.catalogue_view import CatalogueView
         from .views.circuit_simulation_view import CircuitSimulationView
         from .views.crispr_view import CRISPRDesignView
+        from .views.laboratory_execution_view import LaboratoryExecutionView
         from .views.plasmid_assembly_view import PlasmidAssemblyView
         from .views.properties_view import PropertiesView
         from .views.simulate_view import SimulateView
@@ -147,9 +157,11 @@ class SynBioPanel(PluginBase):
         self.plasmid_view = PlasmidAssemblyView(self.state, self._plasmid_controller)
         self.crispr_view = CRISPRDesignView(self.state, self._crispr_controller)
         self.circuit_view = CircuitSimulationView(self.state, self._circuit_controller)
+        self.lab_execution_view = LaboratoryExecutionView()
         self.plasmid_tab = self.plasmid_view
         self.crispr_tab = self.crispr_view
         self.circuit_tab = self.circuit_view
+        self.lab_execution_tab = self.lab_execution_view
 
         # ── Top Tab Bar ───────────────────────────────────────────────
         self._tab_bar = QTabBar()
@@ -160,6 +172,7 @@ class SynBioPanel(PluginBase):
         self._tab_bar.addTab("Plasmid Assembly")
         self._tab_bar.addTab("CRISPR Design")
         self._tab_bar.addTab("Circuit Simulation")
+        self._tab_bar.addTab("Laboratory Execution")
         self._tab_bar.addTab("Simulate")
         self._tab_bar.addTab("Quantitative Data")
         self._tab_bar.addTab("Parts Catalogue")
@@ -174,6 +187,7 @@ class SynBioPanel(PluginBase):
         self._plasmid_ribbon = QWidget()
         self._crispr_ribbon = QWidget()
         self._circuit_sim_ribbon = QWidget()
+        self._lab_execution_ribbon = QWidget()
         self._sim_ribbon = SimulateRibbon(self._factory)
         self._data_ribbon = QWidget()
         self._catalogue_ribbon = CatalogueRibbon(self._factory)
@@ -183,6 +197,7 @@ class SynBioPanel(PluginBase):
         self._ribbon_stack.addWidget(self._plasmid_ribbon)
         self._ribbon_stack.addWidget(self._crispr_ribbon)
         self._ribbon_stack.addWidget(self._circuit_sim_ribbon)
+        self._ribbon_stack.addWidget(self._lab_execution_ribbon)
         self._ribbon_stack.addWidget(self._sim_ribbon)
         self._ribbon_stack.addWidget(self._data_ribbon)
         self._ribbon_stack.addWidget(self._catalogue_ribbon)
@@ -201,6 +216,7 @@ class SynBioPanel(PluginBase):
         self._central_stack.addWidget(self.plasmid_view)
         self._central_stack.addWidget(self.crispr_view)
         self._central_stack.addWidget(self.circuit_view)
+        self._central_stack.addWidget(self.lab_execution_view)
         self._central_stack.addWidget(self._simulate_view)
         self._central_stack.addWidget(self._properties_view)
         self._central_stack.addWidget(self._catalogue_view)
@@ -247,10 +263,7 @@ class SynBioPanel(PluginBase):
                 self._parts_cache = catalogue.get_all_parts()
             self._simulate_view.set_parts(self._parts_cache)
 
-        if method == "steady_state":
-            self._simulate_view.plot_steady_state()
-        else:
-            self._simulate_view.plot_time_series(max_time=max_time, method=method)
+        self._simulate_view.plot_time_series(max_time=max_time, method=method)
 
     def _on_tab_changed(self, index: int) -> None:
         """Handle main tab changes to update ribbon and central view."""
@@ -268,23 +281,79 @@ class SynBioPanel(PluginBase):
         elif index == 4:
             self._central_stack.setCurrentWidget(self.circuit_view)
         elif index == 5:
+            self._central_stack.setCurrentWidget(self.lab_execution_view)
+        elif index == 6:
             self._central_stack.setCurrentWidget(self._simulate_view)
             if not self._parts_cache:
                 catalogue = self._factory.get("parts_catalogue")
                 if catalogue:
                     self._parts_cache = catalogue.get_all_parts()
                 self._simulate_view.set_parts(self._parts_cache)
-            self._simulate_view.plot_steady_state()
-        elif index == 6:
-            self._central_stack.setCurrentWidget(self._properties_view)
+            self._simulate_view.plot_time_series(max_time=100, method="ode")
         elif index == 7:
+            self._central_stack.setCurrentWidget(self._properties_view)
+        elif index == 8:
             self._central_stack.setCurrentWidget(self._catalogue_view)
         else:
             self._central_stack.setCurrentWidget(self._circuit_canvas)
 
     def _apply_theme_styles(self) -> None:
         """Dynamically refresh all UI colors based on the current theme."""
-        self.setStyleSheet(f"background: {Colors.BG_DARKEST};")
+        global_qss = f"""
+            SynBioPanel, QWidget#SynBioPanel {{
+                background: {Colors.BG_DARKEST};
+                color: {Colors.FG_PRIMARY};
+            }}
+            QComboBox {{
+                background: {Colors.BG_DARK};
+                color: {Colors.FG_PRIMARY};
+                border: 1px solid {Colors.BORDER};
+                border-radius: 4px;
+                padding: 4px 8px;
+            }}
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border-left: none;
+            }}
+            QComboBox::down-arrow {{
+                width: 0;
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid {Colors.FG_PRIMARY};
+                margin-right: 6px;
+            }}
+            QComboBox::down-arrow:on {{
+                border-top: none;
+                border-bottom: 5px solid {Colors.FG_PRIMARY};
+            }}
+            QComboBox QAbstractItemView {{
+                background: {Colors.BG_DARKEST};
+                color: {Colors.FG_PRIMARY};
+                selection-background-color: {Colors.ACCENT_PRIMARY};
+                border: 1px solid {Colors.BORDER};
+            }}
+            QSplitter::handle {{
+                background-color: {Colors.BORDER};
+            }}
+            QSplitter::handle:horizontal {{
+                width: 2px;
+            }}
+            QSplitter::handle:vertical {{
+                height: 2px;
+            }}
+            QSplitter::handle:hover {{
+                background-color: {Colors.ACCENT_PRIMARY};
+            }}
+            QFrame[frameShape="4"], QFrame[frameShape="5"],
+            QFrame#HorizontalSeparator, QFrame#VerticalSeparator {{
+                background-color: {Colors.BORDER};
+                border: none;
+            }}
+        """
+        self.setStyleSheet(global_qss)
 
         if hasattr(self, "_tab_bar"):
             self._tab_bar.setStyleSheet(
