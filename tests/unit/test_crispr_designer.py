@@ -1,10 +1,10 @@
 """Unit tests for CRISPR/Cas9 Guide RNA Designer & CFD Off-Target Scorer."""
 
 import pytest
-from biopro_plugins.synthetic_biology.analysis.crispr.grna_designer import (
+from analysis.crispr.grna_designer import (
     CRISPRDesignEngine,
 )
-from biopro_plugins.synthetic_biology.analysis.models.domain import gRNACandidate
+from analysis.models.domain import gRNACandidate
 
 
 @pytest.mark.unit

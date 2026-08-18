@@ -8,7 +8,19 @@ import pytest
 ROOT_DIR = Path(__file__).resolve().parents[2]
 TOML_PATH = ROOT_DIR / "pyproject.toml"
 DEPRECATED_MANIFEST_PATH = ROOT_DIR / "manifest.json.deprecated"
-INIT_PATH = ROOT_DIR / "src" / "biopro_plugins" / "synthetic_biology" / "__init__.py"
+LEGACY_INIT = (
+    ROOT_DIR
+    / "plugin_template"
+    / "biopro_plugin"
+    / "src"
+    / "biopro"
+    / "__init__.py"
+)
+INIT_PATH = (
+    ROOT_DIR / "__init__.py"
+    if (ROOT_DIR / "__init__.py").exists()
+    else LEGACY_INIT
+)
 
 
 class TestManifest:

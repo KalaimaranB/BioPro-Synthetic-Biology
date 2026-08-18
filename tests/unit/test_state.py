@@ -86,3 +86,33 @@ class TestSynBioState:
         """Verify the conftest fixture works."""
         assert isinstance(empty_state, SynBioState)
         assert empty_state.data.parts == []
+
+    def test_circuit_components_and_edges_properties(self):
+        """Verify circuit_components, circuit_edges, and plasmid properties."""
+        from analysis.models.domain import (
+            CircuitComponent,
+            CircuitEdge,
+            PlasmidVector,
+        )
+
+        state = SynBioState()
+        assert state.circuit_components == []
+        assert state.circuit_edges == []
+        assert state.plasmid is None
+
+        c1 = CircuitComponent(id="TetR", name="TetR", component_type="cds")
+        e1 = CircuitEdge(
+            source_id="TetR", target_id="LacI", interaction_type="repression"
+        )
+        p1 = PlasmidVector(id="p1", name="Plasmid 1")
+
+        state.circuit_components = [c1]
+        state.circuit_edges = [e1]
+        state.plasmid = p1
+
+        assert len(state.circuit_components) == 1
+        assert state.circuit_components[0].id == "TetR"
+        assert len(state.circuit_edges) == 1
+        assert state.circuit_edges[0].source_id == "TetR"
+        assert state.plasmid is not None
+        assert state.plasmid.id == "p1"

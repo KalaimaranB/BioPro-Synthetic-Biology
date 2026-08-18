@@ -1,8 +1,8 @@
 import os
-from biopro.plugins.synthetic_biology.analysis.catalogue.repository import (
+from analysis.catalogue.repository import (
     JsonPartRepository,
 )
-from biopro.plugins.synthetic_biology.analysis.catalogue.service import (
+from analysis.catalogue.service import (
     PartsCatalogueService,
 )
 

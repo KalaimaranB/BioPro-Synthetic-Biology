@@ -3,21 +3,21 @@
 import pytest
 from PyQt6.QtWidgets import QApplication
 
-from biopro_plugins.synthetic_biology.analysis.state import SynBioState
-from biopro_plugins.synthetic_biology.ui.controllers.plasmid_controller import (
+from analysis.state import SynBioState
+from ui.controllers.plasmid_controller import (
     PlasmidAssemblyController,
 )
-from biopro_plugins.synthetic_biology.ui.controllers.crispr_controller import (
+from ui.controllers.crispr_controller import (
     CRISPRDesignController,
 )
-from biopro_plugins.synthetic_biology.ui.controllers.circuit_controller import (
+from ui.controllers.circuit_controller import (
     CircuitSimulationController,
 )
-from biopro_plugins.synthetic_biology.ui.views.plasmid_assembly_view import (
+from ui.views.plasmid_assembly_view import (
     PlasmidAssemblyView,
 )
-from biopro_plugins.synthetic_biology.ui.views.crispr_view import CRISPRDesignView
-from biopro_plugins.synthetic_biology.ui.views.circuit_simulation_view import (
+from ui.views.crispr_view import CRISPRDesignView
+from ui.views.circuit_simulation_view import (
     CircuitSimulationView,
 )
 

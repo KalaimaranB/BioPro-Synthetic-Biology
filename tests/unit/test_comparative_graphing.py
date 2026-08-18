@@ -6,20 +6,11 @@ from matplotlib.figure import Figure
 
 from analysis.parts.components import Promoter, CDS
 
-try:
-    from analysis.prediction.sequence_predictor import (
-        identify_wildtype,
-        compare_kinetics,
-    )
-    from analysis.prediction.graphing_utils import generate_transfer_curve
-except ImportError:
-    from biopro_plugins.synthetic_biology.analysis.prediction.sequence_predictor import (  # noqa: E501
-        identify_wildtype,
-        compare_kinetics,
-    )
-    from biopro_plugins.synthetic_biology.analysis.prediction.graphing_utils import (
-        generate_transfer_curve,
-    )
+from analysis.prediction.sequence_predictor import (
+    identify_wildtype,
+    compare_kinetics,
+)
+from analysis.prediction.graphing_utils import generate_transfer_curve
 
 
 def test_identify_wildtype():

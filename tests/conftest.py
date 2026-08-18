@@ -5,7 +5,8 @@ from unittest.mock import MagicMock
 # Ensure src and plugin paths are in sys.path
 root_dir = Path(__file__).parent.parent
 src_dir = root_dir / "src"
-plugin_dir = src_dir / "biopro_plugins" / "synthetic_biology"
+plugin_dir = root_dir / "plugin_template" / "biopro_plugin" / "src" / "biopro"
+plugin_src_dir = root_dir / "plugin_template" / "biopro_plugin" / "src"
 
 if str(src_dir) in sys.path:
     sys.path.remove(str(src_dir))
@@ -13,10 +14,11 @@ if str(root_dir) in sys.path:
     sys.path.remove(str(root_dir))
 if str(plugin_dir) in sys.path:
     sys.path.remove(str(plugin_dir))
+if str(plugin_src_dir) in sys.path:
+    sys.path.remove(str(plugin_src_dir))
 
-sys.path.insert(0, str(root_dir))
 sys.path.insert(0, str(src_dir))
-sys.path.insert(0, str(plugin_dir))
+sys.path.insert(0, str(root_dir))
 
 import pytest  # noqa: E402
 from PyQt6.QtWidgets import QLabel, QPushButton, QSplitter, QWidget  # noqa: E402
@@ -107,26 +109,71 @@ mock_components.BioToggleButton = DummyButton
 mock_components.BioSpinBox = DummySpinBox
 mock_biopro_sdk_plugin.components = mock_components
 
+sys.modules["karcytics_sdk"] = MagicMock()
+sys.modules["karcytics_sdk.plugin"] = mock_biopro_sdk_plugin
+sys.modules["karcytics_sdk.plugin.components"] = mock_components
+sys.modules["karcytics_sdk.plugin.events"] = MagicMock()
+sys.modules["karcytics_sdk.plugin.workflow"] = MagicMock()
+sys.modules["karcytics_sdk.plugin.tasks"] = mock_tasks
+
 sys.modules["biopro_sdk"] = MagicMock()
 sys.modules["biopro_sdk.plugin"] = mock_biopro_sdk_plugin
 sys.modules["biopro_sdk.plugin.components"] = mock_components
 sys.modules["biopro_sdk.plugin.events"] = MagicMock()
 sys.modules["biopro_sdk.plugin.workflow"] = MagicMock()
 
-# Mock biopro core and UI as well
-mock_biopro = MagicMock()
-mock_biopro.__path__ = []
-sys.modules["biopro"] = mock_biopro
-mock_biopro_plugins = MagicMock()
-mock_biopro_plugins.__path__ = []
-sys.modules["biopro.plugins"] = mock_biopro_plugins
+try:
+    import sbol3  # noqa: F401
+except ImportError:
+    sys.modules["sbol3"] = MagicMock()
 
-import biopro_plugins.synthetic_biology  # noqa: E402, F401
+try:
+    import pyqtgraph  # noqa: F401
+except ImportError:
+    sys.modules["pyqtgraph"] = MagicMock()
 
-sys.modules["biopro.plugins.synthetic_biology"] = sys.modules[
-    "biopro_plugins.synthetic_biology"
-]
-sys.modules["biopro.ui"] = MagicMock()
+import importlib.abc  # noqa: E402
+import importlib.util  # noqa: E402
+import types  # noqa: E402
+
+biopro_plugins_mod = types.ModuleType("biopro_plugins")
+sys.modules["biopro_plugins"] = biopro_plugins_mod
+
+src_mod = types.ModuleType("src")
+src_mod.biopro_plugins = biopro_plugins_mod
+sys.modules["src"] = src_mod
+sys.modules["src.biopro_plugins"] = biopro_plugins_mod
+
+
+class BioproAliasLoader(importlib.abc.Loader):
+    def __init__(self, target_name):
+        self.target_name = target_name
+
+    def create_module(self, spec):
+        return importlib.import_module(self.target_name)
+
+    def exec_module(self, module):
+        pass
+
+
+class BioproAliasFinder(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path, target=None):
+        prefix1 = "src.biopro_plugins.synthetic_biology."
+        prefix2 = "biopro_plugins.synthetic_biology."
+        if fullname.startswith(prefix1):
+            target_name = fullname[len(prefix1):]
+            return importlib.util.spec_from_loader(
+                fullname, BioproAliasLoader(target_name)
+            )
+        elif fullname.startswith(prefix2):
+            target_name = fullname[len(prefix2):]
+            return importlib.util.spec_from_loader(
+                fullname, BioproAliasLoader(target_name)
+            )
+        return None
+
+
+sys.meta_path.insert(0, BioproAliasFinder())
 
 
 class DummyThemeMeta(type):

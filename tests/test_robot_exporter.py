@@ -5,10 +5,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from biopro_plugins.synthetic_biology.analysis.assembly.protocol_engine import (
+from analysis.assembly.protocol_engine import (
     ProtocolEngine,
 )
-from biopro_plugins.synthetic_biology.utils.robot_exporter import (
+from utils.robot_exporter import (
     RobotExportError,
     TransferInstruction,
     WorklistGenerator,

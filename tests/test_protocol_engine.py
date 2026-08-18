@@ -1,7 +1,7 @@
 """Unit tests for ProtocolEngine (Phase 2 Build Assembly Protocol Engine)."""
 
 import unittest
-from biopro_plugins.synthetic_biology.analysis.assembly.protocol_engine import (
+from analysis.assembly.protocol_engine import (
     AssemblyProtocolError,
     BenchProtocol,
     MasterMixResult,

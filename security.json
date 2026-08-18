@@ -1,7 +1,7 @@
 {
     "security_version": 1,
     "plugin_id": "synthetic_biology",
-    "manifest_hash": "be3d53e39818fe3f65714db0bd03a688618e58dbc42fc537c997827d685c0142",
+    "manifest_hash": "9cb9d76d2cb63714c32f4a8edc3bfc040ea2f914550aab8f06530e26550a045e",
     "exclusions": [],
     "hashes": {
         ".pre-commit-config.yaml": "29243b367556333244a04acc31ef48fe5d2c7c8ebb84bfedec7ada197260863a",

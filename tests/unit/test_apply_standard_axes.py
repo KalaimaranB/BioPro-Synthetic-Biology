@@ -5,12 +5,7 @@ import matplotlib
 matplotlib.use("QtAgg")
 from matplotlib.figure import Figure
 
-try:
-    from analysis.prediction.graphing_utils import apply_standard_axes
-except ImportError:
-    from biopro_plugins.synthetic_biology.analysis.prediction.graphing_utils import (
-        apply_standard_axes,
-    )
+from analysis.prediction.graphing_utils import apply_standard_axes
 
 
 def test_apply_standard_axes_formatting():

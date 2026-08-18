@@ -14,18 +14,11 @@ from analysis.catalogue.repository import JsonPartRepository
 from analysis.catalogue.service import PartsCatalogueService
 from analysis.parts.components import CDS, Promoter
 
-try:
-    from analysis.prediction.sequence_predictor import (
-        SequencePredictor,
-        levenshtein_distance,
-        translate_dna_to_protein,
-    )
-except ImportError:
-    from biopro_plugins.synthetic_biology.analysis.prediction.sequence_predictor import (  # noqa: E501
-        SequencePredictor,
-        levenshtein_distance,
-        translate_dna_to_protein,
-    )
+from analysis.prediction.sequence_predictor import (
+    SequencePredictor,
+    levenshtein_distance,
+    translate_dna_to_protein,
+)
 
 
 def test_levenshtein_distance():

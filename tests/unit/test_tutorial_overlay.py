@@ -16,7 +16,7 @@ try:
         SYNTHETIC_BIOLOGY_TUTORIAL_STEPS,
     )
 except ImportError:
-    from biopro.plugins.synthetic_biology.ui.wizards.tutorial_overlay import (
+    from ui.wizards.tutorial_overlay import (
         AcademyTutorialDialog,
         SYNTHETIC_BIOLOGY_TUTORIAL_STEPS,
     )

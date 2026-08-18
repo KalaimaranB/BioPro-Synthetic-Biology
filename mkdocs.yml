@@ -1,9 +1,9 @@
-site_name: BioPro Synthetic Biology Documentation
+site_name: Synthetic Biology Module Documentation
 site_url: https://KalaimaranB.github.io/BioPro-SyntheticBiology
-site_description: Documentation for the BioPro Synthetic Biology plugin.
+site_description: Documentation for the Synthetic Biology Module.
 site_author: Kalaimaran Balasothy
 
-repo_name: BioPro Synthetic Biology
+repo_name: Synthetic Biology Module
 repo_url: https://github.com/KalaimaranB/BioPro-SyntheticBiology
 
 theme:

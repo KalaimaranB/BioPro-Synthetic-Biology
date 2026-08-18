@@ -1,10 +1,10 @@
 """Unit tests for Vector Assembly Engine and Biopython integration."""
 
 import pytest
-from biopro_plugins.synthetic_biology.analysis.assembly.vector_builder import (
+from analysis.assembly.vector_builder import (
     VectorAssemblyEngine,
 )
-from biopro_plugins.synthetic_biology.analysis.parts.components import (
+from analysis.parts.components import (
     CDS,
     Promoter,
     Terminator,

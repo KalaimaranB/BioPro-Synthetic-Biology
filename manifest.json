@@ -1,9 +1,10 @@
 {
     "id": "synthetic_biology",
-    "name": "Synthetic Biology Workspace",
+    "name": "Synthetic Biology Module",
     "version": "0.1.0",
     "manifest_version": 2,
     "min_core_version": "2.0.0",
+    "entry_point": "ui.main_panel:SynBioPanel",
     "description": "Biological logic gate construction, orthogonality checking, and kinetic simulation for synthetic genetic circuits.",
     "authors": [
         {

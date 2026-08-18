@@ -1,0 +1,7 @@
+{
+  "id": "synthetic_biology",
+  "name": "Synthetic Biology Module",
+  "version": "0.1.0",
+  "description": "Synthetic Biology Module for Karcytics Host Application",
+  "entry_point": "get_plugin"
+}

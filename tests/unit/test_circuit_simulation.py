@@ -1,10 +1,10 @@
 """Unit tests for NetworkX & SciPy Predictive Circuit Simulation Engine."""
 
 import pytest
-from biopro_plugins.synthetic_biology.analysis.simulation.circuit_engine import (
+from analysis.simulation.circuit_engine import (
     CircuitSimulationEngine,
 )
-from biopro_plugins.synthetic_biology.analysis.models.domain import (
+from analysis.models.domain import (
     SimulationParameters,
     SimulationResult,
 )

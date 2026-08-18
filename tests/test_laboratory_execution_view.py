@@ -4,10 +4,10 @@ import unittest
 
 try:
     import PyQt6.QtCore  # noqa: F401
-    from biopro_plugins.synthetic_biology.analysis.assembly.protocol_engine import (
+    from analysis.assembly.protocol_engine import (
         BenchProtocol,
     )
-    from biopro_plugins.synthetic_biology.ui.views.laboratory_execution_view import (
+    from ui.views.laboratory_execution_view import (
         ProtocolWorker,
     )
     HAS_PYQT6 = True
