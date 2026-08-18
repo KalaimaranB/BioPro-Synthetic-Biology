@@ -36,4 +36,4 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install ruff
-      - run: ruff check analysis/ ui/ tests/
+      - run: ruff check src/ tests/
