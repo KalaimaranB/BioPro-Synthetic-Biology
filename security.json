@@ -1,7 +1,7 @@
 {
     "security_version": 1,
     "plugin_id": "synthetic_biology",
-    "manifest_hash": "b9842979bc921c4c06840e7b7d0afb5b44bb8c02e1b69823c950b5ae3dc3d86f",
+    "manifest_hash": "b405b550df685e448b462eab7889682e0b703c902e0b78e7873d74bc05db3fce",
     "exclusions": [
         "tests"
     ],
@@ -78,6 +78,7 @@
         "src/karcytics_plugins/synthetic_biology/ui/widgets/part_inspector.py": "564b64b5fa50b5cd24287e92c074b546d88106b52b4f4583f3b02f831261218a",
         "src/karcytics_plugins/synthetic_biology/ui/wizards/__init__.py": "e4e342030a56c96f7d5f95aba3fc48d5462a17d14e6366c8b0d3f560c334d83d",
         "src/karcytics_plugins/synthetic_biology/ui/wizards/tutorial_overlay.py": "95a1b3209db4ba3e33ddfff2d3a054a5c36cff0ccd37df1298ee8ddf5df7cc83",
+        "src/karcytics_plugins/synthetic_biology/ui_daemon.py": "6a68df96709b676942a19637101a11c8eee0707e8869c012bb7a02725b3917d7",
         "src/karcytics_plugins/synthetic_biology/utils/__init__.py": "0dda65bbb80c0638bef7a96093c410614e686e4c46700b5122ee4c8f4d1ec4e8",
         "src/karcytics_plugins/synthetic_biology/utils/robot_exporter.py": "9fd27cad67b1102fb124ca7acf6c642171805e951a0304aed489a6b5115e9e73"
     }
