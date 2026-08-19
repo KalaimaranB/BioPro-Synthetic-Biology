@@ -110,7 +110,6 @@ class PropertiesView(QWidget):
         # Header
         title = QLabel(f"<b>{part.id}</b> ({part.__class__.__name__})")
 
-
         self.form_layout.addRow(title)
         self.form_layout.addRow(QLabel(f"<i>{part.name}</i>"))
 

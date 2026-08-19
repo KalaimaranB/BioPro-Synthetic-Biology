@@ -97,9 +97,8 @@ def test_ml_optimization_loop():
 
 def test_empirical_controller_teardown():
     from karcytics_plugins.synthetic_biology.analysis.state import SynBioState
-    from karcytics_plugins.synthetic_biology.ui.controllers.empirical_controller import (
-        EmpiricalAnalyticsController,
-    )
+    import karcytics_plugins.synthetic_biology.ui.controllers.empirical_controller as ec
+    EmpiricalAnalyticsController = ec.EmpiricalAnalyticsController
 
     state = SynBioState()
     controller = EmpiricalAnalyticsController(state)

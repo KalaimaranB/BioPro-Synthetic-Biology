@@ -12,11 +12,14 @@ from typing import Any, Dict, List, Optional
 
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import (
+    QApplication,
+    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
     QFrame,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
@@ -25,14 +28,17 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QSpinBox,
-    QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 
 from ...analysis.assembly.protocol_engine import (
     BenchProtocol,
@@ -99,7 +105,6 @@ class ProtocolWorker(QThread):
             self.error.emit(str(exc))
 
 
-from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 
 
 class LaboratoryExecutionView(QWidget):
@@ -328,10 +333,7 @@ class LaboratoryExecutionView(QWidget):
             ["Reagent Component", "Per Reaction (µL)", "Total Master Mix (µL)"]
         )
         if (hv := self.table_master_mix.horizontalHeader()) is not None:
-
-            hv.setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+            hv.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         mm_layout.addWidget(self.table_master_mix)
         output_splitter.addWidget(mm_widget)
 
@@ -356,10 +358,7 @@ class LaboratoryExecutionView(QWidget):
             ]
         )
         if (hv := self.table_pipetting.horizontalHeader()) is not None:
-
-            hv.setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+            hv.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         pip_layout.addWidget(self.table_pipetting)
         output_splitter.addWidget(pip_widget)
 
@@ -417,10 +416,7 @@ class LaboratoryExecutionView(QWidget):
             ]
         )
         if (hv := self.table_worklist.horizontalHeader()) is not None:
-
-            hv.setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+            hv.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         table_layout.addWidget(self.table_worklist)
 
         layout.addWidget(table_box)
@@ -448,10 +444,7 @@ class LaboratoryExecutionView(QWidget):
             ]
         )
         if (hv := self.table_inventory.horizontalHeader()) is not None:
-
-            hv.setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+            hv.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         box_layout.addWidget(self.table_inventory)
 
         layout.addWidget(box)

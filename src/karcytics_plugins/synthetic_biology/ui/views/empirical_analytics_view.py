@@ -161,10 +161,7 @@ class EmpiricalAnalyticsView(QWidget):
             ]
         )
         if (hv := self.fcs_table.horizontalHeader()) is not None:
-
-            hv.setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+            hv.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.fcs_table)
 
         return container
@@ -217,10 +214,7 @@ class EmpiricalAnalyticsView(QWidget):
             ]
         )
         if (hv := self.ngs_table.horizontalHeader()) is not None:
-
-            hv.setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+            hv.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.ngs_table)
 
         return container
@@ -258,10 +252,7 @@ class EmpiricalAnalyticsView(QWidget):
             ["Component", "Parameter", "Original", "Optimized", "Delta %"]
         )
         if (hv := self.ml_table.horizontalHeader()) is not None:
-
-            hv.setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+            hv.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         # Right Widget: PyQtGraph Comparison Plot
         plot_container = QWidget(splitter)
@@ -320,10 +311,8 @@ class EmpiricalAnalyticsView(QWidget):
         comps = self.state.circuit_components
         edgs = self.state.circuit_edges
         if not comps:
-            # Load preset repressilator components for demonstration if empty
-            from karcytics_plugins.synthetic_biology.analysis.simulation.circuit_engine import (
-                CircuitSimulationEngine,
-            )
+            import karcytics_plugins.synthetic_biology.analysis.simulation.circuit_engine as ce
+            CircuitSimulationEngine = ce.CircuitSimulationEngine
 
             comps, edgs = CircuitSimulationEngine.create_preset_repressilator()
         self.controller.run_ml_optimization(comps, edgs, self._active_fcs_data)

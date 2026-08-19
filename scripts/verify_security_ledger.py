@@ -43,7 +43,10 @@ def main() -> int:
     manifest_file = ROOT / "pyproject.toml"
 
     if not security_file.exists():
-        print("No security.json found yet — nothing to verify. Run 'karcytics-sdk sign .' first.")
+        print(
+            "No security.json found yet — nothing to verify. "
+            "Run 'karcytics-sdk sign .' first."
+        )
         return 0
 
     security_data = json.loads(security_file.read_text(encoding="utf-8"))
@@ -61,7 +64,7 @@ def main() -> int:
     for rel_path, expected_hash in security_data.get("hashes", {}).items():
         file_path = ROOT / rel_path
         if not file_path.exists():
-            errors.append(f"{rel_path} is listed in security.json but no longer exists.")
+            errors.append(f"{rel_path} is listed but no longer exists.")
             continue
         if hash_file(file_path) != expected_hash:
             errors.append(f"{rel_path} has changed since it was signed.")

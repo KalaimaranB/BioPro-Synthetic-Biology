@@ -88,7 +88,6 @@ class DesignRibbon(QWidget):
     def _apply_theme(self):
         from karcytics_sdk.plugin.theme_fallback import Colors
 
-
         combo_style = f"""
             QComboBox {{
                 background: {Colors.BG_DARK};

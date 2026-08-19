@@ -151,10 +151,7 @@ class CRISPRDesignView(QWidget):
             ]
         )
         if (hv := self.grna_table.horizontalHeader()) is not None:
-
-            hv.setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+            hv.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.grna_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.grna_table.itemSelectionChanged.connect(self._on_table_selection_changed)
         bottom_layout.addWidget(self.grna_table, stretch=2)

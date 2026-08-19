@@ -307,10 +307,7 @@ class PlasmidAssemblyView(QWidget):
             ["Name", "Type", "Start", "End", "Strand"]
         )
         if (hv := self.feature_table.horizontalHeader()) is not None:
-
-            hv.setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+            hv.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         right_layout.addWidget(self.feature_table)
 
         self.seq_display = QTextEdit()

@@ -106,6 +106,7 @@ class MockComponents:
     BioToggleButton: Any
     BioSpinBox: Any
 
+
 mock_components = MockComponents()
 mock_components.PrimaryButton = DummyButton
 mock_components.SecondaryButton = DummyButton
@@ -121,14 +122,17 @@ mock_components.BioToggleButton = DummyButton
 mock_components.BioSpinBox = DummySpinBox
 mock_karcytics_sdk_plugin.components = mock_components
 
+
 class DummyThemeMeta(type):
     def __getattr__(cls, name):
         if name.startswith("SIZE"):
             return "12"
         return "#000000"
 
+
 class DummyColors(metaclass=DummyThemeMeta):
     pass
+
 
 sys.modules["karcytics_sdk"] = MagicMock()
 sys.modules["karcytics_sdk.plugin"] = mock_karcytics_sdk_plugin  # type: ignore
@@ -186,9 +190,6 @@ class BioproAliasFinder(importlib.abc.MetaPathFinder):
 
 
 sys.meta_path.insert(0, BioproAliasFinder())
-
-
-
 
 
 class DummyFonts(metaclass=DummyThemeMeta):
