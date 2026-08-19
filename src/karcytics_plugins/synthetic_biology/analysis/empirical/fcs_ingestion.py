@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -25,7 +25,7 @@ class FCSChannelStats:
     std_intensity: float
     gated_percentage: float = 100.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "channel_name": self.channel_name,
             "event_count": self.event_count,
@@ -42,14 +42,14 @@ class FCSEventData:
 
     file_path: str
     total_events: int = 0
-    channels: List[str] = field(default_factory=list)
-    channel_stats: Dict[str, FCSChannelStats] = field(default_factory=dict)
-    time_series_expression: Dict[str, List[float]] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    channels: list[str] = field(default_factory=list)
+    channel_stats: dict[str, FCSChannelStats] = field(default_factory=dict)
+    time_series_expression: dict[str, list[float]] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     is_valid: bool = True
     error_message: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "file_path": self.file_path,
             "total_events": self.total_events,
@@ -69,7 +69,7 @@ class FCSDataIngestionService:
     module endpoints via duck typing, or fallback processing routines.
     """
 
-    def __init__(self, flow_cytometry_plugin_endpoint: Optional[Any] = None) -> None:
+    def __init__(self, flow_cytometry_plugin_endpoint: Any | None = None) -> None:
         self._flow_plugin = flow_cytometry_plugin_endpoint
 
     def bind_flow_plugin(self, plugin_endpoint: Any) -> None:
@@ -105,9 +105,7 @@ class FCSDataIngestionService:
         # 2. Local fallback parsing implementation
         return self._local_fcs_parser(file_path)
 
-    def _map_external_plugin_result(
-        self, file_path: str, raw_result: Any
-    ) -> FCSEventData:
+    def _map_external_plugin_result(self, file_path: str, raw_result: Any) -> FCSEventData:
         """Map raw dictionary or object from external plugin to FCSEventData."""
         if isinstance(raw_result, dict):
             channels = raw_result.get("channels", ["FITC-A", "PE-A"])
@@ -138,8 +136,8 @@ class FCSDataIngestionService:
         rng = np.random.default_rng(seed=hash(filename) % (2**32))
         event_count = 10000
 
-        stats: Dict[str, FCSChannelStats] = {}
-        time_series: Dict[str, List[float]] = {}
+        stats: dict[str, FCSChannelStats] = {}
+        time_series: dict[str, list[float]] = {}
 
         # Default synthetic reporter expression curves for model training
         time_points = 50

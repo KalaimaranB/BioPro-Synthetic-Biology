@@ -25,14 +25,9 @@ def test_tutorial_overlay_initialization():
     assert dlg.windowFlags() & Qt.WindowType.FramelessWindowHint
     assert dlg.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
     assert dlg.current_step == 0
-    assert (
-        dlg.step_counter_label.text()
-        == f"Step 1 of {len(SYNTHETIC_BIOLOGY_TUTORIAL_STEPS)}"
-    )
+    assert dlg.step_counter_label.text() == f"Step 1 of {len(SYNTHETIC_BIOLOGY_TUTORIAL_STEPS)}"
     assert dlg.title_label.text() == SYNTHETIC_BIOLOGY_TUTORIAL_STEPS[0]["title"]
-    assert dlg.progress_bar.value() == int(
-        (1 / len(SYNTHETIC_BIOLOGY_TUTORIAL_STEPS)) * 100
-    )
+    assert dlg.progress_bar.value() == int((1 / len(SYNTHETIC_BIOLOGY_TUTORIAL_STEPS)) * 100)
 
 
 def test_tutorial_overlay_navigation():
@@ -46,10 +41,7 @@ def test_tutorial_overlay_navigation():
     # Click Next -> Step 1
     dlg._next_step()
     assert dlg.current_step == 1
-    assert (
-        dlg.step_counter_label.text()
-        == f"Step 2 of {len(SYNTHETIC_BIOLOGY_TUTORIAL_STEPS)}"
-    )
+    assert dlg.step_counter_label.text() == f"Step 2 of {len(SYNTHETIC_BIOLOGY_TUTORIAL_STEPS)}"
     assert not dlg.back_btn.isHidden()
 
     # Click Prev -> Step 0

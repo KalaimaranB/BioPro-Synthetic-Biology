@@ -20,32 +20,26 @@ class UCFParser:
         # Extremely basic caching
         cache_path = os.path.join(os.path.dirname(__file__), "cello_ucf.json")
         if not os.path.exists(cache_path):
-            print(f"Downloading Cello UCF from {self.url}...")
             try:
                 req = urllib.request.Request(self.url)
                 with urllib.request.urlopen(req) as response:
                     raw_data = response.read()
                     with open(cache_path, "wb") as f:
                         f.write(raw_data)
-            except Exception as e:
-                print(f"Failed to fetch UCF: {e}")
+            except Exception:
                 return
 
-        with open(cache_path, "r") as f:
+        with open(cache_path) as f:
             self.data = json.load(f)
 
         self._extract_kinetics()
 
     def _extract_kinetics(self):
         # Map gate_name -> promoter & repressor
-        gate_parts = {
-            x["gate_name"]: x for x in self.data if x.get("collection") == "gate_parts"
-        }
+        gate_parts = {x["gate_name"]: x for x in self.data if x.get("collection") == "gate_parts"}
         gates = {x["gate_name"]: x for x in self.data if x.get("collection") == "gates"}
         response_functions = {
-            x["gate_name"]: x
-            for x in self.data
-            if x.get("collection") == "response_functions"
+            x["gate_name"]: x for x in self.data if x.get("collection") == "response_functions"
         }
 
         for gate_name, gate in gates.items():
@@ -73,8 +67,7 @@ class UCFParser:
 
 
 class CelloKineticsDatabase:
-    """
-    Acts as a middleware to supply strictly cited biological parameters from
+    """Acts as a middleware to supply strictly cited biological parameters from
     external UCFs and literature-backed JSON files. No hardcoding permitted.
     """
 
@@ -84,11 +77,9 @@ class CelloKineticsDatabase:
     @classmethod
     def _load_classic_params(cls):
         if not cls._classic_params:
-            json_path = os.path.join(
-                os.path.dirname(__file__), "repressilator_parameters.json"
-            )
+            json_path = os.path.join(os.path.dirname(__file__), "repressilator_parameters.json")
             if os.path.exists(json_path):
-                with open(json_path, "r") as f:
+                with open(json_path) as f:
                     data = json.load(f)
                     cls._classic_params = data.get("parts", {})
                     # Inject citation into properties

@@ -85,7 +85,7 @@ class SynBioPanel(PluginBase):
 
     # ── UI Construction ───────────────────────────────────────────────
 
-    def _setup_ui(self) -> None:
+    def _setup_ui(self) -> None:  # noqa: PLR0915
         """Build the workspace layout with ribbons and central canvas/view."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -243,21 +243,19 @@ class SynBioPanel(PluginBase):
         self._ribbon_stack.setCurrentIndex(index)
 
         # Switch central view based on tab index
-        if index == 0:
+        if index in {0, 1}:
             self._central_stack.setCurrentWidget(self._circuit_canvas)
-        elif index == 1:
-            self._central_stack.setCurrentWidget(self._circuit_canvas)
-        elif index == 2:
+        elif index == 2:  # noqa: PLR2004
             self._central_stack.setCurrentWidget(self.plasmid_view)
-        elif index == 3:
+        elif index == 3:  # noqa: PLR2004
             self._central_stack.setCurrentWidget(self.crispr_view)
-        elif index == 4:
+        elif index == 4:  # noqa: PLR2004
             self._central_stack.setCurrentWidget(self.circuit_view)
-        elif index == 5:
+        elif index == 5:  # noqa: PLR2004
             self._central_stack.setCurrentWidget(self.empirical_analytics_view)
-        elif index == 6:
+        elif index == 6:  # noqa: PLR2004
             self._central_stack.setCurrentWidget(self.lab_execution_view)
-        elif index == 7:
+        elif index == 7:  # noqa: PLR2004
             self._central_stack.setCurrentWidget(self._simulate_view)
             if not self._parts_cache:
                 catalogue = self._factory.get("parts_catalogue")
@@ -265,9 +263,9 @@ class SynBioPanel(PluginBase):
                     self._parts_cache = catalogue.get_all_parts()
                 self._simulate_view.set_parts(self._parts_cache)
             self._simulate_view.plot_time_series(max_time=100, method="ode")
-        elif index == 8:
+        elif index == 8:  # noqa: PLR2004
             self._central_stack.setCurrentWidget(self._properties_view)
-        elif index == 9:
+        elif index == 9:  # noqa: PLR2004
             self._central_stack.setCurrentWidget(self._catalogue_view)
         else:
             self._central_stack.setCurrentWidget(self._circuit_canvas)
@@ -346,8 +344,7 @@ class SynBioPanel(PluginBase):
 
         if hasattr(self, "_ribbon_stack"):
             self._ribbon_stack.setStyleSheet(
-                f"background: {Colors.BG_DARK}; "
-                f"border-bottom: 1px solid {Colors.BORDER};"
+                f"background: {Colors.BG_DARK}; border-bottom: 1px solid {Colors.BORDER};"
             )
 
         # Deep recursion for sub-widgets

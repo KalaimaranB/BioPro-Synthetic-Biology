@@ -19,7 +19,7 @@ def initialize(context=None):
         The host context object supplied by the Karcytics core (may be None
         during headless / test invocations).
 
-    Returns
+    Returns:
     -------
     BioProPlugin
         A fully-constructed plugin instance ready to be mounted by the host.
@@ -35,9 +35,7 @@ class BioProPlugin:
     ``cleanup``, and ``shutdown``.
     """
 
-    def __init__(
-        self, plugin_id: str = "synthetic_biology", parent: object | None = None
-    ):
+    def __init__(self, plugin_id: str = "synthetic_biology", parent: object | None = None):
         self.plugin_id = plugin_id
         self._parent = parent
         self._panel = None

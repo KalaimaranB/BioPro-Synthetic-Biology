@@ -105,9 +105,7 @@ class TestInventoryModels(unittest.TestCase):
             "gc_content": 45.0,
             "overhang": "",
         }
-        oligo = Oligo.from_phase1_primer(
-            primer_dict, plate_id="P1", well_position="H12"
-        )
+        oligo = Oligo.from_phase1_primer(primer_dict, plate_id="P1", well_position="H12")
         self.assertEqual(oligo.name, "pUC19_REV")
         self.assertEqual(oligo.tm, 60.5)
         self.assertEqual(oligo.well_position, "H12")

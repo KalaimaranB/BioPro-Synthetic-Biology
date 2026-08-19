@@ -70,11 +70,9 @@ class PartCard(QFrame):
             layout.addStretch()
 
             desc_text = (
-                self.part_description
-                if self.part_description
-                else "No description available."
+                self.part_description if self.part_description else "No description available."
             )
-            if len(desc_text) > 60:
+            if len(desc_text) > 60:  # noqa: PLR2004
                 desc_text = desc_text[:57] + "..."
 
             desc_lbl = QLabel(desc_text)

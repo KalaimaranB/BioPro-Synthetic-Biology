@@ -17,9 +17,7 @@ class TestCircuitState:
         assert state.simulation_results == {}
 
     def test_to_dict(self):
-        state = CircuitState(
-            parts=[{"id": "p1"}], connections=[{"src": "p1", "dst": "p2"}]
-        )
+        state = CircuitState(parts=[{"id": "p1"}], connections=[{"src": "p1", "dst": "p2"}])
         d = state.to_dict()
         assert d["parts"] == [{"id": "p1"}]
         assert d["connections"] == [{"src": "p1", "dst": "p2"}]
@@ -105,9 +103,7 @@ class TestSynBioState:
         assert state.plasmid is None
 
         c1 = CircuitComponent(id="TetR", name="TetR", component_type="cds")
-        e1 = CircuitEdge(
-            source_id="TetR", target_id="LacI", interaction_type="repression"
-        )
+        e1 = CircuitEdge(source_id="TetR", target_id="LacI", interaction_type="repression")
         p1 = PlasmidVector(id="p1", name="Plasmid 1")
 
         state.circuit_components = [c1]

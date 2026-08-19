@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
-
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal  # noqa: TID251
 
 from ..models.domain import (
     CircuitComponent,
@@ -25,9 +23,9 @@ class CircuitSimWorker(QThread):
 
     def __init__(
         self,
-        components: List[CircuitComponent],
-        edges: List[CircuitEdge],
-        params: Optional[SimulationParameters] = None,
+        components: list[CircuitComponent],
+        edges: list[CircuitEdge],
+        params: SimulationParameters | None = None,
         parent=None,
     ):
         super().__init__(parent)

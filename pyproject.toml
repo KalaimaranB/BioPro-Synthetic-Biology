@@ -71,13 +71,7 @@ pythonpath = ["src"]
 addopts = "-v --tb=short"
 timeout = 120
 
-# ── Ruff ──────────────────────────────────────────────────────────────────────
-[tool.ruff]
-line-length = 88
-target-version = "py311"
-
-[tool.ruff.lint]
-select = ["E", "F", "I"]
+# Ruff config lives in ruff.toml (matches the flow-cytometry reference module).
 
 # ── Mypy ──────────────────────────────────────────────────────────────────────
 [tool.mypy]
@@ -102,11 +96,6 @@ module = [
     "karcytics.*",
 ]
 ignore_missing_imports = true
-
-# ── Pyright ───────────────────────────────────────────────────────────────────
-[tool.pyright]
-include = ["src", "tests"]
-extraPaths = ["src"]
 
 # ── uv ────────────────────────────────────────────────────────────────────────
 [tool.uv.sources]

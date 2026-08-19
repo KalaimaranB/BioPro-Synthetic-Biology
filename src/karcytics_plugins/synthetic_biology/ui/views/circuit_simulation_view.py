@@ -8,8 +8,6 @@ CircuitSimulationController signals & slots.
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 import pyqtgraph as pg
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
@@ -48,21 +46,19 @@ class CircuitSimulationView(QWidget):
 
     def __init__(
         self,
-        state: Optional[SynBioState] = None,
-        controller: Optional[CircuitSimulationController] = None,
+        state: SynBioState | None = None,
+        controller: CircuitSimulationController | None = None,
         parent=None,
     ):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.state = state if state is not None else SynBioState()
         self.controller = (
-            controller
-            if controller is not None
-            else CircuitSimulationController(self.state)
+            controller if controller is not None else CircuitSimulationController(self.state)
         )
 
-        self._active_components: List[CircuitComponent] = []
-        self._active_edges: List[CircuitEdge] = []
+        self._active_components: list[CircuitComponent] = []
+        self._active_edges: list[CircuitEdge] = []
 
         self._init_ui()
         self._connect_signals()
@@ -160,9 +156,7 @@ class CircuitSimulationView(QWidget):
             axis.setPen(axis_pen)
             axis.setTextPen(axis_pen)
 
-        title_color = (
-            Colors.ACCENT_PRIMARY if hasattr(Colors, "ACCENT_PRIMARY") else fg_color
-        )
+        title_color = Colors.ACCENT_PRIMARY if hasattr(Colors, "ACCENT_PRIMARY") else fg_color
         self.plot_widget.setTitle(
             "Predicted Protein & RNA Expression Levels Over Time",
             color=title_color,
@@ -239,12 +233,8 @@ class CircuitSimulationView(QWidget):
                 initial_concentration=0.0,
             )
             edges = [
-                CircuitEdge(
-                    source_id="LacI", target_id="TetR", interaction_type="repression"
-                ),
-                CircuitEdge(
-                    source_id="TetR", target_id="LacI", interaction_type="repression"
-                ),
+                CircuitEdge(source_id="LacI", target_id="TetR", interaction_type="repression"),
+                CircuitEdge(source_id="TetR", target_id="LacI", interaction_type="repression"),
             ]
             self._active_components = [c1, c2]
             self._active_edges = edges
@@ -294,9 +284,7 @@ class CircuitSimulationView(QWidget):
             solver_method=self.solver_combo.currentText(),
         )
 
-        self.simulation_requested.emit(
-            self._active_components, self._active_edges, params
-        )
+        self.simulation_requested.emit(self._active_components, self._active_edges, params)
 
     @pyqtSlot(SimulationResult)
     def render_simulation_results(self, result: SimulationResult):
@@ -317,9 +305,7 @@ class CircuitSimulationView(QWidget):
             "#A855F7",  # Purple
         ]
 
-        for idx, (species_name, conc_values) in enumerate(
-            result.species_concentrations.items()
-        ):
+        for idx, (species_name, conc_values) in enumerate(result.species_concentrations.items()):
             color = color_palette[idx % len(color_palette)]
             pen = pg.mkPen(color=color, width=2.5)
             self.plot_widget.plot(t_points, conc_values, name=species_name, pen=pen)

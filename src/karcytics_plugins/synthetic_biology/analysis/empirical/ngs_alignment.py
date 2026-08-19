@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..models.domain import PlasmidVector
 
@@ -26,9 +26,9 @@ class VariantFlag:
     severity: str  # 'Low', 'Medium', 'High', 'Critical'
     affected_feature: str
     description: str
-    off_target_score: Optional[float] = None
+    off_target_score: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "position": self.position,
@@ -52,11 +52,11 @@ class NGSAlignmentResult:
     total_reads_aligned: int = 0
     mean_coverage: float = 0.0
     mapped_percentage: float = 0.0
-    variants: List[VariantFlag] = field(default_factory=list)
+    variants: list[VariantFlag] = field(default_factory=list)
     status_message: str = "Alignment complete"
     success: bool = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "sample_name": self.sample_name,
             "reference_plasmid_id": self.reference_plasmid_id,
@@ -70,7 +70,7 @@ class NGSAlignmentResult:
 
 
 class NGSAlignmentService:
-    """Domain service for performing sequence alignment and variant calling
+    """Domain service for performing sequence alignment and variant calling.
 
     against Phase 1 plasmid constructs.
     """
@@ -86,9 +86,7 @@ class NGSAlignmentService:
         Identifies point mutations, frame-shifts, and potential CRISPR off-target
         cleavage sites.
         """
-        sample_name = (
-            os.path.basename(ngs_file_path) if ngs_file_path else "NGS_Sample_01"
-        )
+        sample_name = os.path.basename(ngs_file_path) if ngs_file_path else "NGS_Sample_01"
         plasmid_id = reference_plasmid.id if reference_plasmid else "Unknown_Plasmid"
         ref_seq = reference_plasmid.sequence if reference_plasmid else ""
 
@@ -96,13 +94,13 @@ class NGSAlignmentService:
             # Generate reference mock sequence if plasmid has empty sequence
             ref_seq = "ATGCGTACGTTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC" * 20
 
-        variants: List[VariantFlag] = []
+        variants: list[VariantFlag] = []
 
         # 1. Check feature regions on plasmid to associate variants with CDS/Promoter
         features = reference_plasmid.features if reference_plasmid else []
 
         # 2. Flag mock variants for demonstration / unit testing
-        if len(ref_seq) > 50:
+        if len(ref_seq) > 50:  # noqa: PLR2004
             feat_name = features[0].name if features else "Promoter_pTet"
             variants.append(
                 VariantFlag(
@@ -118,7 +116,7 @@ class NGSAlignmentService:
                 )
             )
 
-        if len(ref_seq) > 150:
+        if len(ref_seq) > 150:  # noqa: PLR2004
             feat_name = features[1].name if len(features) > 1 else "CDS_TetR"
             variants.append(
                 VariantFlag(

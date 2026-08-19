@@ -10,8 +10,8 @@ from __future__ import annotations
 import re
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 
 def generate_plasmid_barcode(prefix: str = "PLSM") -> str:
@@ -97,7 +97,7 @@ class StorageLocation:
             well=gd["well"],
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serializes the StorageLocation into a dictionary payload."""
         return {
             "freezer": self.freezer,
@@ -108,7 +108,7 @@ class StorageLocation:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> StorageLocation:
+    def from_dict(cls, data: dict[str, Any]) -> StorageLocation:
         """Deserializes a dictionary payload into a StorageLocation instance."""
         return cls(
             freezer=str(data.get("freezer", "")),
@@ -130,11 +130,11 @@ class Reagent:
     concentration: float
     volume_ul: float
     concentration_unit: str = "uM"
-    storage_location: Optional[StorageLocation] = None
-    barcode: Optional[str] = None
-    expiration_date: Optional[str] = None
-    supplier: Optional[str] = None
-    catalog_number: Optional[str] = None
+    storage_location: StorageLocation | None = None
+    barcode: str | None = None
+    expiration_date: str | None = None
+    supplier: str | None = None
+    catalog_number: str | None = None
 
     def __post_init__(self) -> None:
         """Validates reagent numerical properties and assigns barcode if absent."""
@@ -143,13 +143,11 @@ class Reagent:
                 f"Reagent concentration cannot be negative (got {self.concentration})."
             )
         if self.volume_ul < 0:
-            raise ValueError(
-                f"Reagent volume_ul cannot be negative (got {self.volume_ul})."
-            )
+            raise ValueError(f"Reagent volume_ul cannot be negative (got {self.volume_ul}).")
         if not self.barcode and self.storage_location:
             self.barcode = f"RGT-{self.id}-{self.storage_location.well.upper()}"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serializes the Reagent model to a dictionary representation."""
         return {
             "id": self.id,
@@ -168,7 +166,7 @@ class Reagent:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> Reagent:
+    def from_dict(cls, data: dict[str, Any]) -> Reagent:
         """Deserializes dictionary data into a Reagent model instance."""
         storage_loc = None
         if data.get("storage_location"):
@@ -205,8 +203,8 @@ class Oligo:
     purification: str = "Standard Desalt"
     modifications_5prime: str = ""
     modifications_3prime: str = ""
-    storage_location: Optional[StorageLocation] = None
-    barcode: Optional[str] = None
+    storage_location: StorageLocation | None = None
+    barcode: str | None = None
 
     def __post_init__(self) -> None:
         """Normalizes and validates oligonucleotide sequence data."""
@@ -222,7 +220,7 @@ class Oligo:
         return len(self.sequence)
 
     @classmethod
-    def from_phase1_primer(
+    def from_phase1_primer(  # noqa: PLR0913, PLR0917
         cls,
         primer: Any,
         plate_id: str = "PLATE-01",
@@ -231,7 +229,7 @@ class Oligo:
         purification: str = "Standard Desalt",
         modifications_5prime: str = "",
         modifications_3prime: str = "",
-        storage_location: Optional[StorageLocation] = None,
+        storage_location: StorageLocation | None = None,
     ) -> Oligo:
         """Parses thermodynamic primer outputs from Phase 1 into a purchase-ready
         Oligo instance.
@@ -289,7 +287,7 @@ class Oligo:
             storage_location=storage_location,
         )
 
-    def to_vendor_order_format(self) -> Dict[str, str]:
+    def to_vendor_order_format(self) -> dict[str, str]:
         """Formats oligonucleotide specifications into standard vendor ordering
         parameters (e.g., IDT, Eurofins bulk upload format).
         """
@@ -304,7 +302,7 @@ class Oligo:
             "Well": self.well_position,
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serializes the Oligo model instance into a dictionary payload."""
         return {
             "id": self.id,
@@ -326,7 +324,7 @@ class Oligo:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> Oligo:
+    def from_dict(cls, data: dict[str, Any]) -> Oligo:
         """Deserializes a dictionary payload into an Oligo model instance."""
         storage_loc = None
         if data.get("storage_location"):
@@ -360,11 +358,9 @@ class PlasmidInventoryItem:
     vector_backbone: str
     lot_number: str
     barcode: str = field(default_factory=generate_plasmid_barcode)
-    storage_location: Optional[StorageLocation] = None
-    concentration_ng_ul: Optional[float] = None
-    created_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    storage_location: StorageLocation | None = None
+    concentration_ng_ul: float | None = None
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def __post_init__(self) -> None:
         """Ensures sequence is normalized and valid barcode is present."""
@@ -372,7 +368,7 @@ class PlasmidInventoryItem:
         if not self.barcode:
             self.barcode = generate_plasmid_barcode()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serializes the PlasmidInventoryItem into a dictionary representation."""
         return {
             "id": self.id,
@@ -389,7 +385,7 @@ class PlasmidInventoryItem:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> PlasmidInventoryItem:
+    def from_dict(cls, data: dict[str, Any]) -> PlasmidInventoryItem:
         """Deserializes dictionary payload into a PlasmidInventoryItem instance."""
         storage_loc = None
         if data.get("storage_location"):
@@ -407,7 +403,5 @@ class PlasmidInventoryItem:
                 if data.get("concentration_ng_ul") is not None
                 else None
             ),
-            created_at=str(
-                data.get("created_at", datetime.now(timezone.utc).isoformat())
-            ),
+            created_at=str(data.get("created_at", datetime.now(UTC).isoformat())),
         )

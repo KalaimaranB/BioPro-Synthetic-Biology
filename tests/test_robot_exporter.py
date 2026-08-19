@@ -57,9 +57,7 @@ class TestRobotExporter(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             csv_path = Path(tmpdir) / "tecan_worklist.csv"
-            result_path = WorklistGenerator.export_transfers_to_tecan_csv(
-                transfers, csv_path
-            )
+            result_path = WorklistGenerator.export_transfers_to_tecan_csv(transfers, csv_path)
             self.assertTrue(result_path.exists())
 
             # Read back CSV and verify exact columns and values

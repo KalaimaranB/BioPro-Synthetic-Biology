@@ -13,9 +13,10 @@ Uses the Strategy Pattern to route prediction queries:
    catalogue as a safe fallback.
 """
 
+import contextlib
 import math
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 def levenshtein_distance(seq1: str, seq2: str) -> int:
@@ -454,9 +455,9 @@ class PredictionStrategy(ABC):
     def predict(
         self,
         query_sequence: str,
-        candidate_parts: List[Any],
-        **kwargs,
-    ) -> Dict[str, Any]:
+        candidate_parts: list[Any],
+        **kwargs,  # noqa: ARG002 — accepts caller-supplied extra options across predictor variants
+    ) -> dict[str, Any]:
         """Execute parameter prediction for the given query sequence."""
         pass
 
@@ -468,14 +469,14 @@ class KNNPredictionStrategy(PredictionStrategy):
     scanning fails.
     """
 
-    def predict(
+    def predict(  # noqa: C901, PLR0912
         self,
         query_sequence: str,
-        candidate_parts: List[Any],
+        candidate_parts: list[Any],
         part_type: str = "promoter",
         k: int = 3,
-        **kwargs,
-    ) -> Dict[str, Any]:
+        **kwargs,  # noqa: ARG002 — accepts caller-supplied extra options across predictor variants
+    ) -> dict[str, Any]:
         clean_query = query_sequence.upper().strip()
         if not clean_query:
             return {
@@ -497,14 +498,12 @@ class KNNPredictionStrategy(PredictionStrategy):
         if not valid_candidates:
             return {
                 "is_predicted": False,
-                "error": (
-                    f"No candidate parts with sequence found for type '{part_type}'."
-                ),
+                "error": (f"No candidate parts with sequence found for type '{part_type}'."),
                 "parameters": {},
             }
 
         # Calculate Levenshtein distance for each candidate
-        distances: List[Tuple[Any, int]] = []
+        distances: list[tuple[Any, int]] = []
         for part in valid_candidates:
             dist = levenshtein_distance(clean_query, part.sequence)
             distances.append((part, dist))
@@ -525,7 +524,7 @@ class KNNPredictionStrategy(PredictionStrategy):
         else:
             param_names = []
 
-        predicted_params: Dict[str, float | None] = {}
+        predicted_params: dict[str, float | None] = {}
 
         if exact_match:
             best_part = exact_match[0][0]
@@ -551,14 +550,14 @@ class KNNPredictionStrategy(PredictionStrategy):
                     "distance": dist,
                     "weight": round(w / total_weight, 4),
                 }
-                for (part, dist), w in zip(top_k, weights)
+                for (part, dist), w in zip(top_k, weights, strict=False)
             ]
 
             for pname in param_names:
                 weighted_sum = 0.0
                 valid_weight_sum = 0.0
 
-                for (part, dist), w in zip(top_k, weights):
+                for (part, _dist), w in zip(top_k, weights, strict=False):
                     val = getattr(part, pname, None)
                     if val is not None:
                         try:
@@ -585,8 +584,7 @@ class KNNPredictionStrategy(PredictionStrategy):
             "top_match_id": top_id,
             "top_match_distance": top_dist,
             "status_message": (
-                f"⚡ [Predicted via {len(top_k)}-NN] Top match: {top_id} "
-                f"(distance: {top_dist})"
+                f"⚡ [Predicted via {len(top_k)}-NN] Top match: {top_id} (distance: {top_dist})"
             ),
             "parameters": predicted_params,
             "neighbors": weights_info,
@@ -657,9 +655,7 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
         19: 4.5,  # 2 bp extension strain
     }
 
-    def _compute_hexamer_penalty(
-        self, hexamer: str, pwm_table: List[Dict[str, float]]
-    ) -> float:
+    def _compute_hexamer_penalty(self, hexamer: str, pwm_table: list[dict[str, float]]) -> float:
         """Compute thermodynamic penalty for a 6 bp hexamer sequence against PWM
         matrix.
         """
@@ -671,7 +667,7 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
             penalty += pos_dict.get(nuc, 2.5)  # Default penalty for N or unknown base
         return penalty
 
-    def _scan_sliding_window(self, sequence: str) -> Optional[Dict[str, Any]]:
+    def _scan_sliding_window(self, sequence: str) -> dict[str, Any] | None:
         """Scan input DNA string across all sliding window positions and spacer
         lengths.
 
@@ -719,8 +715,8 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
 
         return best_details
 
-    def _map_penalty_to_parameters(self, penalty: float) -> Dict[str, float]:
-        """Map thermodynamic binding penalty (kB*T) to transfer curve parameters:
+    def _map_penalty_to_parameters(self, penalty: float) -> dict[str, float]:
+        """Map thermodynamic binding penalty (kB*T) to transfer curve parameters.
 
         - y_max: Exponential decay with penalty from reference maximum (250 RPU)
           down to floor (0.05 RPU).
@@ -732,9 +728,7 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
         y_max_ref = 250.0
         y_max_floor = 0.05
         decay_rate_ymax = 0.35
-        y_max = y_max_floor + (y_max_ref - y_max_floor) * math.exp(
-            -decay_rate_ymax * penalty
-        )
+        y_max = y_max_floor + (y_max_ref - y_max_floor) * math.exp(-decay_rate_ymax * penalty)
 
         kd_base = 0.05
         growth_rate_kd = 0.4
@@ -753,9 +747,9 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
     def predict(
         self,
         query_sequence: str,
-        candidate_parts: List[Any],
-        **kwargs,
-    ) -> Dict[str, Any]:
+        candidate_parts: list[Any],
+        **kwargs,  # noqa: ARG002 — accepts caller-supplied extra options across predictor variants
+    ) -> dict[str, Any]:
         clean_query = "".join(c for c in query_sequence.upper() if c in "ACGTN")
         if not clean_query or len(clean_query) < self.MIN_WINDOW_LEN:
             raise ValueError(
@@ -792,9 +786,7 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
         # Run PWM sliding window alignment
         window_match = self._scan_sliding_window(clean_query)
         if not window_match:
-            raise ValueError(
-                "Failed to locate valid -35/-10 promoter window in sequence."
-            )
+            raise ValueError("Failed to locate valid -35/-10 promoter window in sequence.")
 
         penalty = window_match["total_penalty"]
         params = self._map_penalty_to_parameters(penalty)
@@ -886,9 +878,7 @@ class CDSStructuralStrategy(PredictionStrategy):
         rate = rate_min + (rate_max - rate_min) * (cai**1.5)
         return round(max(rate_min, min(rate_max, rate)), 4)
 
-    def _compute_blosum62_penalty(
-        self, aa_query: str, aa_ref: str
-    ) -> Tuple[float, int]:
+    def _compute_blosum62_penalty(self, aa_query: str, aa_ref: str) -> tuple[float, int]:
         """Compute protein structural instability penalty using BLOSUM62 matrix.
 
         For substituted position i:
@@ -916,9 +906,7 @@ class CDSStructuralStrategy(PredictionStrategy):
         length_diff = abs(len(aa_query) - len(aa_ref))
         total_penalty += length_diff * 4.0
 
-        penalty_norm = (total_penalty / float(max(1, len(aa_ref)))) + (
-            substitutions * 0.8
-        )
+        penalty_norm = (total_penalty / float(max(1, len(aa_ref)))) + (substitutions * 0.8)
         return penalty_norm, substitutions
 
     def _map_penalty_to_degradation_rate(
@@ -945,20 +933,19 @@ class CDSStructuralStrategy(PredictionStrategy):
 
         return round(max(0.001, base_deg_rate), 4)
 
-    def predict(
+    def predict(  # noqa: C901, PLR0912, PLR0915
         self,
         query_sequence: str,
-        candidate_parts: List[Any],
-        **kwargs,
-    ) -> Dict[str, Any]:
+        candidate_parts: list[Any],
+        **kwargs,  # noqa: ARG002 — accepts caller-supplied extra options across predictor variants
+    ) -> dict[str, Any]:
         clean_query = "".join(c for c in query_sequence.upper() if c in "ACGTN")
         if not clean_query:
             raise ValueError("Empty sequence provided for CDS prediction.")
 
         if len(clean_query) % 3 != 0:
             raise ValueError(
-                f"CDS DNA sequence length ({len(clean_query)} bp) is not a "
-                "multiple of 3."
+                f"CDS DNA sequence length ({len(clean_query)} bp) is not a multiple of 3."
             )
 
         # Translate query DNA to amino acid string using standard bacterial genetic code
@@ -986,16 +973,12 @@ class CDSStructuralStrategy(PredictionStrategy):
                             "k_neighbors_used": "CAI & BLOSUM62 Stability Model",
                             "top_match_id": part.id,
                             "top_match_distance": 0,
-                            "status_message": (
-                                "⚡ [Predicted via CAI & BLOSUM62 Stability Model]"
-                            ),
+                            "status_message": ("⚡ [Predicted via CAI & BLOSUM62 Stability Model]"),
                             "parameters": {
                                 "translation_rate": float(val_trans)
                                 if val_trans is not None
                                 else 0.1,
-                                "degradation_rate": float(val_deg)
-                                if val_deg is not None
-                                else 0.01,
+                                "degradation_rate": float(val_deg) if val_deg is not None else 0.01,
                             },
                         }
 
@@ -1016,9 +999,7 @@ class CDSStructuralStrategy(PredictionStrategy):
                 try:
                     protein_ref = translate_dna_to_protein(clean_ref_dna)
                     top_match_id = "WildType Baseline"
-                    top_match_dist = str(
-                        levenshtein_distance(clean_query, clean_ref_dna)
-                    )
+                    top_match_dist = str(levenshtein_distance(clean_query, clean_ref_dna))
                     structural_penalty, sub_count = self._compute_blosum62_penalty(
                         protein_query, protein_ref
                     )
@@ -1040,9 +1021,7 @@ class CDSStructuralStrategy(PredictionStrategy):
                 # Prefer candidates with distance > 0 so query sequence isn't
                 # compared against itself
                 non_self = [
-                    p
-                    for p in valid_cds_candidates
-                    if p.sequence.upper().strip() != clean_query
+                    p for p in valid_cds_candidates if p.sequence.upper().strip() != clean_query
                 ]
                 pool = non_self if non_self else valid_cds_candidates
 
@@ -1060,10 +1039,8 @@ class CDSStructuralStrategy(PredictionStrategy):
                     top_match_dist = str(best_dist)
                     cand_deg = getattr(best_candidate, "degradation_rate", None)
                     if cand_deg is not None:
-                        try:
+                        with contextlib.suppress(ValueError, TypeError):
                             base_deg_rate = float(cand_deg)
-                        except (ValueError, TypeError):
-                            pass
 
                     try:
                         protein_ref = translate_dna_to_protein(best_candidate.sequence)
@@ -1122,11 +1099,11 @@ class SequencePredictor:
     def predict(
         cls,
         query_sequence: str,
-        candidate_parts: List[Any],
+        candidate_parts: list[Any],
         part_type: str = "promoter",
         k: int = 3,
-        **kwargs,
-    ) -> Dict[str, Any]:
+        **kwargs,  # noqa: ARG002 — accepts caller-supplied extra options across predictor variants
+    ) -> dict[str, Any]:
         """Predict kinetic parameters using strategy routing.
 
         Args:
@@ -1186,8 +1163,8 @@ class SequencePredictor:
         cls,
         mutated_sequence: str,
         catalogue_db: Any,
-        part_type: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
+        part_type: str | None = None,
+    ) -> dict[str, Any] | None:
         """Identify wild type baseline part with lowest Levenshtein distance > 0."""
         return identify_wildtype(mutated_sequence, catalogue_db, part_type=part_type)
 
@@ -1196,19 +1173,19 @@ class SequencePredictor:
         cls,
         mutated_sequence: str,
         catalogue_db: Any,
-        part_type: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        part_type: str | None = None,
+    ) -> dict[str, Any]:
         """Dual parameter extraction contrasting wild type baseline vs mutated
         sequence.
         """
         return compare_kinetics(mutated_sequence, catalogue_db, part_type=part_type)
 
 
-def identify_wildtype(
+def identify_wildtype(  # noqa: C901
     mutated_sequence: str,
     catalogue_db: Any,
-    part_type: Optional[str] = None,
-) -> Optional[Dict[str, Any]]:
+    part_type: str | None = None,
+) -> dict[str, Any] | None:
     """Iterate through local parts database using Levenshtein distance logic.
 
     Finds and returns sequence and metadata for the part that has the lowest distance
@@ -1233,9 +1210,7 @@ def identify_wildtype(
         candidates = catalogue_db.get_all()
     elif hasattr(catalogue_db, "get_all_parts"):
         candidates = catalogue_db.get_all_parts()
-    elif hasattr(catalogue_db, "_repository") and hasattr(
-        catalogue_db._repository, "get_all"
-    ):
+    elif hasattr(catalogue_db, "_repository") and hasattr(catalogue_db._repository, "get_all"):
         candidates = catalogue_db._repository.get_all()
     else:
         candidates = []
@@ -1287,8 +1262,8 @@ def identify_wildtype(
 def compare_kinetics(
     mutated_sequence: str,
     catalogue_db: Any,
-    part_type: Optional[str] = None,
-) -> Dict[str, Any]:
+    part_type: str | None = None,
+) -> dict[str, Any]:
     """Dual parameter extraction for wild type baseline vs mutated sequence.
 
     1. Identifies wild type baseline using identify_wildtype.
@@ -1312,14 +1287,11 @@ def compare_kinetics(
     wt_info = identify_wildtype(clean_mut, catalogue_db, part_type=part_type)
     if not wt_info:
         raise ValueError(
-            "No wild type sequence candidate found in catalogue database with "
-            "edit distance > 0."
+            "No wild type sequence candidate found in catalogue database with edit distance > 0."
         )
 
     wt_seq = wt_info["sequence"]
-    effective_part_type = (
-        (part_type or wt_info.get("part_type") or "promoter").lower().strip()
-    )
+    effective_part_type = (part_type or wt_info.get("part_type") or "promoter").lower().strip()
 
     if isinstance(catalogue_db, list):
         candidates = catalogue_db
@@ -1327,9 +1299,7 @@ def compare_kinetics(
         candidates = catalogue_db.get_all()
     elif hasattr(catalogue_db, "get_all_parts"):
         candidates = catalogue_db.get_all_parts()
-    elif hasattr(catalogue_db, "_repository") and hasattr(
-        catalogue_db._repository, "get_all"
-    ):
+    elif hasattr(catalogue_db, "_repository") and hasattr(catalogue_db._repository, "get_all"):
         candidates = catalogue_db._repository.get_all()
     else:
         candidates = []

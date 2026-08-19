@@ -11,8 +11,6 @@ STRICT CONSTRAINTS ENFORCED:
 
 from __future__ import annotations
 
-from typing import Optional
-
 import pyqtgraph as pg
 from karcytics_sdk.plugin.theme_fallback import Fonts
 from PyQt6.QtCore import Qt, pyqtSlot
@@ -47,8 +45,8 @@ class EmpiricalAnalyticsView(QWidget):
 
     def __init__(
         self,
-        state: Optional[SynBioState] = None,
-        controller: Optional[EmpiricalAnalyticsController] = None,
+        state: SynBioState | None = None,
+        controller: EmpiricalAnalyticsController | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -56,14 +54,12 @@ class EmpiricalAnalyticsView(QWidget):
 
         self.state = state if state is not None else SynBioState()
         self.controller = (
-            controller
-            if controller is not None
-            else EmpiricalAnalyticsController(self.state, self)
+            controller if controller is not None else EmpiricalAnalyticsController(self.state, self)
         )
 
-        self._active_fcs_data: Optional[FCSEventData] = None
-        self._active_ngs_result: Optional[NGSAlignmentResult] = None
-        self._active_opt_result: Optional[HillOptimizationResult] = None
+        self._active_fcs_data: FCSEventData | None = None
+        self._active_ngs_result: NGSAlignmentResult | None = None
+        self._active_opt_result: HillOptimizationResult | None = None
 
         self._init_ui()
         self._connect_signals()
@@ -139,9 +135,7 @@ class EmpiricalAnalyticsView(QWidget):
             "Flow Cytometry Plugin Status: Standalone Mode",
             group,
         )
-        self.flow_plugin_status_lbl.setAttribute(
-            Qt.WidgetAttribute.WA_StyledBackground, True
-        )
+        self.flow_plugin_status_lbl.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         form.addRow(self.flow_plugin_status_lbl)
 
         layout.addWidget(group)
@@ -329,18 +323,10 @@ class EmpiricalAnalyticsView(QWidget):
             self.fcs_table.insertRow(row)
             self.fcs_table.setItem(row, 0, QTableWidgetItem(ch_name))
             self.fcs_table.setItem(row, 1, QTableWidgetItem(str(stats.event_count)))
-            self.fcs_table.setItem(
-                row, 2, QTableWidgetItem(f"{stats.mean_intensity:.2f}")
-            )
-            self.fcs_table.setItem(
-                row, 3, QTableWidgetItem(f"{stats.median_intensity:.2f}")
-            )
-            self.fcs_table.setItem(
-                row, 4, QTableWidgetItem(f"{stats.std_intensity:.2f}")
-            )
-            self.fcs_table.setItem(
-                row, 5, QTableWidgetItem(f"{stats.gated_percentage:.1f}%")
-            )
+            self.fcs_table.setItem(row, 2, QTableWidgetItem(f"{stats.mean_intensity:.2f}"))
+            self.fcs_table.setItem(row, 3, QTableWidgetItem(f"{stats.median_intensity:.2f}"))
+            self.fcs_table.setItem(row, 4, QTableWidgetItem(f"{stats.std_intensity:.2f}"))
+            self.fcs_table.setItem(row, 5, QTableWidgetItem(f"{stats.gated_percentage:.1f}%"))
 
     @pyqtSlot(object)
     def _on_ngs_aligned(self, result: NGSAlignmentResult) -> None:
@@ -354,25 +340,16 @@ class EmpiricalAnalyticsView(QWidget):
             self.ngs_table.setItem(row, 2, QTableWidgetItem(flag.variant_type))
             self.ngs_table.setItem(row, 3, QTableWidgetItem(flag.ref_allele))
             self.ngs_table.setItem(row, 4, QTableWidgetItem(flag.alt_allele))
-            self.ngs_table.setItem(
-                row, 5, QTableWidgetItem(f"{flag.frequency * 100:.1f}%")
-            )
+            self.ngs_table.setItem(row, 5, QTableWidgetItem(f"{flag.frequency * 100:.1f}%"))
             self.ngs_table.setItem(row, 6, QTableWidgetItem(flag.affected_feature))
-            ot_str = (
-                f"{flag.off_target_score:.1f}"
-                if flag.off_target_score is not None
-                else "N/A"
-            )
+            ot_str = f"{flag.off_target_score:.1f}" if flag.off_target_score is not None else "N/A"
             self.ngs_table.setItem(row, 7, QTableWidgetItem(ot_str))
             self.ngs_table.setItem(row, 8, QTableWidgetItem(flag.severity))
 
     @pyqtSlot(object)
     def _on_optimization_finished(self, result: HillOptimizationResult) -> None:
         self._active_opt_result = result
-        msg = (
-            f"Optimization Complete | MSE: {result.initial_mse:.3f} "
-            f"-> {result.final_mse:.3f}"
-        )
+        msg = f"Optimization Complete | MSE: {result.initial_mse:.3f} -> {result.final_mse:.3f}"
         self.ml_status_lbl.setText(msg)
         self.ml_table.setRowCount(0)
 
@@ -419,9 +396,7 @@ class EmpiricalAnalyticsView(QWidget):
         try:
             self.controller.fcs_loaded.disconnect(self._on_fcs_loaded)
             self.controller.ngs_aligned.disconnect(self._on_ngs_aligned)
-            self.controller.optimization_finished.disconnect(
-                self._on_optimization_finished
-            )
+            self.controller.optimization_finished.disconnect(self._on_optimization_finished)
             self.controller.error_raised.disconnect(self._on_error)
         except Exception:
             pass

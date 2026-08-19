@@ -122,9 +122,7 @@ class CircuitCanvas(QGraphicsView):
                 for rep in repressors:
                     if rep in cds_map:
                         color = self._get_color_for_repressor(rep)
-                        self._draw_repression_line(
-                            cds_map[rep], part_positions[i], color
-                        )
+                        self._draw_repression_line(cds_map[rep], part_positions[i], color)
 
     def _get_color_for_repressor(self, rep: str) -> QColor:
         """Deterministically generate a vibrant color based on a string hash."""
@@ -145,9 +143,7 @@ class CircuitCanvas(QGraphicsView):
         item.setPen(QPen(self.c_promoter, 3))
         self._scene.addItem(item)
 
-        arrow = QPolygonF(
-            [QPointF(cx + 25, -45), QPointF(cx + 35, -40), QPointF(cx + 25, -35)]
-        )
+        arrow = QPolygonF([QPointF(cx + 25, -45), QPointF(cx + 35, -40), QPointF(cx + 25, -35)])
         arrow_item = QGraphicsPolygonItem(arrow)
         arrow_item.setBrush(QBrush(self.c_promoter))
         arrow_item.setPen(QPen(Qt.PenStyle.NoPen))
@@ -222,9 +218,7 @@ class CircuitCanvas(QGraphicsView):
     def _draw_generic(self, x: float, name: str, cell_w: float):
         """Draw generic box."""
         cx = x + cell_w / 2 - 20
-        self._scene.addRect(
-            cx, -10, 40, 20, QPen(self.c_text), QBrush(QColor("#bdc3c7"))
-        )
+        self._scene.addRect(cx, -10, 40, 20, QPen(self.c_text), QBrush(QColor("#bdc3c7")))
         text = self._scene.addText(name, self._font)
         text.setDefaultTextColor(self.c_text)
         tw = text.boundingRect().width()
@@ -237,9 +231,7 @@ class CircuitCanvas(QGraphicsView):
         # Start at CDS top
         path.moveTo(source_x, -15)
         # Curve up and over to Promoter
-        arch_height = (
-            -100 - abs(source_x - target_x) * 0.15
-        )  # Dynamic height to avoid overlaps
+        arch_height = -100 - abs(source_x - target_x) * 0.15  # Dynamic height to avoid overlaps
         path.quadTo((source_x + target_x) / 2, arch_height, target_x, -45)
 
         item = QGraphicsPathItem(path)

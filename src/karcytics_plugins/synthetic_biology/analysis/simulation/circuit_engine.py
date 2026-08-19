@@ -6,8 +6,6 @@ solved using scipy.integrate.solve_ivp for Hill kinetics, logic gates, and oscil
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
-
 import networkx as nx
 import numpy as np
 from scipy.integrate import solve_ivp
@@ -28,8 +26,8 @@ class CircuitSimulationEngine:
     @classmethod
     def build_circuit_graph(
         cls,
-        components: List[CircuitComponent],
-        edges: List[CircuitEdge],
+        components: list[CircuitComponent],
+        edges: list[CircuitEdge],
     ) -> nx.DiGraph:
         """Constructs a NetworkX directed graph representation of the genetic circuit.
 
@@ -65,11 +63,11 @@ class CircuitSimulationEngine:
     @classmethod
     def create_preset_repressilator(
         cls,
-    ) -> Tuple[List[CircuitComponent], List[CircuitEdge]]:
+    ) -> tuple[list[CircuitComponent], list[CircuitEdge]]:
         """Constructs Elowitz & Leibler (2000) 3-gene Repressilator ring oscillator
         network.
         """
-        tetR = CircuitComponent(
+        tetR = CircuitComponent(  # noqa: N806
             id="TetR",
             name="TetR Repressor",
             component_type="cds",
@@ -80,7 +78,7 @@ class CircuitSimulationEngine:
             degradation_rate=0.2,
             initial_concentration=5.0,
         )
-        lacI = CircuitComponent(
+        lacI = CircuitComponent(  # noqa: N806
             id="LacI",
             name="LacI Repressor",
             component_type="cds",
@@ -91,7 +89,7 @@ class CircuitSimulationEngine:
             degradation_rate=0.2,
             initial_concentration=0.1,
         )
-        cI = CircuitComponent(
+        cI = CircuitComponent(  # noqa: N806
             id="cI",
             name="cI Repressor",
             component_type="cds",
@@ -104,25 +102,19 @@ class CircuitSimulationEngine:
         )
 
         edges = [
-            CircuitEdge(
-                source_id="TetR", target_id="LacI", interaction_type="repression"
-            ),
-            CircuitEdge(
-                source_id="LacI", target_id="cI", interaction_type="repression"
-            ),
-            CircuitEdge(
-                source_id="cI", target_id="TetR", interaction_type="repression"
-            ),
+            CircuitEdge(source_id="TetR", target_id="LacI", interaction_type="repression"),
+            CircuitEdge(source_id="LacI", target_id="cI", interaction_type="repression"),
+            CircuitEdge(source_id="cI", target_id="TetR", interaction_type="repression"),
         ]
 
         return [tetR, lacI, cI], edges
 
     @classmethod
-    def simulate_circuit(
+    def simulate_circuit(  # noqa: C901
         cls,
-        components: List[CircuitComponent],
-        edges: List[CircuitEdge],
-        params: Optional[SimulationParameters] = None,
+        components: list[CircuitComponent],
+        edges: list[CircuitEdge],
+        params: SimulationParameters | None = None,
     ) -> SimulationResult:
         """Solves the differential equation system for the network topology.
 
@@ -143,11 +135,9 @@ class CircuitSimulationEngine:
         node_ids = list(graph.nodes())
         node_index_map = {nid: idx for idx, nid in enumerate(node_ids)}
 
-        y0 = np.array(
-            [graph.nodes[nid]["initial_concentration"] for nid in node_ids], dtype=float
-        )
+        y0 = np.array([graph.nodes[nid]["initial_concentration"] for nid in node_ids], dtype=float)
 
-        def ode_system(t: float, y: np.ndarray) -> np.ndarray:
+        def ode_system(_t: float, y: np.ndarray) -> np.ndarray:
             dydt = np.zeros_like(y)
 
             for idx, nid in enumerate(node_ids):
@@ -166,7 +156,7 @@ class CircuitSimulationEngine:
                     src_idx = node_index_map[src_id]
                     src_conc = y[src_idx]
                     itype = edge_data["interaction_type"].lower()
-                    K_d = node_data["K_d"]
+                    K_d = node_data["K_d"]  # noqa: N806
                     n = node_data["n"]
 
                     if itype == "repression":
@@ -204,7 +194,7 @@ class CircuitSimulationEngine:
                     status_message=f"ODE Solver failed: {sol.message}", success=False
                 )
 
-            species_dict: Dict[str, List[float]] = {}
+            species_dict: dict[str, list[float]] = {}
             for idx, nid in enumerate(node_ids):
                 comp_name = graph.nodes[nid]["name"]
                 species_dict[comp_name] = sol.y[idx].tolist()

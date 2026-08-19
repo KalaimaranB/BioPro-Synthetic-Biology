@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from Bio.Seq import Seq
 
@@ -41,7 +41,7 @@ class CRISPRDesignEngine:
         target_sequence: str,
         pam_type: str = "SpCas9 (NGG)",
         spacer_length: int = 20,
-    ) -> List[gRNACandidate]:
+    ) -> list[gRNACandidate]:
         """Scans both forward and reverse strands of target sequence for valid
         gRNA sites.
 
@@ -55,7 +55,7 @@ class CRISPRDesignEngine:
         """
         seq_fwd = target_sequence.upper()
         seq_rev = str(Seq(seq_fwd).reverse_complement())
-        candidates: List[gRNACandidate] = []
+        candidates: list[gRNACandidate] = []
 
         # Process positive strand
         cls._scan_strand(
@@ -89,7 +89,7 @@ class CRISPRDesignEngine:
         strand: int,
         pam_type: str,
         spacer_length: int,
-        candidates: List[gRNACandidate],
+        candidates: list[gRNACandidate],
         original_len: int = 0,
     ) -> None:
         """Internal scanner for a single DNA strand."""
@@ -115,9 +115,7 @@ class CRISPRDesignEngine:
             has_poly_t = "TTTT" in protospacer or "TTTT" in pam_seq
 
             # Doench Rule 2 / Efficiency heuristic calculation
-            eff_score = cls._calculate_on_target_efficiency(
-                protospacer, gc_pct, has_poly_t
-            )
+            eff_score = cls._calculate_on_target_efficiency(protospacer, gc_pct, has_poly_t)
 
             # Map genomic coordinates
             if strand == 1:
@@ -151,9 +149,9 @@ class CRISPRDesignEngine:
         score = 70.0  # Base efficiency score
 
         # Optimal GC content is 40% - 60%
-        if 40.0 <= gc_pct <= 60.0:
+        if 40.0 <= gc_pct <= 60.0:  # noqa: PLR2004
             score += 15.0
-        elif gc_pct < 30.0 or gc_pct > 70.0:
+        elif gc_pct < 30.0 or gc_pct > 70.0:  # noqa: PLR2004
             score -= 25.0
 
         # Poly-T penalty (causes Pol III transcription termination)
@@ -161,11 +159,11 @@ class CRISPRDesignEngine:
             score -= 40.0
 
         # Position 20 (closest to PAM) preference for G or C
-        if len(protospacer) >= 20 and protospacer[19] in ["G", "C"]:
+        if len(protospacer) >= 20 and protospacer[19] in ["G", "C"]:  # noqa: PLR2004
             score += 10.0
 
         # Position 16 preference for G
-        if len(protospacer) >= 16 and protospacer[15] == "G":
+        if len(protospacer) >= 16 and protospacer[15] == "G":  # noqa: PLR2004
             score += 5.0
 
         return max(0.0, min(100.0, score))
@@ -175,7 +173,7 @@ class CRISPRDesignEngine:
         cls,
         candidate: gRNACandidate,
         reference_genome: str,
-        ml_model_adapter: Optional[Any] = None,
+        ml_model_adapter: Any | None = None,
     ) -> float:
         """Calculates CFD (Cutting Frequency Determination) off-target score.
 
@@ -183,18 +181,14 @@ class CRISPRDesignEngine:
         """
         # If an external Machine Learning model adapter is provided,
         # defer to ML prediction
-        if ml_model_adapter is not None and hasattr(
-            ml_model_adapter, "predict_off_target"
-        ):
-            ml_score = ml_model_adapter.predict_off_target(
-                candidate.protospacer, reference_genome
-            )
+        if ml_model_adapter is not None and hasattr(ml_model_adapter, "predict_off_target"):
+            ml_score = ml_model_adapter.predict_off_target(candidate.protospacer, reference_genome)
             candidate.off_target_score = float(ml_score)
             return float(ml_score)
 
         # Standalone CFD scoring algorithm
         protospacer = candidate.protospacer
-        off_target_hits: List[Dict[str, Any]] = []
+        off_target_hits: list[dict[str, Any]] = []
         total_cfd_mult = 1.0
 
         # Scan reference for potential 1-3 bp mismatch off-target sites
@@ -211,7 +205,7 @@ class CRISPRDesignEngine:
                     mismatches += 1
                     mismatch_positions.append(pos)
 
-            if 1 <= mismatches <= 3:
+            if 1 <= mismatches <= 3:  # noqa: PLR2004
                 # Compute CFD mismatch penalty
                 hit_score = 1.0
                 for p in mismatch_positions:

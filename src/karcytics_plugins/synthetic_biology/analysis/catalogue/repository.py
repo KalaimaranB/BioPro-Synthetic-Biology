@@ -1,6 +1,6 @@
 import json
 import os
-from typing import List, Optional, Protocol
+from typing import Protocol
 
 from ..parts.base import BiologicalPart
 from ..parts.components import CDS, RBS, Insulator, Promoter, Terminator, sgRNA
@@ -17,11 +17,11 @@ class PartRepository(Protocol):
         """Save or update a part."""
         ...
 
-    def get(self, part_id: str) -> Optional[BiologicalPart]:
+    def get(self, part_id: str) -> BiologicalPart | None:
         """Retrieve a part by its ID."""
         ...
 
-    def get_all(self) -> List[BiologicalPart]:
+    def get_all(self) -> list[BiologicalPart]:
         """Retrieve all parts in the repository."""
         ...
 
@@ -48,7 +48,7 @@ class JsonPartRepository:
             return
 
         try:
-            with open(self.file_path, "r", encoding="utf-8") as f:
+            with open(self.file_path, encoding="utf-8") as f:
                 data = json.load(f)
 
             self._cache = {}
@@ -66,19 +66,19 @@ class JsonPartRepository:
         with open(self.file_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
-    def _deserialize_part(self, data: dict) -> Optional[BiologicalPart]:
+    def _deserialize_part(self, data: dict) -> BiologicalPart | None:  # noqa: PLR0911
         part_type = data.pop("part_type", "").lower()
         if part_type == "promoter":
             return Promoter(**data)
-        elif part_type == "cds":
+        if part_type == "cds":
             return CDS(**data)
-        elif part_type == "terminator":
+        if part_type == "terminator":
             return Terminator(**data)
-        elif part_type == "rbs":
+        if part_type == "rbs":
             return RBS(**data)
-        elif part_type == "insulator":
+        if part_type == "insulator":
             return Insulator(**data)
-        elif part_type == "sgrna":
+        if part_type == "sgrna":
             return sgRNA(**data)
         return None
 
@@ -86,10 +86,10 @@ class JsonPartRepository:
         self._cache[part.id] = part
         self._save_to_disk()
 
-    def get(self, part_id: str) -> Optional[BiologicalPart]:
+    def get(self, part_id: str) -> BiologicalPart | None:
         return self._cache.get(part_id)
 
-    def get_all(self) -> List[BiologicalPart]:
+    def get_all(self) -> list[BiologicalPart]:
         return list(self._cache.values())
 
     def delete(self, part_id: str) -> None:

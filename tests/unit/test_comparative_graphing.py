@@ -18,9 +18,7 @@ def test_identify_wildtype():
     """Test wild type reverse lookup finds part with lowest distance strictly > 0."""
     wt_seq = "CGTACTTGACAAGCTAGCTAGCTAGCTATATAATGCTAG"  # Baseline
     far_seq = "CGTACCCCACAAGCTAGCTAGCTAGCTATAGAATGCTAG"  # Multiple mutations (dist = 3)
-    near_seq = (
-        "CGTACTTGACAAGCTAGCTAGCTAGCTATATAATGCTAA"  # Single base swap at end (dist = 1)
-    )
+    near_seq = "CGTACTTGACAAGCTAGCTAGCTAGCTATATAATGCTAA"  # Single base swap at end (dist = 1)
     mut_seq = "CGTACTTGACAAGCTAGCTAGCTAGCTATATAATGCTAG"  # Exact match (dist = 0)
 
     wt_part = Promoter(id="WT_P1", name="Wild Type 1", sequence=wt_seq)

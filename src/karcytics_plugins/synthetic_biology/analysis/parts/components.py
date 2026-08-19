@@ -1,7 +1,6 @@
 """Concrete biological part implementations (Promoter, CDS, Terminator, RBS)."""
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 from .base import BiologicalPart
 
@@ -10,16 +9,12 @@ from .base import BiologicalPart
 class Promoter(BiologicalPart):
     """A promoter sequence that initiates transcription."""
 
-    y_min: Optional[float] = None  # Leakiness (RPU)
-    y_max: Optional[float] = None  # Max output (RPU)
-    K_d: Optional[float] = None  # Activation/Repression threshold
-    n: Optional[float] = None  # Hill coefficient (steepness)
-    repressors: list[str] = field(
-        default_factory=list
-    )  # Molecules that repress this promoter
-    activators: list[str] = field(
-        default_factory=list
-    )  # Molecules that activate this promoter
+    y_min: float | None = None  # Leakiness (RPU)
+    y_max: float | None = None  # Max output (RPU)
+    K_d: float | None = None  # Activation/Repression threshold
+    n: float | None = None  # Hill coefficient (steepness)
+    repressors: list[str] = field(default_factory=list)  # Molecules that repress this promoter
+    activators: list[str] = field(default_factory=list)  # Molecules that activate this promoter
 
     @property
     def part_type(self) -> str:
@@ -44,8 +39,8 @@ class Promoter(BiologicalPart):
 class CDS(BiologicalPart):
     """Coding Sequence (Gene/Reporter) that is translated into a protein."""
 
-    translation_rate: Optional[float] = None  # Translation rate (au/time)
-    degradation_rate: Optional[float] = None  # Protein degradation rate
+    translation_rate: float | None = None  # Translation rate (au/time)
+    degradation_rate: float | None = None  # Protein degradation rate
     product: str = ""  # The specific protein molecule produced (e.g., 'TetR', 'GFP')
 
     @property
@@ -68,7 +63,7 @@ class CDS(BiologicalPart):
 class Terminator(BiologicalPart):
     """A terminator sequence that stops transcription."""
 
-    termination_efficiency: Optional[float] = None  # Efficiency (0-1)
+    termination_efficiency: float | None = None  # Efficiency (0-1)
 
     @property
     def part_type(self) -> str:
@@ -84,7 +79,7 @@ class Terminator(BiologicalPart):
 class RBS(BiologicalPart):
     """Ribosome Binding Site that initiates translation."""
 
-    translation_initiation_rate: Optional[float] = None  # Translation efficiency
+    translation_initiation_rate: float | None = None  # Translation efficiency
 
     @property
     def part_type(self) -> str:
@@ -102,7 +97,7 @@ class Insulator(BiologicalPart):
     from translation.
     """
 
-    cleavage_efficiency: Optional[float] = None
+    cleavage_efficiency: float | None = None
 
     @property
     def part_type(self) -> str:
@@ -115,11 +110,11 @@ class Insulator(BiologicalPart):
 
 
 @dataclass
-class sgRNA(BiologicalPart):
+class sgRNA(BiologicalPart):  # noqa: N801 — standard molecular-biology nomenclature (guide RNA)
     """A single guide RNA sequence used for CRISPR-based logic gates."""
 
-    transcription_rate: Optional[float] = None
-    degradation_rate: Optional[float] = None
+    transcription_rate: float | None = None
+    degradation_rate: float | None = None
     target_promoter: str = ""
 
     @property

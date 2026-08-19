@@ -146,11 +146,7 @@ class ModelDetailsDialog(QDialog):
                 "exp(0.40 &middot; &Delta;G<sub>penalty</sub>))"
                 "</div>"
             )
-        elif (
-            "cai" in self.model_key
-            or "blosum62" in self.model_key
-            or "cds" in self.model_key
-        ):
+        if "cai" in self.model_key or "blosum62" in self.model_key or "cds" in self.model_key:
             return (
                 f"<h2 style='color: {Colors.ACCENT_PRIMARY}; margin-top: 0;'>🧱 CDS "
                 "CAI & BLOSUM62 Stability Model</h2>"
@@ -185,26 +181,25 @@ class ModelDetailsDialog(QDialog):
                 "by host Lon/ClpXP proteases (up to 0.5 min<sup>-1</sup>).</li>"
                 "</ul>"
             )
-        else:
-            return (
-                f"<h2 style='color: {Colors.ACCENT_PRIMARY}; margin-top: 0;'>🔍 "
-                "k-Nearest Neighbors (k-NN) Fallback Model</h2>"
-                "<p><b>Overview:</b> Legacy alignment fallback utilizing Levenshtein "
-                "edit distance and inverse-distance weighting across characterized "
-                "parts in the catalogue.</p>"
-                "<h3 style='color: #4caf50;'>1. Sequence Alignment & Distance "
-                "Metric</h3>"
-                "<p>Computes string edit distance (substitutions, insertions, "
-                "deletions) between the query sequence and characterized repository "
-                "parts.</p>"
-                "<h3 style='color: #4caf50;'>2. Inverse-Distance Weighting</h3>"
-                f"<div style='background: {Colors.BG_MEDIUM}; padding: 8px; "
-                "border-radius: 4px; font-family: monospace;'>"
-                "w<sub>i</sub> = 1 / distance<sub>i</sub>"
-                "</div>"
-                "<p>Averages top-<i>k</i> nearest neighbors weighted by sequence "
-                "proximity to predict continuous parameters.</p>"
-            )
+        return (
+            f"<h2 style='color: {Colors.ACCENT_PRIMARY}; margin-top: 0;'>🔍 "
+            "k-Nearest Neighbors (k-NN) Fallback Model</h2>"
+            "<p><b>Overview:</b> Legacy alignment fallback utilizing Levenshtein "
+            "edit distance and inverse-distance weighting across characterized "
+            "parts in the catalogue.</p>"
+            "<h3 style='color: #4caf50;'>1. Sequence Alignment & Distance "
+            "Metric</h3>"
+            "<p>Computes string edit distance (substitutions, insertions, "
+            "deletions) between the query sequence and characterized repository "
+            "parts.</p>"
+            "<h3 style='color: #4caf50;'>2. Inverse-Distance Weighting</h3>"
+            f"<div style='background: {Colors.BG_MEDIUM}; padding: 8px; "
+            "border-radius: 4px; font-family: monospace;'>"
+            "w<sub>i</sub> = 1 / distance<sub>i</sub>"
+            "</div>"
+            "<p>Averages top-<i>k</i> nearest neighbors weighted by sequence "
+            "proximity to predict continuous parameters.</p>"
+        )
 
 
 class PartInspector(QWidget):
@@ -221,7 +216,7 @@ class PartInspector(QWidget):
         self.setMinimumWidth(320)
         self.setMaximumWidth(450)
 
-    def _setup_ui(self):
+    def _setup_ui(self):  # noqa: PLR0915
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
 
@@ -287,9 +282,7 @@ class PartInspector(QWidget):
 
         self.desc_lbl = QLabel()
         self.desc_lbl.setWordWrap(True)
-        self.desc_lbl.setSizePolicy(
-            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
-        )
+        self.desc_lbl.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.desc_lbl.setStyleSheet(
             f"color: {Colors.FG_SECONDARY}; font-style: italic; margin-top: 10px;"
         )
@@ -339,9 +332,7 @@ class PartInspector(QWidget):
         self.seq_layout = QVBoxLayout(self.seq_tab)
 
         self.seq_edit = QTextEdit()
-        self.seq_edit.setPlaceholderText(
-            "Paste or type DNA sequence here (A, C, G, T)..."
-        )
+        self.seq_edit.setPlaceholderText("Paste or type DNA sequence here (A, C, G, T)...")
         self.seq_edit.textChanged.connect(self._on_sequence_changed)
         self.seq_layout.addWidget(self.seq_edit)
 
@@ -364,9 +355,7 @@ class PartInspector(QWidget):
         self.struct_layout = QVBoxLayout(self.struct_tab)
         self.struct_lbl = QLabel()
         self.struct_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.struct_lbl.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
+        self.struct_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.struct_layout.addWidget(self.struct_lbl)
         self.tabs.addTab(self.struct_tab, "Structure")
 
@@ -397,9 +386,7 @@ class PartInspector(QWidget):
         danger_color = getattr(
             Colors, "ACCENT_NEGATIVE", getattr(Colors, "ACCENT_DANGER", "#ef5350")
         )
-        sec_hover_bg = getattr(
-            Colors, "BG_LIGHT", getattr(Colors, "BG_DARK", "#161b22")
-        )
+        sec_hover_bg = getattr(Colors, "BG_LIGHT", getattr(Colors, "BG_DARK", "#161b22"))
         bg_darkest = getattr(Colors, "BG_DARKEST", "#0d1117")
         bg_medium = getattr(Colors, "BG_MEDIUM", "#21262d")
         fg_primary = getattr(Colors, "FG_PRIMARY", "#e6edf3")
@@ -476,7 +463,7 @@ class PartInspector(QWidget):
         self.rbs_init_rate_lbl.setVisible(is_rbs)
         self.rbs_init_rate_edit.setVisible(is_rbs)
 
-    def set_part(self, part: BiologicalPart | None = None):
+    def set_part(self, part: BiologicalPart | None = None):  # noqa: PLR0915
         """Populate the inspector. If None, clear for new part."""
         self.current_part = part
 
@@ -559,23 +546,15 @@ class PartInspector(QWidget):
 
             if isinstance(part, Promoter):
                 self.kd_edit.setText(str(part.K_d) if part.K_d is not None else "")
-                self.ymax_edit.setText(
-                    str(part.y_max) if part.y_max is not None else ""
-                )
-                self.ymin_edit.setText(
-                    str(part.y_min) if part.y_min is not None else ""
-                )
+                self.ymax_edit.setText(str(part.y_max) if part.y_max is not None else "")
+                self.ymin_edit.setText(str(part.y_min) if part.y_min is not None else "")
                 self.n_edit.setText(str(part.n) if part.n is not None else "")
             elif isinstance(part, CDS):
                 self.trans_rate_edit.setText(
-                    str(part.translation_rate)
-                    if part.translation_rate is not None
-                    else ""
+                    str(part.translation_rate) if part.translation_rate is not None else ""
                 )
                 self.deg_rate_edit.setText(
-                    str(part.degradation_rate)
-                    if part.degradation_rate is not None
-                    else ""
+                    str(part.degradation_rate) if part.degradation_rate is not None else ""
                 )
                 self.product_edit.setText(str(part.product) if part.product else "")
             elif isinstance(part, Terminator):
@@ -674,9 +653,7 @@ class PartInspector(QWidget):
         elif isinstance(part, Terminator):
             part.termination_efficiency = _parse_float(self.term_eff_edit.text())
         elif isinstance(part, RBS):
-            part.translation_initiation_rate = _parse_float(
-                self.rbs_init_rate_edit.text()
-            )
+            part.translation_initiation_rate = _parse_float(self.rbs_init_rate_edit.text())
 
         self.part_saved.emit(part)
 
@@ -686,10 +663,10 @@ class PartInspector(QWidget):
         """
         if self.current_part is None or getattr(self.current_part, "is_custom", True):
             seq = self.seq_edit.toPlainText().strip()
-            if len(seq) >= 10:
+            if len(seq) >= 10:  # noqa: PLR2004
                 self._run_prediction()
 
-    def _run_prediction(self):
+    def _run_prediction(self):  # noqa: PLR0915
         """Run k-NN parameter prediction based on the sequence input."""
         seq = self.seq_edit.toPlainText().strip()
         if not seq:
@@ -699,9 +676,7 @@ class PartInspector(QWidget):
         part_type = self.type_combo.currentText().lower()
 
         if self.catalogue_service:
-            result = self.catalogue_service.predict_part_parameters(
-                seq, part_type=part_type, k=3
-            )
+            result = self.catalogue_service.predict_part_parameters(seq, part_type=part_type, k=3)
             # Fallback directly to SequencePredictor using default repo candidates
             from karcytics_plugins.synthetic_biology.analysis.api.kinetics import (
                 CelloKineticsDatabase,
@@ -730,14 +705,10 @@ class PartInspector(QWidget):
                             n=params.get("n"),
                         )
                     )
-            result = SequencePredictor.predict(
-                seq, candidate_parts, part_type=part_type, k=3
-            )
+            result = SequencePredictor.predict(seq, candidate_parts, part_type=part_type, k=3)
 
         if not result.get("is_predicted"):
-            self.prediction_status_lbl.setText(
-                "Prediction unavailable for this sequence."
-            )
+            self.prediction_status_lbl.setText("Prediction unavailable for this sequence.")
             self.prediction_status_lbl.setVisible(True)
             return
 
@@ -767,8 +738,7 @@ class PartInspector(QWidget):
             self.prediction_status_lbl.setText(status_msg)
         else:
             self.prediction_status_lbl.setText(
-                f"⚡ [Predicted via {k_used}-NN] Top match: {top_id} "
-                f"(distance: {top_dist})"
+                f"⚡ [Predicted via {k_used}-NN] Top match: {top_id} (distance: {top_dist})"
             )
         self.prediction_status_lbl.setVisible(True)
 
@@ -902,9 +872,7 @@ class PartInspector(QWidget):
 
             wt_id = wt_info.get("id", "WT Baseline")
             dist = wt_info.get("distance", "N/A")
-            plot_title = (
-                f"WT Baseline: {wt_id} (Levenshtein Dist: {dist}) vs Mutated Sequence"
-            )
+            plot_title = f"WT Baseline: {wt_id} (Levenshtein Dist: {dist}) vs Mutated Sequence"
 
             fig = generate_transfer_curve(
                 wt_params=wt_params,

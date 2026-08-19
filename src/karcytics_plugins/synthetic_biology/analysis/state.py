@@ -10,7 +10,7 @@ notification.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from karcytics_sdk.plugin import PluginState, get_logger
 
@@ -34,13 +34,13 @@ class CircuitState:
     circuit topology, and simulation results for the session.
     """
 
-    parts: List[Dict[str, Any]] = field(default_factory=list)
-    connections: List[Dict[str, Any]] = field(default_factory=list)
-    simulation_results: Dict[str, Any] = field(default_factory=dict)
-    active_plasmid: Optional[Dict[str, Any]] = field(default_factory=dict)
-    grna_candidates: List[Dict[str, Any]] = field(default_factory=list)
-    circuit_nodes: List[Dict[str, Any]] = field(default_factory=list)
-    circuit_edges: List[Dict[str, Any]] = field(default_factory=list)
+    parts: list[dict[str, Any]] = field(default_factory=list)
+    connections: list[dict[str, Any]] = field(default_factory=list)
+    simulation_results: dict[str, Any] = field(default_factory=dict)
+    active_plasmid: dict[str, Any] | None = field(default_factory=dict)
+    grna_candidates: list[dict[str, Any]] = field(default_factory=list)
+    circuit_nodes: list[dict[str, Any]] = field(default_factory=list)
+    circuit_edges: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -71,9 +71,9 @@ class ViewState:
     """UI and presentation state layer."""
 
     active_tab: int = 0
-    selected_part_id: Optional[str] = None
-    selected_connection_id: Optional[str] = None
-    selected_grna_id: Optional[str] = None
+    selected_part_id: str | None = None
+    selected_connection_id: str | None = None
+    selected_grna_id: str | None = None
     zoom_level: float = 1.0
     canvas_offset_x: float = 0.0
     canvas_offset_y: float = 0.0
@@ -115,45 +115,41 @@ class SynBioState(PluginState):
     def set_active_plasmid(self, plasmid: PlasmidVector) -> None:
         """Centralized update for current active plasmid vector."""
         self.data.active_plasmid = plasmid.to_dict()
-        logger.info(
-            f"SynBioState updated active plasmid: {plasmid.name} ({plasmid.length} bp)"
-        )
+        logger.info(f"SynBioState updated active plasmid: {plasmid.name} ({plasmid.length} bp)")
 
-    def get_active_plasmid(self) -> Optional[PlasmidVector]:
+    def get_active_plasmid(self) -> PlasmidVector | None:
         """Retrieve current plasmid vector model."""
         if not self.data.active_plasmid:
             return None
         return PlasmidVector.from_dict(self.data.active_plasmid)
 
-    def set_grna_candidates(self, candidates: List[gRNACandidate]) -> None:
+    def set_grna_candidates(self, candidates: list[gRNACandidate]) -> None:
         """Centralized update for CRISPR guide RNA candidate results."""
         self.data.grna_candidates = [c.to_dict() for c in candidates]
         logger.info(f"SynBioState updated {len(candidates)} gRNA candidates.")
 
-    def get_grna_candidates(self) -> List[gRNACandidate]:
+    def get_grna_candidates(self) -> list[gRNACandidate]:
         """Retrieve list of current gRNA candidates."""
         return [gRNACandidate.from_dict(c) for c in self.data.grna_candidates]
 
     def set_simulation_result(self, result: SimulationResult) -> None:
         """Centralized update for kinetic circuit simulation output."""
         self.data.simulation_results = result.to_dict()
-        logger.info(
-            f"SynBioState updated simulation result: {len(result.time_points)} points."
-        )
+        logger.info(f"SynBioState updated simulation result: {len(result.time_points)} points.")
 
-    def get_simulation_result(self) -> Optional[SimulationResult]:
+    def get_simulation_result(self) -> SimulationResult | None:
         """Retrieve latest simulation result."""
         if not self.data.simulation_results:
             return None
         return SimulationResult.from_dict(self.data.simulation_results)
 
     @property
-    def plasmid(self) -> Optional[PlasmidVector]:
+    def plasmid(self) -> PlasmidVector | None:
         """Retrieve active plasmid vector model from state."""
         return self.get_active_plasmid()
 
     @plasmid.setter
-    def plasmid(self, value: Optional[PlasmidVector]) -> None:
+    def plasmid(self, value: PlasmidVector | None) -> None:
         """Store active plasmid vector model in state."""
         if value is not None:
             self.set_active_plasmid(value)
@@ -161,38 +157,38 @@ class SynBioState(PluginState):
             self.data.active_plasmid = {}
 
     @property
-    def circuit_components(self) -> List[CircuitComponent]:
+    def circuit_components(self) -> list[CircuitComponent]:
         """Retrieve list of circuit component domain models from state."""
         return [CircuitComponent.from_dict(c) for c in self.data.circuit_nodes]
 
     @circuit_components.setter
-    def circuit_components(self, components: List[CircuitComponent]) -> None:
+    def circuit_components(self, components: list[CircuitComponent]) -> None:
         """Store list of circuit component domain models in state."""
         self.data.circuit_nodes = [c.to_dict() for c in components]
 
-    def set_circuit_components(self, components: List[CircuitComponent]) -> None:
+    def set_circuit_components(self, components: list[CircuitComponent]) -> None:
         """Centralized update for circuit components."""
         self.circuit_components = components
 
-    def get_circuit_components(self) -> List[CircuitComponent]:
+    def get_circuit_components(self) -> list[CircuitComponent]:
         """Retrieve list of circuit components."""
         return self.circuit_components
 
     @property
-    def circuit_edges(self) -> List[CircuitEdge]:
+    def circuit_edges(self) -> list[CircuitEdge]:
         """Retrieve list of circuit edge domain models from state."""
         return [CircuitEdge.from_dict(e) for e in self.data.circuit_edges]
 
     @circuit_edges.setter
-    def circuit_edges(self, edges: List[CircuitEdge]) -> None:
+    def circuit_edges(self, edges: list[CircuitEdge]) -> None:
         """Store list of circuit edge domain models in state."""
         self.data.circuit_edges = [e.to_dict() for e in edges]
 
-    def set_circuit_edges(self, edges: List[CircuitEdge]) -> None:
+    def set_circuit_edges(self, edges: list[CircuitEdge]) -> None:
         """Centralized update for circuit edges."""
         self.circuit_edges = edges
 
-    def get_circuit_edges(self) -> List[CircuitEdge]:
+    def get_circuit_edges(self) -> list[CircuitEdge]:
         """Retrieve list of circuit edges."""
         return self.circuit_edges
 

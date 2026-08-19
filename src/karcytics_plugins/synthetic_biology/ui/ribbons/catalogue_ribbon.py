@@ -16,8 +16,7 @@ class CatalogueRibbon(QWidget):
 
         title = QLabel("Parts Catalogue")
         title.setStyleSheet(
-            f"color: {Colors.FG_PRIMARY}; "
-            f"font-size: {Fonts.SIZE_SMALL + 2}px; font-weight: bold;"
+            f"color: {Colors.FG_PRIMARY}; font-size: {Fonts.SIZE_SMALL + 2}px; font-weight: bold;"
         )
         layout.addWidget(title)
 

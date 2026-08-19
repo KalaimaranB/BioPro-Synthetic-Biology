@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List
-
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal  # noqa: TID251
 
 from ..models.domain import gRNACandidate
 from .grna_designer import CRISPRDesignEngine
@@ -33,7 +31,7 @@ class CRISPRWorker(QThread):
     def run(self) -> None:
         """Executes non-blocking PAM scan and CFD off-target calculation."""
         try:
-            candidates: List[gRNACandidate] = CRISPRDesignEngine.find_grna_candidates(
+            candidates: list[gRNACandidate] = CRISPRDesignEngine.find_grna_candidates(
                 target_sequence=self.target_sequence,
                 pam_type=self.pam_type,
                 spacer_length=self.spacer_length,

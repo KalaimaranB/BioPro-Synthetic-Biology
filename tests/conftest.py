@@ -4,20 +4,14 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
-# Ensure src and plugin paths are in sys.path
+# Ensure src is in sys.path
 root_dir = Path(__file__).parent.parent
 src_dir = root_dir / "src"
-plugin_dir = root_dir / "plugin_template" / "biopro_plugin" / "src" / "biopro"
-plugin_src_dir = root_dir / "plugin_template" / "biopro_plugin" / "src"
 
 if str(src_dir) in sys.path:
     sys.path.remove(str(src_dir))
 if str(root_dir) in sys.path:
     sys.path.remove(str(root_dir))
-if str(plugin_dir) in sys.path:
-    sys.path.remove(str(plugin_dir))
-if str(plugin_src_dir) in sys.path:
-    sys.path.remove(str(plugin_src_dir))
 
 sys.path.insert(0, str(src_dir))
 sys.path.insert(0, str(root_dir))
@@ -156,55 +150,6 @@ try:
     import pyqtgraph  # noqa: F401
 except ImportError:
     sys.modules["pyqtgraph"] = MagicMock()
-
-import importlib.abc  # noqa: E402
-import importlib.util  # noqa: E402
-
-
-class BioproAliasLoader(importlib.abc.Loader):
-    def __init__(self, target_name):
-        self.target_name = target_name
-
-    def create_module(self, spec):
-        return importlib.import_module(self.target_name)
-
-    def exec_module(self, module):
-        pass
-
-
-class BioproAliasFinder(importlib.abc.MetaPathFinder):
-    def find_spec(self, fullname, path, target=None):
-        prefix1 = "src.biopro_plugins.synthetic_biology."
-        prefix2 = "biopro_plugins.synthetic_biology."
-        if fullname.startswith(prefix1):
-            target_name = fullname[len(prefix1) :]
-            return importlib.util.spec_from_loader(
-                fullname, BioproAliasLoader(target_name)
-            )
-        elif fullname.startswith(prefix2):
-            target_name = fullname[len(prefix2) :]
-            return importlib.util.spec_from_loader(
-                fullname, BioproAliasLoader(target_name)
-            )
-        return None
-
-
-sys.meta_path.insert(0, BioproAliasFinder())
-
-
-class DummyFonts(metaclass=DummyThemeMeta):
-    pass
-
-
-mock_theme = MagicMock()
-mock_theme.Colors = DummyColors
-mock_theme.Fonts = DummyFonts
-sys.modules["biopro.ui.theme"] = mock_theme
-sys.modules["biopro.core"] = MagicMock()
-sys.modules["biopro.core.task_scheduler"] = MagicMock()
-sys.modules["biopro.shared"] = MagicMock()
-sys.modules["biopro.shared.ui"] = MagicMock()
-sys.modules["biopro.shared.ui.ui_components"] = mock_components  # type: ignore
 
 from karcytics_plugins.synthetic_biology.analysis.state import SynBioState  # noqa: E402
 

@@ -121,9 +121,7 @@ class SimulateView(QWidget):
         self.figure.patch.set_facecolor(dark_bg)
         self.canvas.setStyleSheet(f"background-color: {dark_bg};")
         self.info_label.setStyleSheet(f"color: {fg_sec}; font-size: {font_sz}px;")
-        self.species_header.setStyleSheet(
-            f"color: {fg_pri}; font-weight: bold; font-size: 13px;"
-        )
+        self.species_header.setStyleSheet(f"color: {fg_pri}; font-weight: bold; font-size: 13px;")
 
         self.species_list.setStyleSheet(
             f"QListWidget {{ background: {dark_panel}; color: {fg_pri}; "
@@ -197,8 +195,7 @@ class SimulateView(QWidget):
             ax.text(
                 0.5,
                 0.5,
-                "No species selected.\nCheck items in the right-hand panel "
-                "to view traces.",
+                "No species selected.\nCheck items in the right-hand panel to view traces.",
                 ha="center",
                 va="center",
                 color="white",
@@ -221,9 +218,12 @@ class SimulateView(QWidget):
                 lw = 1.0 if method == "gillespie" else 2.0
 
                 # Fetch data array matching column name
-                if hasattr(result, "colnames") and col_name in result.colnames:
-                    data_y = result[col_name]
-                elif hasattr(result, "__getitem__") and col_name in result:
+                if (
+                    hasattr(result, "colnames")
+                    and col_name in result.colnames
+                    or hasattr(result, "__getitem__")
+                    and col_name in result
+                ):
                     data_y = result[col_name]
                 else:
                     continue
@@ -255,7 +255,7 @@ class SimulateView(QWidget):
 
         self.canvas.draw()
 
-    def plot_time_series(self, max_time: int = 1000, method: str = "ode"):
+    def plot_time_series(self, max_time: int = 1000, method: str = "ode"):  # noqa: PLR0915
         """Run and plot a dynamic ODE or Stochastic simulation using Tellurium."""
         method_name = (
             "Time-Series Simulation (ODE)"
@@ -324,31 +324,18 @@ class SimulateView(QWidget):
 
                 # Determine Promoter Equation
                 reps = getattr(current_promoter, "repressors", [])
-                y_min = (
-                    current_promoter.y_min
-                    if current_promoter.y_min is not None
-                    else 0.0
-                )
-                y_max = (
-                    current_promoter.y_max
-                    if current_promoter.y_max is not None
-                    else 1.0
-                )
+                y_min = current_promoter.y_min if current_promoter.y_min is not None else 0.0
+                y_max = current_promoter.y_max if current_promoter.y_max is not None else 1.0
                 K_d = current_promoter.K_d if current_promoter.K_d is not None else 0.1
                 n = current_promoter.n if current_promoter.n is not None else 2.0
 
                 if reps:
                     rep_name = reps[0]  # primary repressor
-                    equation = (
-                        f"{y_min} + ({y_max} - {y_min}) / "
-                        f"(1 + ({rep_name} / {K_d})^{n})"
-                    )
+                    equation = f"{y_min} + ({y_max} - {y_min}) / (1 + ({rep_name} / {K_d})^{n})"
                 else:
                     equation = f"{y_max}"  # Constitutive
 
-                deg_rate = (
-                    part.degradation_rate if part.degradation_rate is not None else 0.01
-                )
+                deg_rate = part.degradation_rate if part.degradation_rate is not None else 0.01
 
                 # Species Definition
                 init_val = 10 if is_first_product else 0
@@ -358,12 +345,9 @@ class SimulateView(QWidget):
                 is_first_product = False
 
                 # Reactions
+                antimony_lines.append(f"  J_prod_{product_name}: => {product_name}; {equation};")
                 antimony_lines.append(
-                    f"  J_prod_{product_name}: => {product_name}; {equation};"
-                )
-                antimony_lines.append(
-                    f"  J_deg_{product_name}: {product_name} => ; "
-                    f"{deg_rate} * {product_name};"
+                    f"  J_deg_{product_name}: {product_name} => ; {deg_rate} * {product_name};"
                 )
 
         antimony_lines.append("end")

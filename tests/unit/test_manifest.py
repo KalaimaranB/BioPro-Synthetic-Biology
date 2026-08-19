@@ -7,11 +7,7 @@ import pytest
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 TOML_PATH = ROOT_DIR / "pyproject.toml"
-DEPRECATED_MANIFEST_PATH = ROOT_DIR / "manifest.json.deprecated"
-LEGACY_INIT = (
-    ROOT_DIR / "src" / "karcytics_plugins" / "synthetic_biology" / "__init__.py"
-)
-INIT_PATH = LEGACY_INIT
+INIT_PATH = ROOT_DIR / "src" / "karcytics_plugins" / "synthetic_biology" / "__init__.py"
 
 
 class TestManifest:
@@ -19,24 +15,14 @@ class TestManifest:
 
     @pytest.fixture(autouse=True)
     def _load_manifest(self):
-        if TOML_PATH.exists():
-            with open(TOML_PATH, "rb") as f:
-                data = tomllib.load(f)
-            self.project = data.get("project", {})
-            self.plugin = data.get("tool", {}).get("karcytics", {}).get("plugin", {})
-            self.manifest = {**self.project, **self.plugin}
-        else:
-            with open(DEPRECATED_MANIFEST_PATH, encoding="utf-8") as f:
-                import json
-
-                self.manifest = json.load(f)
-                self.project = self.manifest
-                self.plugin = self.manifest
+        with open(TOML_PATH, "rb") as f:
+            data = tomllib.load(f)
+        self.project = data.get("project", {})
+        self.plugin = data.get("tool", {}).get("karcytics", {}).get("plugin", {})
+        self.manifest = {**self.project, **self.plugin}
 
     def test_manifest_exists(self):
-        assert TOML_PATH.exists() or DEPRECATED_MANIFEST_PATH.exists(), (
-            "pyproject.toml or manifest.json.deprecated must exist at plugin root"
-        )
+        assert TOML_PATH.exists(), "pyproject.toml must exist at plugin root"
 
     def test_required_fields_present(self):
         assert "name" in self.project

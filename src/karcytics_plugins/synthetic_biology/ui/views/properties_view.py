@@ -150,9 +150,7 @@ class PropertiesView(QWidget):
 
         # Base Properties
         if hasattr(part, "sequence"):
-            seq_display = (
-                part.sequence[:30] + "..." if len(part.sequence) > 30 else part.sequence
-            )
+            seq_display = part.sequence[:30] + "..." if len(part.sequence) > 30 else part.sequence  # noqa: PLR2004
             self.form_layout.addRow("Sequence (start):", QLabel(seq_display))
 
         # Role-specific Kinetic Parameters
@@ -163,12 +161,8 @@ class PropertiesView(QWidget):
             self._add_double_spinbox(
                 "y_max (Max Output in RPU):", "y_max", part.y_max, 0.0, 20.0, 0.1
             )
-            self._add_double_spinbox(
-                "K_d (Threshold):", "K_d", part.K_d, 0.0, 10.0, 0.05
-            )
-            self._add_double_spinbox(
-                "n (Hill Coefficient):", "n", part.n, 0.1, 10.0, 0.1
-            )
+            self._add_double_spinbox("K_d (Threshold):", "K_d", part.K_d, 0.0, 10.0, 0.05)
+            self._add_double_spinbox("n (Hill Coefficient):", "n", part.n, 0.1, 10.0, 0.1)
 
             reps = ", ".join(part.repressors) if part.repressors else "None"
             self.form_layout.addRow("Repressors:", QLabel(reps))
@@ -249,9 +243,7 @@ class PropertiesView(QWidget):
             spin.setValue(min_val)
 
         # Connect value change to update the model
-        spin.valueChanged.connect(
-            lambda val, attr=attr_name: self._on_param_changed(attr, val)
-        )
+        spin.valueChanged.connect(lambda val, attr=attr_name: self._on_param_changed(attr, val))
 
         from karcytics_sdk.plugin.theme_fallback import Colors
 

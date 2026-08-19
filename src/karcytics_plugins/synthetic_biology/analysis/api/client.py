@@ -3,6 +3,7 @@
 Uses Dependency Inversion Principle via the `RegistryClient` protocol.
 """
 
+import contextlib
 import xml.etree.ElementTree as ET
 from typing import Any, Protocol
 
@@ -52,7 +53,7 @@ class IGemClient:
         except ET.ParseError:
             return None
 
-    def _parse_xml(self, xml_text: str) -> BiologicalPart | None:
+    def _parse_xml(self, xml_text: str) -> BiologicalPart | None:  # noqa: C901, PLR0911, PLR0912, PLR0915
         root = ET.fromstring(xml_text)
         part_elem = root.find(".//part_list/part")
         if part_elem is None:
@@ -101,32 +102,25 @@ class IGemClient:
             import re
 
             ctrl = kwargs["properties"].get("control", "").lower()
-            desc = (
-                kwargs.get("name", "").lower()
-                + " "
-                + kwargs.get("description", "").lower()
-            )
+            desc = kwargs.get("name", "").lower() + " " + kwargs.get("description", "").lower()
             reps = kwargs.get("repressors", [])
 
-            if "laci" in ctrl or "laci" in desc:
-                if "LacI" not in reps:
-                    reps.append("LacI")
-            if "tetr" in ctrl or "tetr" in desc:
-                if "TetR" not in reps:
-                    reps.append("TetR")
+            if ("laci" in ctrl or "laci" in desc) and "LacI" not in reps:
+                reps.append("LacI")
+            if ("tetr" in ctrl or "tetr" in desc) and "TetR" not in reps:
+                reps.append("TetR")
 
             # Use word boundaries to prevent 'laci' from matching 'ci'
-            if re.search(r"\b(lambda|ci)\b", ctrl) or re.search(
-                r"\b(lambda|ci)\b", desc
-            ):
-                if "cI" not in reps:
-                    reps.append("cI")
+            if (
+                re.search(r"\b(lambda|ci)\b", ctrl) or re.search(r"\b(lambda|ci)\b", desc)
+            ) and "cI" not in reps:
+                reps.append("cI")
 
             if reps:
                 kwargs["repressors"] = reps
             return Promoter(**kwargs)  # type: ignore[arg-type]
 
-        elif "coding" in part_type or "cds" in part_type:
+        if "coding" in part_type or "cds" in part_type:
             # Attempt to extract product data if not explicitly set
             if "product" not in kwargs:
                 protein = kwargs["properties"].get("protein")
@@ -134,7 +128,7 @@ class IGemClient:
                     kwargs["product"] = protein
             return CDS(**kwargs)  # type: ignore[arg-type]
 
-        elif "terminator" in part_type:
+        if "terminator" in part_type:
             # Attempt to extract efficiency (e.g. '0.984[CC]/0.97[JK]')
             if "termination_efficiency" not in kwargs:
                 eff = kwargs["properties"].get("forward_efficiency")
@@ -146,26 +140,23 @@ class IGemClient:
                         kwargs["termination_efficiency"] = float(match.group(1))
             return Terminator(**kwargs)
 
-        elif "rbs" in part_type or "ribosome" in part_type:
+        if "rbs" in part_type or "ribosome" in part_type:
             # Attempt to extract binding strength
             if "translation_initiation_rate" not in kwargs:
                 eff = kwargs["properties"].get("efficiency")
                 if eff:
-                    try:
+                    with contextlib.suppress(ValueError):
                         kwargs["translation_initiation_rate"] = float(eff)
-                    except ValueError:
-                        pass
             return RBS(**kwargs)
-        elif "rna" in part_type or "sgrna" in part_type or "guide" in part_type:
+        if "rna" in part_type or "sgrna" in part_type or "guide" in part_type:
             return sgRNA(**kwargs)  # type: ignore[arg-type]
 
-        elif "insulator" in part_type or "ribozyme" in part_type:
+        if "insulator" in part_type or "ribozyme" in part_type:
             return Insulator(**kwargs)  # type: ignore[arg-type]
 
-        else:
-            # Fallback to CDS if we don't know, or we could have a GenericPart
-            # For now, default to CDS to ensure we return a valid part
-            return CDS(**kwargs)
+        # Fallback to CDS if we don't know, or we could have a GenericPart
+        # For now, default to CDS to ensure we return a valid part
+        return CDS(**kwargs)
 
 
 class SynBioHubClient:
@@ -174,7 +165,7 @@ class SynBioHubClient:
     def __init__(self, base_url: str = "https://synbiohub.org/public/igem/"):
         self.base_url = base_url
 
-    def fetch_part(self, part_id: str) -> BiologicalPart | None:
+    def fetch_part(self, part_id: str) -> BiologicalPart | None:  # noqa: PLR0911
         """Fetch an SBOL part and parse it using sbol3."""
         # Note: In a real implementation, you'd query the SynBioHub SPARQL endpoint or
         # download the SBOL XML and parse it.
@@ -192,9 +183,7 @@ class SynBioHubClient:
             )
 
             # Find the component definition
-            components = [
-                obj for obj in doc.objects if isinstance(obj, sbol3.Component)
-            ]
+            components = [obj for obj in doc.objects if isinstance(obj, sbol3.Component)]
             if not components:
                 return None
 
@@ -221,16 +210,15 @@ class SynBioHubClient:
             if "http://identifiers.org/so/SO:0000167" in roles:
                 return Promoter(**kwargs)  # type: ignore[arg-type]
             # SO:0000316 is CDS
-            elif "http://identifiers.org/so/SO:0000316" in roles:
+            if "http://identifiers.org/so/SO:0000316" in roles:
                 return CDS(**kwargs)  # type: ignore[arg-type]
             # SO:0000141 is terminator
-            elif "http://identifiers.org/so/SO:0000141" in roles:
+            if "http://identifiers.org/so/SO:0000141" in roles:
                 return Terminator(**kwargs)  # type: ignore[arg-type]
             # SO:0000139 is RBS
-            elif "http://identifiers.org/so/SO:0000139" in roles:
+            if "http://identifiers.org/so/SO:0000139" in roles:
                 return RBS(**kwargs)  # type: ignore[arg-type]
-            else:
-                return CDS(**kwargs)  # type: ignore[arg-type]
+            return CDS(**kwargs)  # type: ignore[arg-type]
 
         except (requests.RequestException, sbol3.SBOLError, Exception):
             return None

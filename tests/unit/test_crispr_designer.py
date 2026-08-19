@@ -46,7 +46,5 @@ def test_cfd_off_target_scoring():
     )
 
     genome_with_mismatch = "AAAAAAAAAAAAAAAAACTGGAGTTGTCCCAATTCTCGGAAAAAAAAAAAAAAAA"
-    score = CRISPRDesignEngine.score_off_targets(
-        cand, reference_genome=genome_with_mismatch
-    )
+    score = CRISPRDesignEngine.score_off_targets(cand, reference_genome=genome_with_mismatch)
     assert 0.0 <= score <= 100.0

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from ...analysis.crispr.async_worker import CRISPRWorker
@@ -22,7 +20,7 @@ class CRISPRDesignController(QObject):
     def __init__(self, state: SynBioState, parent=None):
         super().__init__(parent)
         self.state = state
-        self._active_worker: Optional[CRISPRWorker] = None
+        self._active_worker: CRISPRWorker | None = None
 
     @pyqtSlot(str, str, int)
     def handle_scan_request(
@@ -41,7 +39,7 @@ class CRISPRDesignController(QObject):
         self._active_worker.error_occurred.connect(self.error_raised.emit)
         self._active_worker.start()
 
-    def _on_scan_finished(self, candidates: List[gRNACandidate]) -> None:
+    def _on_scan_finished(self, candidates: list[gRNACandidate]) -> None:
         """Updates SynBioState and notifies View with results."""
         self.state.set_grna_candidates(candidates)
         self.grna_results_ready.emit(candidates)

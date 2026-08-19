@@ -7,8 +7,6 @@ signals & slots.
 
 from __future__ import annotations
 
-from typing import List
-
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import (
@@ -39,9 +37,7 @@ class CRISPRDesignView(QWidget):
 
     scan_requested = pyqtSignal(str, str, int)
 
-    def __init__(
-        self, state: SynBioState, controller: CRISPRDesignController, parent=None
-    ):
+    def __init__(self, state: SynBioState, controller: CRISPRDesignController, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.state = state
@@ -119,9 +115,7 @@ class CRISPRDesignView(QWidget):
         top_layout.addLayout(config_layout)
 
         self.target_seq_edit = QTextEdit()
-        self.target_seq_edit.setPlaceholderText(
-            "Paste target DNA sequence here (e.g. ATGC...)..."
-        )
+        self.target_seq_edit.setPlaceholderText("Paste target DNA sequence here (e.g. ATGC...)...")
         self.target_seq_edit.setFixedHeight(90)
         self.target_seq_edit.setText(
             "ATGAGTAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAAATTTTCTGTCAGTGGAGAGGGTGAAGGTGATGCAACATACGGAAAACTTACCCTTAAATTTATTTGCACTACTGGAAAACTACCTGTTCCATGGCCAACACTTGTCACTACTTTCGGTTATGGTGTTCAATGCTTTGCG"
@@ -160,8 +154,7 @@ class CRISPRDesignView(QWidget):
         self.detail_display = QTextEdit()
         self.detail_display.setReadOnly(True)
         self.detail_display.setPlaceholderText(
-            "Select a guide RNA row to view detailed CFD off-target mismatch "
-            "breakdown..."
+            "Select a guide RNA row to view detailed CFD off-target mismatch breakdown..."
         )
         self.detail_display.setStyleSheet("font-family: monospace;")
         bottom_layout.addWidget(self.detail_display, stretch=1)
@@ -189,7 +182,7 @@ class CRISPRDesignView(QWidget):
         self.scan_requested.emit(seq, pam_type, 20)
 
     @pyqtSlot(list)
-    def render_grna_results(self, candidates: List[gRNACandidate]):
+    def render_grna_results(self, candidates: list[gRNACandidate]):
         """Populates candidates into table."""
         self.grna_table.setRowCount(0)
 
@@ -202,23 +195,19 @@ class CRISPRDesignView(QWidget):
 
             self.grna_table.setItem(row, 0, item_spacer)
             self.grna_table.setItem(row, 1, QTableWidgetItem(cand.pam))
-            self.grna_table.setItem(
-                row, 2, QTableWidgetItem("+" if cand.strand >= 0 else "-")
-            )
-            self.grna_table.setItem(
-                row, 3, QTableWidgetItem(f"{cand.start}-{cand.end}")
-            )
+            self.grna_table.setItem(row, 2, QTableWidgetItem("+" if cand.strand >= 0 else "-"))
+            self.grna_table.setItem(row, 3, QTableWidgetItem(f"{cand.start}-{cand.end}"))
             self.grna_table.setItem(row, 4, QTableWidgetItem(f"{cand.gc_content}%"))
 
             # Efficiency Score item
             eff_item = QTableWidgetItem(f"{cand.efficiency_score}%")
-            if cand.efficiency_score >= 70.0:
+            if cand.efficiency_score >= 70.0:  # noqa: PLR2004
                 eff_item.setForeground(Qt.GlobalColor.green)
             self.grna_table.setItem(row, 5, eff_item)
 
             # CFD Off-target score item
             cfd_item = QTableWidgetItem(f"{cand.off_target_score}%")
-            if cand.off_target_score >= 90.0:
+            if cand.off_target_score >= 90.0:  # noqa: PLR2004
                 cfd_item.setForeground(Qt.GlobalColor.green)
             else:
                 cfd_item.setForeground(Qt.GlobalColor.yellow)

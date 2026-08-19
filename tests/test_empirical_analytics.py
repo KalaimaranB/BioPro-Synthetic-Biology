@@ -43,9 +43,7 @@ def test_ngs_alignment():
                 start=0,
                 end=50,
             ),
-            GeneticFeature(
-                id="feat2", name="tetR CDS", feature_type="cds", start=50, end=200
-            ),
+            GeneticFeature(id="feat2", name="tetR CDS", feature_type="cds", start=50, end=200),
         ],
     )
 
@@ -77,9 +75,7 @@ def test_ml_optimization_loop():
         K_d=1.0,
         n=2.0,
     )
-    edges = [
-        CircuitEdge(source_id="TetR", target_id="LacI", interaction_type="repression")
-    ]
+    edges = [CircuitEdge(source_id="TetR", target_id="LacI", interaction_type="repression")]
 
     service = FCSDataIngestionService()
     fcs_data = service.ingest_fcs_file("/dummy/path.fcs")

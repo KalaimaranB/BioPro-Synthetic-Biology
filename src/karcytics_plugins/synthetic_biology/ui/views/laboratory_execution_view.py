@@ -8,7 +8,7 @@ background QThread (ProtocolWorker).
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
@@ -56,18 +56,18 @@ class ProtocolWorker(QThread):
     finished = pyqtSignal(object)  # Emits BenchProtocol instance on success
     error = pyqtSignal(str)  # Emits error description string on failure
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         num_reactions: int,
         vector_bp: int,
         vector_conc_ng_ul: float,
-        inserts: List[Dict[str, Any]],
+        inserts: list[dict[str, Any]],
         assembly_type: str = "Gibson",
         overage_pct: float = 10.0,
         vector_mass_ng: float = 50.0,
         default_molar_ratio: float = 3.0,
         reaction_volume_ul: float = 20.0,
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self.num_reactions = num_reactions
@@ -106,11 +106,11 @@ class LaboratoryExecutionView(QWidget):
     global application stylesheets.
     """
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.current_protocol: Optional[BenchProtocol] = None
-        self.worker: Optional[ProtocolWorker] = None
+        self.current_protocol: BenchProtocol | None = None
+        self.worker: ProtocolWorker | None = None
 
         self._init_ui()
         self._load_sample_inventory()
@@ -172,8 +172,7 @@ class LaboratoryExecutionView(QWidget):
 
         self.status_badge = QLabel("READY")
         self.status_badge.setStyleSheet(
-            "font-weight: bold; padding: 3px 10px; "
-            "border-radius: 12px; font-size: 11px;"
+            "font-weight: bold; padding: 3px 10px; border-radius: 12px; font-size: 11px;"
         )
         header_layout.addWidget(self.status_badge)
 
@@ -202,7 +201,7 @@ class LaboratoryExecutionView(QWidget):
     # -------------------------------------------------------------------------
     # TAB 1: MASTER MIX & RATIO CALCULATOR
     # -------------------------------------------------------------------------
-    def _init_calculator_tab(self, parent: QWidget) -> None:
+    def _init_calculator_tab(self, parent: QWidget) -> None:  # noqa: PLR0915
         layout = QHBoxLayout(parent)
         layout.setContentsMargins(10, 10, 10, 10)
 
@@ -523,12 +522,8 @@ class LaboratoryExecutionView(QWidget):
             row_idx = self.table_master_mix.rowCount()
             self.table_master_mix.insertRow(row_idx)
             self.table_master_mix.setItem(row_idx, 0, QTableWidgetItem(comp))
-            self.table_master_mix.setItem(
-                row_idx, 1, QTableWidgetItem(f"{per_rxn_vol:.3f}")
-            )
-            self.table_master_mix.setItem(
-                row_idx, 2, QTableWidgetItem(f"{tot_vol:.3f}")
-            )
+            self.table_master_mix.setItem(row_idx, 1, QTableWidgetItem(f"{per_rxn_vol:.3f}"))
+            self.table_master_mix.setItem(row_idx, 2, QTableWidgetItem(f"{tot_vol:.3f}"))
 
         # 2. Pipetting Table
         rr_data = protocol.reaction_ratio
@@ -664,8 +659,7 @@ class LaboratoryExecutionView(QWidget):
             QMessageBox.warning(
                 self,
                 "No Protocol Available",
-                "Please generate a bench assembly protocol first before "
-                "exporting to CSV.",
+                "Please generate a bench assembly protocol first before exporting to CSV.",
             )
             return
 

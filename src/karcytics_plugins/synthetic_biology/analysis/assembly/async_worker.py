@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
-
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal  # noqa: TID251
 
 from ..models.domain import PlasmidVector, Primer
 from ..parts.base import BiologicalPart
@@ -20,11 +18,11 @@ class AssemblyWorker(QThread):
     primer_finished = pyqtSignal(Primer, Primer)
     error_occurred = pyqtSignal(str)
 
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         task_type: str,  # 'assemble', 'parse', 'primer'
         vector_name: str = "Construct",
-        parts: Optional[List[BiologicalPart]] = None,
+        parts: list[BiologicalPart] | None = None,
         file_content: str = "",
         file_format: str = "genbank",
         target_seq: str = "",

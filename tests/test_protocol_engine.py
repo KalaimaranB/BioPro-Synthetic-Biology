@@ -47,9 +47,7 @@ class TestProtocolEngine(unittest.TestCase):
         self.assertEqual(result.assembly_type, "Golden Gate Assembly")
         self.assertAlmostEqual(result.multiplier, 11.5)
         # Buffer per rxn is 2.0 uL -> total 2.0 * 11.5 = 23.0 uL
-        self.assertAlmostEqual(
-            result.master_mix_volumes_total["10X T4 DNA Ligase Buffer"], 23.0
-        )
+        self.assertAlmostEqual(result.master_mix_volumes_total["10X T4 DNA Ligase Buffer"], 23.0)
 
     def test_calculate_master_mix_invalid_inputs(self):
         with self.assertRaises(AssemblyProtocolError):

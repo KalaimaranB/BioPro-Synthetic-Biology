@@ -8,9 +8,10 @@ liquid handlers (e.g., Tecan, Hamilton, Echo).
 from __future__ import annotations
 
 import csv
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Sequence, Tuple, Union
+from typing import Any
 
 
 class RobotExportError(IOError):
@@ -32,7 +33,7 @@ class TransferInstruction:
     volume_ul: float
     liquid_class: str = "Water_FreeSingle"
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         """Formats the transfer instruction for Tecan CSV row writing."""
         return {
             "Source_Plate": self.source_plate,
@@ -51,7 +52,7 @@ class WorklistGenerator:
     well mapping.
     """
 
-    TECAN_COLUMNS: List[str] = [
+    TECAN_COLUMNS: list[str] = [
         "Source_Plate",
         "Source_Well",
         "Destination_Plate",
@@ -94,10 +95,8 @@ class WorklistGenerator:
             row_idx = plate_idx % num_rows
             col_num = (plate_idx // num_rows) + 1
 
-        if row_idx >= 26:
-            raise ValueError(
-                f"Plate row index {row_idx} exceeds alphabet limits (A-Z)."
-            )
+        if row_idx >= 26:  # noqa: PLR2004
+            raise ValueError(f"Plate row index {row_idx} exceeds alphabet limits (A-Z).")
 
         row_letter = chr(ord("A") + row_idx)
         col_str = f"{col_num:02d}" if zero_padded else f"{col_num}"
@@ -107,8 +106,8 @@ class WorklistGenerator:
     @classmethod
     def export_transfers_to_tecan_csv(
         cls,
-        transfers: List[TransferInstruction],
-        filepath: Union[str, Path],
+        transfers: list[TransferInstruction],
+        filepath: str | Path,
     ) -> Path:
         """Exports a list of TransferInstruction objects to a Tecan-compatible CSV file.
 
@@ -136,17 +135,17 @@ class WorklistGenerator:
 
             return out_path
 
-        except (PermissionError, OSError, IOError) as e:
+        except (PermissionError, OSError) as e:
             raise RobotExportError(
                 f"Failed to export Tecan CSV worklist to '{out_path}': {e}"
             ) from e
 
     @classmethod
-    def export_to_tecan_csv(
+    def export_to_tecan_csv(  # noqa: C901, PLR0912
         cls,
-        reactions_list: Sequence[Union[Dict[str, Any], Any]],
-        filepath: Union[str, Path],
-        source_plate_map: Mapping[str, Union[str, Tuple[str, str]]] | None = None,
+        reactions_list: Sequence[dict[str, Any] | Any],
+        filepath: str | Path,
+        source_plate_map: Mapping[str, str | tuple[str, str]] | None = None,
         default_dest_plate: str = "DEST_PLATE_1",
         default_liquid_class: str = "Water_FreeSingle",
         zero_padded_wells: bool = False,
@@ -170,7 +169,7 @@ class WorklistGenerator:
         Raises:
             RobotExportError: If export fails due to file permissions or invalid data.
         """
-        transfers: List[TransferInstruction] = []
+        transfers: list[TransferInstruction] = []
         plate_map = source_plate_map or {}
 
         for rxn_idx, rxn in enumerate(reactions_list):
@@ -178,9 +177,7 @@ class WorklistGenerator:
             dest_well = cls.index_to_well(rxn_idx, zero_padded=zero_padded_wells)
             dest_plate_num = (rxn_idx // 96) + 1
             dest_plate = (
-                default_dest_plate
-                if dest_plate_num == 1
-                else f"DEST_PLATE_{dest_plate_num}"
+                default_dest_plate if dest_plate_num == 1 else f"DEST_PLATE_{dest_plate_num}"
             )
 
             # Standardize input reaction structure
@@ -267,9 +264,7 @@ class WorklistGenerator:
                         ins_name = ins_spec.get("name", f"Insert_{ins_idx + 1}")
                         ins_vol = ins_spec.get("volume_ul", 0.0)
                         if ins_vol > 0:
-                            default_w = cls.index_to_well(
-                                ins_idx, zero_padded=zero_padded_wells
-                            )
+                            default_w = cls.index_to_well(ins_idx, zero_padded=zero_padded_wells)
                             src_p, src_w = cls._resolve_source(
                                 ins_name,
                                 plate_map,
@@ -310,16 +305,16 @@ class WorklistGenerator:
     @staticmethod
     def _resolve_source(
         component_name: str,
-        plate_map: Mapping[str, Union[str, Tuple[str, str]]],
+        plate_map: Mapping[str, str | tuple[str, str]],
         default_plate: str,
         default_well: str,
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         """Resolves source plate and well for a given component name from plate map."""
         if component_name in plate_map:
             val = plate_map[component_name]
-            if isinstance(val, (tuple, list)) and len(val) >= 2:
+            if isinstance(val, (tuple, list)) and len(val) >= 2:  # noqa: PLR2004
                 return str(val[0]), str(val[1])
-            elif isinstance(val, str):
+            if isinstance(val, str):
                 return default_plate, val
 
         return default_plate, default_well

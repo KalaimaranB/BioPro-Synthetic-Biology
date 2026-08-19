@@ -31,19 +31,13 @@ class CatalogueView(QWidget):
         # Left Side: Scroll Area with FlowLayout for Cards
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scroll_area.setMinimumWidth(500)
-        self.scroll_area.setStyleSheet(
-            "QScrollArea { background: transparent; border: none; }"
-        )
+        self.scroll_area.setStyleSheet("QScrollArea { background: transparent; border: none; }")
 
         self.cards_container = QWidget()
         self.cards_container.setStyleSheet("QWidget { background: transparent; }")
-        self.flow_layout = FlowLayout(
-            self.cards_container, margin=10, hSpacing=10, vSpacing=10
-        )
+        self.flow_layout = FlowLayout(self.cards_container, margin=10, hSpacing=10, vSpacing=10)
         self.scroll_area.setWidget(self.cards_container)
 
         self.splitter.addWidget(self.scroll_area)

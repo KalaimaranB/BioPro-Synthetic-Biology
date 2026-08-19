@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
 from ...analysis.empirical.fcs_ingestion import (
@@ -34,16 +32,16 @@ class EmpiricalWorker(QThread):
     opt_done = pyqtSignal(HillOptimizationResult)
     error_occurred = pyqtSignal(str)
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         task_type: str,
-        fcs_service: Optional[FCSDataIngestionService] = None,
+        fcs_service: FCSDataIngestionService | None = None,
         fcs_path: str = "",
         ngs_path: str = "",
-        plasmid: Optional[PlasmidVector] = None,
-        components: Optional[List[CircuitComponent]] = None,
-        edges: Optional[List[CircuitEdge]] = None,
-        fcs_data: Optional[FCSEventData] = None,
+        plasmid: PlasmidVector | None = None,
+        components: list[CircuitComponent] | None = None,
+        edges: list[CircuitEdge] | None = None,
+        fcs_data: FCSEventData | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -91,7 +89,7 @@ class EmpiricalAnalyticsController(QObject):
         super().__init__(parent)
         self.state = state
         self.fcs_service = FCSDataIngestionService()
-        self._active_workers: List[EmpiricalWorker] = []
+        self._active_workers: list[EmpiricalWorker] = []
 
     def load_fcs_data(self, file_path: str) -> None:
         """Launch asynchronous FCS data ingestion."""
@@ -107,9 +105,7 @@ class EmpiricalAnalyticsController(QObject):
         self._active_workers.append(worker)
         worker.start()
 
-    def run_ngs_alignment(
-        self, ngs_path: str, plasmid: Optional[PlasmidVector] = None
-    ) -> None:
+    def run_ngs_alignment(self, ngs_path: str, plasmid: PlasmidVector | None = None) -> None:
         """Launch background NGS alignment task."""
         ref_plasmid = plasmid or self.state.plasmid
         worker = EmpiricalWorker(
@@ -126,9 +122,9 @@ class EmpiricalAnalyticsController(QObject):
 
     def run_ml_optimization(
         self,
-        components: List[CircuitComponent],
-        edges: List[CircuitEdge],
-        fcs_data: Optional[FCSEventData] = None,
+        components: list[CircuitComponent],
+        edges: list[CircuitEdge],
+        fcs_data: FCSEventData | None = None,
     ) -> None:
         """Launch background Hill parameter optimization task."""
         comps = components or self.state.circuit_components

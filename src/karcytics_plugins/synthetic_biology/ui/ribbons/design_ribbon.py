@@ -65,9 +65,7 @@ class DesignRibbon(QWidget):
         layout.addWidget(QLabel("Part:"))
         self.part_selector_combo = QComboBox()
         self.part_selector_combo.setMinimumWidth(280)
-        self.part_selector_combo.setSizeAdjustPolicy(
-            QComboBox.SizeAdjustPolicy.AdjustToContents
-        )
+        self.part_selector_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
         layout.addWidget(self.part_selector_combo)
 
         # Connect Role dropdown to update_part_selector method
@@ -166,9 +164,7 @@ class DesignRibbon(QWidget):
             "Coding Sequence": ["cds", "coding sequence"],
             "Terminator": ["terminator"],
         }
-        matching_types = role_type_map.get(
-            selected_role_clean, [selected_role_clean.lower()]
-        )
+        matching_types = role_type_map.get(selected_role_clean, [selected_role_clean.lower()])
 
         # Query Parts Catalogue Service
         catalogue_parts = []
@@ -188,9 +184,7 @@ class DesignRibbon(QWidget):
         if catalogue_parts:
             for p in catalogue_parts:
                 display_name = (
-                    f"{p.id} - {p.name}"
-                    if getattr(p, "name", None) and p.name != p.id
-                    else p.id
+                    f"{p.id} - {p.name}" if getattr(p, "name", None) and p.name != p.id else p.id
                 )
                 self.part_selector_combo.addItem(display_name, userData=p)
 
@@ -237,9 +231,7 @@ class DesignRibbon(QWidget):
             )
 
             # Attempt database lookup first
-            catalogue_service = (
-                self._factory.get("parts_catalogue") if self._factory else None
-            )
+            catalogue_service = self._factory.get("parts_catalogue") if self._factory else None
             part = None
             if catalogue_service and hasattr(catalogue_service, "get_part"):
                 part = catalogue_service.get_part(part_id)

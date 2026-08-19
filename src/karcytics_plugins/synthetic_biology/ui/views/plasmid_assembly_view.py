@@ -10,7 +10,6 @@ signals & slots.
 from __future__ import annotations
 
 import json
-from typing import List
 
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from PyQt6.QtCore import QMimeData, Qt, pyqtSignal, pyqtSlot
@@ -88,10 +87,7 @@ class AssemblyCanvasWidget(QListWidget):
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
 
     def dragEnterEvent(self, event):
-        if (
-            event.mimeData().hasFormat("application/x-synbio-part")
-            or event.source() == self
-        ):
+        if event.mimeData().hasFormat("application/x-synbio-part") or event.source() == self:
             event.acceptProposedAction()
 
     def dragMoveEvent(self, event):
@@ -102,9 +98,7 @@ class AssemblyCanvasWidget(QListWidget):
             data_bytes = event.mimeData().data("application/x-synbio-part")
             part_dict = json.loads(bytes(data_bytes).decode("utf-8"))
 
-            item = QListWidgetItem(
-                f"🧩 {part_dict['name']} [{part_dict['part_type'].upper()}]"
-            )
+            item = QListWidgetItem(f"🧩 {part_dict['name']} [{part_dict['part_type'].upper()}]")
             item.setData(Qt.ItemDataRole.UserRole, part_dict)
             self.addItem(item)
             event.acceptProposedAction()
@@ -117,9 +111,7 @@ class AssemblyCanvasWidget(QListWidget):
 class PrimerDesignDialog(QDialog):
     """Modal dialog for automated PCR & assembly primer design."""
 
-    def __init__(
-        self, target_sequence: str, controller: PlasmidAssemblyController, parent=None
-    ):
+    def __init__(self, target_sequence: str, controller: PlasmidAssemblyController, parent=None):
         super().__init__(parent)
         self.controller = controller
         self.target_sequence = target_sequence
@@ -135,15 +127,11 @@ class PrimerDesignDialog(QDialog):
         form.addRow("Target Tm (°C):", self.tm_spin)
 
         self.fwd_overhang_edit = QLineEdit()
-        self.fwd_overhang_edit.setPlaceholderText(
-            "e.g. GAATTC (Restriction / Gibson Overhang)"
-        )
+        self.fwd_overhang_edit.setPlaceholderText("e.g. GAATTC (Restriction / Gibson Overhang)")
         form.addRow("Forward Overhang 5':", self.fwd_overhang_edit)
 
         self.rev_overhang_edit = QLineEdit()
-        self.rev_overhang_edit.setPlaceholderText(
-            "e.g. AAGCTT (Restriction / Gibson Overhang)"
-        )
+        self.rev_overhang_edit.setPlaceholderText("e.g. AAGCTT (Restriction / Gibson Overhang)")
         form.addRow("Reverse Overhang 5':", self.rev_overhang_edit)
 
         layout.addLayout(form)
@@ -187,9 +175,7 @@ class PlasmidAssemblyView(QWidget):
     file_parse_requested = pyqtSignal(str, str)
     primer_requested = pyqtSignal(str, float, str, str)
 
-    def __init__(
-        self, state: SynBioState, controller: PlasmidAssemblyController, parent=None
-    ):
+    def __init__(self, state: SynBioState, controller: PlasmidAssemblyController, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.state = state
@@ -237,7 +223,7 @@ class PlasmidAssemblyView(QWidget):
         self.setStyleSheet(view_qss)
         self.update()
 
-    def _init_ui(self):
+    def _init_ui(self):  # noqa: PLR0915
         self.setObjectName("plasmid_assembly_view")
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
@@ -283,9 +269,7 @@ class PlasmidAssemblyView(QWidget):
 
         center_layout.addLayout(toolbar)
 
-        lbl_canvas = QLabel(
-            "Drop Parts Below to Assemble Genetic Construct (Drag to Reorder):"
-        )
+        lbl_canvas = QLabel("Drop Parts Below to Assemble Genetic Construct (Drag to Reorder):")
         center_layout.addWidget(lbl_canvas)
 
         self.assembly_canvas = AssemblyCanvasWidget()
@@ -303,18 +287,14 @@ class PlasmidAssemblyView(QWidget):
         right_layout.addWidget(lbl_map)
 
         self.feature_table = QTableWidget(0, 5)
-        self.feature_table.setHorizontalHeaderLabels(
-            ["Name", "Type", "Start", "End", "Strand"]
-        )
+        self.feature_table.setHorizontalHeaderLabels(["Name", "Type", "Start", "End", "Strand"])
         if (hv := self.feature_table.horizontalHeader()) is not None:
             hv.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         right_layout.addWidget(self.feature_table)
 
         self.seq_display = QTextEdit()
         self.seq_display.setReadOnly(True)
-        self.seq_display.setPlaceholderText(
-            "Assembled sequence display (FASTA / GenBank)..."
-        )
+        self.seq_display.setPlaceholderText("Assembled sequence display (FASTA / GenBank)...")
         self.seq_display.setStyleSheet("font-family: monospace;")
         right_layout.addWidget(self.seq_display)
 
@@ -367,7 +347,7 @@ class PlasmidAssemblyView(QWidget):
             self.part_palette.addItem(item)
 
     def _on_assemble_clicked(self):
-        parts: List[BiologicalPart] = []
+        parts: list[BiologicalPart] = []
         for i in range(self.assembly_canvas.count()):
             item = self.assembly_canvas.item(i)
             p_dict = item.data(Qt.ItemDataRole.UserRole)
@@ -428,7 +408,7 @@ class PlasmidAssemblyView(QWidget):
             return
 
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             fmt = "fasta" if file_path.endswith((".fa", ".fasta")) else "genbank"
@@ -463,14 +443,10 @@ class PlasmidAssemblyView(QWidget):
             self.feature_table.insertRow(row)
 
             self.feature_table.setItem(row, 0, QTableWidgetItem(feat.name))
-            self.feature_table.setItem(
-                row, 1, QTableWidgetItem(feat.feature_type.upper())
-            )
+            self.feature_table.setItem(row, 1, QTableWidgetItem(feat.feature_type.upper()))
             self.feature_table.setItem(row, 2, QTableWidgetItem(str(feat.start)))
             self.feature_table.setItem(row, 3, QTableWidgetItem(str(feat.end)))
-            self.feature_table.setItem(
-                row, 4, QTableWidgetItem("+" if feat.strand >= 0 else "-")
-            )
+            self.feature_table.setItem(row, 4, QTableWidgetItem("+" if feat.strand >= 0 else "-"))
 
         # Update sequence text display
         topology_str = "Circular" if vector.is_circular else "Linear"

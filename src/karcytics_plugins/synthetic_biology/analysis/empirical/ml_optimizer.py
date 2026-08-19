@@ -8,7 +8,7 @@ to match empirical observations.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 from scipy.optimize import minimize
@@ -27,19 +27,17 @@ from .ngs_alignment import NGSAlignmentResult
 class HillOptimizationResult:
     """Container holding original vs empirically optimized kinetic parameters."""
 
-    original_components: List[CircuitComponent] = field(default_factory=list)
-    optimized_components: List[CircuitComponent] = field(default_factory=list)
-    parameter_deltas: Dict[str, Dict[str, Tuple[float, float]]] = field(
-        default_factory=dict
-    )
+    original_components: list[CircuitComponent] = field(default_factory=list)
+    optimized_components: list[CircuitComponent] = field(default_factory=list)
+    parameter_deltas: dict[str, dict[str, tuple[float, float]]] = field(default_factory=dict)
     initial_mse: float = 0.0
     final_mse: float = 0.0
-    fitted_time_series: Dict[str, List[float]] = field(default_factory=dict)
-    empirical_time_series: Dict[str, List[float]] = field(default_factory=dict)
+    fitted_time_series: dict[str, list[float]] = field(default_factory=dict)
+    empirical_time_series: dict[str, list[float]] = field(default_factory=dict)
     status_message: str = "Optimization complete"
     success: bool = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "parameter_deltas": self.parameter_deltas,
             "initial_mse": self.initial_mse,
@@ -57,13 +55,13 @@ class CircuitMLOptimizationEngine:
     """
 
     @classmethod
-    def fit_kinetic_parameters(
+    def fit_kinetic_parameters(  # noqa: C901
         cls,
-        components: List[CircuitComponent],
-        edges: List[CircuitEdge],
+        components: list[CircuitComponent],
+        edges: list[CircuitEdge],
         fcs_data: FCSEventData,
-        ngs_data: Optional[NGSAlignmentResult] = None,
-        sim_params: Optional[SimulationParameters] = None,
+        ngs_data: NGSAlignmentResult | None = None,  # noqa: ARG003 — reserved for future NGS-based fitting
+        sim_params: SimulationParameters | None = None,
     ) -> HillOptimizationResult:
         """Perform non-linear least-squares parameter fitting against FCS data."""
         if not components:
@@ -75,12 +73,10 @@ class CircuitMLOptimizationEngine:
             sim_params = SimulationParameters(t_start=0.0, t_end=100.0, num_points=50)
 
         # Baseline original simulation
-        orig_sim = CircuitSimulationEngine.simulate_circuit(
-            components, edges, sim_params
-        )
+        orig_sim = CircuitSimulationEngine.simulate_circuit(components, edges, sim_params)
 
         # Extract empirical observations (or generate target curves if FCS is raw stats)
-        target_curves: Dict[str, List[float]] = {}
+        target_curves: dict[str, list[float]] = {}
         if fcs_data and fcs_data.time_series_expression:
             target_curves = fcs_data.time_series_expression
         else:
@@ -90,9 +86,7 @@ class CircuitMLOptimizationEngine:
                 if orig_conc:
                     # Parameter shift (higher leakiness, lower max expression)
                     noise = np.random.normal(0, 0.05, len(orig_conc))
-                    target_curves[comp.name] = (
-                        np.array(orig_conc) * 0.85 + 0.1 + noise
-                    ).tolist()
+                    target_curves[comp.name] = (np.array(orig_conc) * 0.85 + 0.1 + noise).tolist()
 
         # Build initial vector of optimization parameters per component
         initial_params = []
@@ -138,9 +132,7 @@ class CircuitMLOptimizationEngine:
                 temp_comps.append(c)
                 idx += 5
 
-            res = CircuitSimulationEngine.simulate_circuit(
-                temp_comps, edges, sim_params
-            )
+            res = CircuitSimulationEngine.simulate_circuit(temp_comps, edges, sim_params)
             if not res.success:
                 return 1e6
 
@@ -168,14 +160,14 @@ class CircuitMLOptimizationEngine:
         final_mse = float(res_opt.fun)
 
         # Build optimized components list & deltas map
-        opt_components: List[CircuitComponent] = []
-        deltas: Dict[str, Dict[str, Tuple[float, float]]] = {}
+        opt_components: list[CircuitComponent] = []
+        deltas: dict[str, dict[str, tuple[float, float]]] = {}
 
         idx = 0
         for orig in components:
             new_y_min = float(opt_params[idx])
             new_y_max = float(opt_params[idx + 1])
-            new_K_d = float(opt_params[idx + 2])
+            new_K_d = float(opt_params[idx + 2])  # noqa: N806
             new_n = float(opt_params[idx + 3])
             new_deg = float(opt_params[idx + 4])
 
@@ -202,9 +194,7 @@ class CircuitMLOptimizationEngine:
             idx += 5
 
         # Final simulation run with optimized parameters
-        opt_sim = CircuitSimulationEngine.simulate_circuit(
-            opt_components, edges, sim_params
-        )
+        opt_sim = CircuitSimulationEngine.simulate_circuit(opt_components, edges, sim_params)
 
         return HillOptimizationResult(
             original_components=components,

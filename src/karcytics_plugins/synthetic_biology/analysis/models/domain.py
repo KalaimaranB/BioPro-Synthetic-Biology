@@ -7,7 +7,7 @@ and kinetic circuit simulation parameters/results.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 @dataclass
@@ -18,17 +18,15 @@ class GeneticFeature:
 
     id: str
     name: str
-    feature_type: (
-        str  # e.g., 'promoter', 'cds', 'terminator', 'rbs', 'origin', 'resistance'
-    )
+    feature_type: str  # e.g., 'promoter', 'cds', 'terminator', 'rbs', 'origin', 'resistance'
     start: int  # 0-indexed start position
     end: int  # 0-indexed end position (exclusive)
     strand: int = 1  # 1 for forward strand, -1 for reverse strand
     sequence: str = ""
     color: str = "#3B82F6"  # Visual accent hex code
-    qualifiers: Dict[str, List[str]] = field(default_factory=dict)
+    qualifiers: dict[str, list[str]] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -42,7 +40,7 @@ class GeneticFeature:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> GeneticFeature:
+    def from_dict(cls, data: dict[str, Any]) -> GeneticFeature:
         return cls(
             id=data.get("id", ""),
             name=data.get("name", ""),
@@ -71,9 +69,9 @@ class Primer:
     gc_content: float
     length: int
     overhang: str = ""
-    target_region: Optional[Tuple[int, int]] = None
+    target_region: tuple[int, int] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -88,7 +86,7 @@ class Primer:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> Primer:
+    def from_dict(cls, data: dict[str, Any]) -> Primer:
         return cls(
             id=data.get("id", ""),
             name=data.get("name", ""),
@@ -99,9 +97,7 @@ class Primer:
             gc_content=data.get("gc_content", 50.0),
             length=data.get("length", len(data.get("sequence", ""))),
             overhang=data.get("overhang", ""),
-            target_region=tuple(data["target_region"])
-            if data.get("target_region")
-            else None,
+            target_region=tuple(data["target_region"]) if data.get("target_region") else None,
         )
 
 
@@ -114,14 +110,14 @@ class PlasmidVector:
     description: str = ""
     sequence: str = ""
     is_circular: bool = True
-    features: List[GeneticFeature] = field(default_factory=list)
-    primers: List[Primer] = field(default_factory=list)
+    features: list[GeneticFeature] = field(default_factory=list)
+    primers: list[Primer] = field(default_factory=list)
 
     @property
     def length(self) -> int:
         return len(self.sequence)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -134,7 +130,7 @@ class PlasmidVector:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> PlasmidVector:
+    def from_dict(cls, data: dict[str, Any]) -> PlasmidVector:
         features = [GeneticFeature.from_dict(f) for f in data.get("features", [])]
         primers = [Primer.from_dict(p) for p in data.get("primers", [])]
         return cls(
@@ -149,7 +145,7 @@ class PlasmidVector:
 
 
 @dataclass
-class gRNACandidate:
+class gRNACandidate:  # noqa: N801 — standard molecular-biology nomenclature (guide RNA)
     """Represents a single guide RNA candidate targeting a CRISPR/Cas9 site."""
 
     id: str
@@ -162,10 +158,10 @@ class gRNACandidate:
     gc_content: float
     efficiency_score: float  # Doench/Rule 2 efficiency (0-100%)
     off_target_score: float  # CFD score (0-100%, 100 = minimal off-target activity)
-    off_target_hits: List[Dict[str, Any]] = field(default_factory=list)
+    off_target_hits: list[dict[str, Any]] = field(default_factory=list)
     has_poly_t_term: bool = False  # True if sequence contains >3 consecutive Ts
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "target_id": self.target_id,
@@ -182,7 +178,7 @@ class gRNACandidate:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> gRNACandidate:
+    def from_dict(cls, data: dict[str, Any]) -> gRNACandidate:
         return cls(
             id=data.get("id", ""),
             target_id=data.get("target_id", ""),
@@ -214,7 +210,7 @@ class CircuitComponent:
     translation_rate: float = 1.0  # Protein translation rate (RPU/min)
     initial_concentration: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -259,7 +255,7 @@ class CircuitEdge:
     interaction_type: str  # 'activation' or 'repression'
     strength: float = 1.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "source_id": self.source_id,
             "target_id": self.target_id,
@@ -292,7 +288,7 @@ class SimulationParameters:
     rtol: float = 1e-6
     atol: float = 1e-9
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "t_start": self.t_start,
             "t_end": self.t_end,
@@ -307,12 +303,12 @@ class SimulationParameters:
 class SimulationResult:
     """Results container holding time-series expression data from SciPy solve_ivp."""
 
-    time_points: List[float] = field(default_factory=list)
-    species_concentrations: Dict[str, List[float]] = field(default_factory=dict)
+    time_points: list[float] = field(default_factory=list)
+    species_concentrations: dict[str, list[float]] = field(default_factory=dict)
     status_message: str = "Success"
     success: bool = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "time_points": self.time_points,
             "species_concentrations": self.species_concentrations,
@@ -321,7 +317,7 @@ class SimulationResult:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> SimulationResult:
+    def from_dict(cls, data: dict[str, Any]) -> SimulationResult:
         return cls(
             time_points=data.get("time_points", []),
             species_concentrations=data.get("species_concentrations", {}),

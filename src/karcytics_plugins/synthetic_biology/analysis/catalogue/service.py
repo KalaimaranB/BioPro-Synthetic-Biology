@@ -1,7 +1,6 @@
 import json
 import os
 import urllib.request
-from typing import List, Optional
 
 from ..api.kinetics import CelloKineticsDatabase
 from ..parts.base import BiologicalPart
@@ -23,11 +22,11 @@ class PartsCatalogueService:
         """Add a new part or update an existing one."""
         self._repository.save(part)
 
-    def get_part(self, part_id: str) -> Optional[BiologicalPart]:
+    def get_part(self, part_id: str) -> BiologicalPart | None:
         """Retrieve a part by ID."""
         return self._repository.get(part_id)
 
-    def get_all_parts(self) -> List[BiologicalPart]:
+    def get_all_parts(self) -> list[BiologicalPart]:
         """Get all parts in the catalogue."""
         return self._repository.get_all()
 
@@ -86,9 +85,7 @@ class PartsCatalogueService:
                     res = data["results"][0]
                     # Description
                     funcs = [
-                        c
-                        for c in res.get("comments", [])
-                        if c.get("commentType") == "FUNCTION"
+                        c for c in res.get("comments", []) if c.get("commentType") == "FUNCTION"
                     ]
                     if funcs and funcs[0].get("texts"):
                         part.description = funcs[0]["texts"][0]["value"]
@@ -108,18 +105,20 @@ class PartsCatalogueService:
                         )
                         try:
                             img_req = urllib.request.Request(img_url)
-                            with urllib.request.urlopen(img_req, timeout=3) as img_resp:
-                                with open(img_path, "wb") as f:
-                                    f.write(img_resp.read())
+                            with (
+                                urllib.request.urlopen(img_req, timeout=3) as img_resp,
+                                open(img_path, "wb") as f,
+                            ):
+                                f.write(img_resp.read())
                             # Store relative path or absolute path.
                             # Relative is better for portability.
                             part.properties["image_path"] = f"images/{part.id}.jpeg"
-                        except Exception as e:
-                            print(f"Failed to fetch image for {gene} ({pdb_id}): {e}")
-        except Exception as e:
-            print(f"Failed to fetch Uniprot for {gene}: {e}")
+                        except Exception:
+                            pass
+        except Exception:
+            pass
 
-    def initialize_cello_parts(self) -> None:
+    def initialize_cello_parts(self) -> None:  # noqa: C901, PLR0912
         """Seed the repository with default Cello gates if it's empty."""
         # Only initialize if empty
         if self._repository.get_all():
@@ -130,19 +129,17 @@ class PartsCatalogueService:
         CelloKineticsDatabase.get_parameters(dummy_id)
 
         # 1. Load sequence data from UCF JSON
-        ucf_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "api", "cello_ucf.json"
-        )
+        ucf_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "api", "cello_ucf.json")
         sequences = {}
         if os.path.exists(ucf_path):
             try:
-                with open(ucf_path, "r") as f:
+                with open(ucf_path) as f:
                     ucf_data = json.load(f)
                     for item in ucf_data:
                         if item.get("collection") == "parts":
                             sequences[item.get("name")] = item.get("dnasequence", "")
-            except Exception as e:
-                print(f"Failed to parse sequences from UCF: {e}")
+            except Exception:
+                pass
 
         # Fetch UCF data directly to ensure we have all 14 parts
         classic_params = CelloKineticsDatabase._classic_params

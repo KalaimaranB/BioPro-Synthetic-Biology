@@ -9,7 +9,7 @@ thermal cycler programs formatted for PyQt6 GUI display.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class PipettingVolumeError(ValueError):
@@ -17,9 +17,7 @@ class PipettingVolumeError(ValueError):
     manual pipetting limit (0.5 uL).
     """
 
-    def __init__(
-        self, component_name: str, volume_ul: float, min_threshold_ul: float = 0.5
-    ):
+    def __init__(self, component_name: str, volume_ul: float, min_threshold_ul: float = 0.5):
         self.component_name = component_name
         self.volume_ul = volume_ul
         self.min_threshold_ul = min_threshold_ul
@@ -52,12 +50,12 @@ class MasterMixResult:
     overage_pct: float
     multiplier: float
     reaction_volume_ul: float
-    component_volumes_per_rxn: Dict[str, float]
-    master_mix_volumes_total: Dict[str, float]
+    component_volumes_per_rxn: dict[str, float]
+    master_mix_volumes_total: dict[str, float]
     total_master_mix_volume_ul: float
-    pipetting_warnings: List[str] = field(default_factory=list)
+    pipetting_warnings: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serializes the MasterMixResult into a dictionary for PyQt6 UI models."""
         return {
             "assembly_type": self.assembly_type,
@@ -88,7 +86,7 @@ class FragmentPipettingSpec:
     target_mass_ng: float
     volume_ul: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "role": self.role,
@@ -106,14 +104,14 @@ class ReactionRatioResult:
 
     assembly_type: str
     vector_spec: FragmentPipettingSpec
-    insert_specs: List[FragmentPipettingSpec]
+    insert_specs: list[FragmentPipettingSpec]
     total_dna_volume_ul: float
     master_mix_volume_ul: float
     water_volume_ul: float
     total_reaction_volume_ul: float
-    pipetting_warnings: List[str] = field(default_factory=list)
+    pipetting_warnings: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serializes the ReactionRatioResult into a dictionary payload for PyQt6."""
         return {
             "assembly_type": self.assembly_type,
@@ -137,7 +135,7 @@ class ThermalCyclerStep:
     duration_seconds: int
     cycles: int = 1
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         mins, secs = divmod(self.duration_seconds, 60)
         time_str = f"{mins}m {secs}s" if mins else f"{secs}s"
         return {
@@ -159,10 +157,10 @@ class BenchProtocol:
     num_reactions: int
     master_mix: MasterMixResult
     reaction_ratio: ReactionRatioResult
-    thermal_program: List[ThermalCyclerStep]
-    instructions: List[str]
+    thermal_program: list[ThermalCyclerStep]
+    instructions: list[str]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "protocol_name": self.protocol_name,
             "assembly_type": self.assembly_type,
@@ -181,11 +179,11 @@ class ProtocolEngine:
     """
 
     # Default master mix recipes per reaction (in uL for a 20 uL standard reaction)
-    DEFAULT_GIBSON_RECIPE: Dict[str, float] = {
+    DEFAULT_GIBSON_RECIPE: dict[str, float] = {
         "Gibson Assembly 2X Master Mix": 10.0,
     }
 
-    DEFAULT_GOLDEN_GATE_RECIPE: Dict[str, float] = {
+    DEFAULT_GOLDEN_GATE_RECIPE: dict[str, float] = {
         "10X T4 DNA Ligase Buffer": 2.0,
         "Restriction Enzyme (BsaI/BsmBI)": 1.0,
         "T4 DNA Ligase (400 U/µL)": 1.0,
@@ -206,7 +204,7 @@ class ProtocolEngine:
         overage_pct: float = 10.0,
         assembly_type: str = "Gibson",
         reaction_volume_ul: float = 20.0,
-        custom_recipe: Optional[Dict[str, float]] = None,
+        custom_recipe: dict[str, float] | None = None,
     ) -> MasterMixResult:
         """Calculates exact master mix component volumes including overage percentage.
 
@@ -246,14 +244,12 @@ class ProtocolEngine:
             per_rxn_recipe = dict(self.DEFAULT_GIBSON_RECIPE)
 
         multiplier = num_reactions * (1.0 + (overage_pct / 100.0))
-        total_volumes: Dict[str, float] = {}
-        warnings: List[str] = []
+        total_volumes: dict[str, float] = {}
+        warnings: list[str] = []
 
         for component, vol_per_rxn in per_rxn_recipe.items():
             if vol_per_rxn < 0:
-                raise AssemblyProtocolError(
-                    f"Component '{component}' volume cannot be negative."
-                )
+                raise AssemblyProtocolError(f"Component '{component}' volume cannot be negative.")
             if vol_per_rxn < self.min_pipetting_ul and vol_per_rxn > 0:
                 raise PipettingVolumeError(
                     component_name=f"{component} (per rxn)",
@@ -290,11 +286,11 @@ class ProtocolEngine:
             pipetting_warnings=warnings,
         )
 
-    def calculate_insert_to_vector_ratio(
+    def calculate_insert_to_vector_ratio(  # noqa: C901, PLR0913, PLR0917
         self,
         vector_bp: int,
         vector_conc_ng_ul: float,
-        inserts: List[Dict[str, Any]],
+        inserts: list[dict[str, Any]],
         default_molar_ratio: float = 3.0,
         vector_mass_ng: float = 50.0,
         reaction_volume_ul: float = 20.0,
@@ -335,17 +331,14 @@ class ProtocolEngine:
             )
         if vector_conc_ng_ul <= 0:
             raise AssemblyProtocolError(
-                f"Vector concentration must be positive ng/µL "
-                f"(got {vector_conc_ng_ul})."
+                f"Vector concentration must be positive ng/µL (got {vector_conc_ng_ul})."
             )
         if vector_mass_ng <= 0:
             raise AssemblyProtocolError(
                 f"Vector target mass must be positive ng (got {vector_mass_ng})."
             )
         if not inserts:
-            raise AssemblyProtocolError(
-                "At least one insert DNA fragment must be provided."
-            )
+            raise AssemblyProtocolError("At least one insert DNA fragment must be provided.")
 
         # Calculate Vector Volume
         vector_vol = vector_mass_ng / vector_conc_ng_ul
@@ -366,8 +359,8 @@ class ProtocolEngine:
             volume_ul=vector_vol,
         )
 
-        insert_specs: List[FragmentPipettingSpec] = []
-        warnings: List[str] = []
+        insert_specs: list[FragmentPipettingSpec] = []
+        warnings: list[str] = []
 
         # Process Inserts
         for idx, ins in enumerate(inserts):
@@ -382,8 +375,7 @@ class ProtocolEngine:
                 )
             if ins_conc <= 0:
                 raise AssemblyProtocolError(
-                    f"Insert '{name}' concentration_ng_ul must be positive "
-                    f"(got {ins_conc})."
+                    f"Insert '{name}' concentration_ng_ul must be positive (got {ins_conc})."
                 )
             if ratio <= 0:
                 raise AssemblyProtocolError(
@@ -427,8 +419,7 @@ class ProtocolEngine:
         water_vol = available_vol - total_dna_vol
         if water_vol < self.min_pipetting_ul and water_vol > 0:
             warnings.append(
-                f"Water volume ({water_vol:.3f} µL) is under 0.5 µL. "
-                "Consider omitting water."
+                f"Water volume ({water_vol:.3f} µL) is under 0.5 µL. Consider omitting water."
             )
             water_vol = 0.0
 
@@ -449,12 +440,12 @@ class ProtocolEngine:
             pipetting_warnings=warnings,
         )
 
-    def generate_bench_protocol(
+    def generate_bench_protocol(  # noqa: PLR0913, PLR0917
         self,
         num_reactions: int,
         vector_bp: int,
         vector_conc_ng_ul: float,
-        inserts: List[Dict[str, Any]],
+        inserts: list[dict[str, Any]],
         assembly_type: str = "Gibson",
         overage_pct: float = 10.0,
         vector_mass_ng: float = 50.0,
@@ -493,9 +484,7 @@ class ProtocolEngine:
 
         # 2. Reaction Ratio
         mm_vol_per_rxn = (
-            mm_result.component_volumes_per_rxn.get(
-                "Gibson Assembly 2X Master Mix", 10.0
-            )
+            mm_result.component_volumes_per_rxn.get("Gibson Assembly 2X Master Mix", 10.0)
             if not is_golden
             else sum(mm_result.component_volumes_per_rxn.values())
         )
@@ -514,9 +503,7 @@ class ProtocolEngine:
         # 3. Thermal Program
         if is_golden:
             thermal_program = [
-                ThermalCyclerStep(
-                    1, "Restriction & Ligation Cycles", 37.0, 180, cycles=30
-                ),
+                ThermalCyclerStep(1, "Restriction & Ligation Cycles", 37.0, 180, cycles=30),
                 ThermalCyclerStep(2, "Ligation Shift", 16.0, 240, cycles=30),
                 ThermalCyclerStep(3, "Final Ligation", 50.0, 300, cycles=1),
                 ThermalCyclerStep(4, "Heat Inactivation", 80.0, 300, cycles=1),

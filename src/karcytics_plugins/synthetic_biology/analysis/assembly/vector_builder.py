@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import io
 import uuid
-from typing import List, Tuple
 
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -26,9 +25,7 @@ class VectorAssemblyEngine:
     """
 
     @staticmethod
-    def parse_sequence_file(
-        file_content: str, file_format: str = "genbank"
-    ) -> PlasmidVector:
+    def parse_sequence_file(file_content: str, file_format: str = "genbank") -> PlasmidVector:
         """Parses FASTA or GenBank sequence content using Biopython.
 
         Args:
@@ -39,16 +36,13 @@ class VectorAssemblyEngine:
             PlasmidVector domain object with mapped features and full sequence.
         """
         fmt = file_format.lower()
-        if fmt in ["fa", "fasta"]:
-            biopython_fmt = "fasta"
-        else:
-            biopython_fmt = "genbank"
+        biopython_fmt = "fasta" if fmt in ["fa", "fasta"] else "genbank"
 
         handle = io.StringIO(file_content)
         record: SeqRecord = SeqIO.read(handle, biopython_fmt)
 
         sequence_str = str(record.seq).upper()
-        features: List[GeneticFeature] = []
+        features: list[GeneticFeature] = []
 
         # Color map by feature type
         type_color_map = {
@@ -64,9 +58,7 @@ class VectorAssemblyEngine:
         if hasattr(record, "features"):
             for feat in record.features:
                 ftype = feat.type.lower()
-                fname = feat.qualifiers.get(
-                    "label", feat.qualifiers.get("gene", [feat.type])
-                )[0]
+                fname = feat.qualifiers.get("label", feat.qualifiers.get("gene", [feat.type]))[0]
                 strand_val = 1
                 if (
                     hasattr(feat, "location")
@@ -84,9 +76,7 @@ class VectorAssemblyEngine:
                         start=int(feat.location.start),
                         end=int(feat.location.end),
                         strand=strand_val,
-                        sequence=sequence_str[
-                            int(feat.location.start) : int(feat.location.end)
-                        ],
+                        sequence=sequence_str[int(feat.location.start) : int(feat.location.end)],
                         color=color,
                         qualifiers={k: list(v) for k, v in feat.qualifiers.items()},
                     )
@@ -100,9 +90,7 @@ class VectorAssemblyEngine:
         return PlasmidVector(
             id=str(uuid.uuid4())[:8],
             name=record.name if record.name != "<unknown id>" else "Imported_Vector",
-            description=record.description
-            if record.description != "<unknown description>"
-            else "",
+            description=record.description if record.description != "<unknown description>" else "",
             sequence=sequence_str,
             is_circular=is_circular,
             features=features,
@@ -118,8 +106,7 @@ class VectorAssemblyEngine:
             seq_obj,
             id=vector.id,
             name=vector.name[:16].replace(" ", "_"),
-            description=vector.description
-            or "Synthetic construct assembled with BioPro",
+            description=vector.description or "Synthetic construct assembled with BioPro",
         )
         record.annotations["molecule_type"] = "DNA"
         if vector.is_circular:
@@ -143,7 +130,7 @@ class VectorAssemblyEngine:
     @staticmethod
     def assemble_vector(
         vector_name: str,
-        parts: List[BiologicalPart],
+        parts: list[BiologicalPart],
         backbone_sequence: str = "",
         is_circular: bool = True,
     ) -> PlasmidVector:
@@ -162,7 +149,7 @@ class VectorAssemblyEngine:
 
         current_offset = 0
         full_seq_builder = []
-        features: List[GeneticFeature] = []
+        features: list[GeneticFeature] = []
 
         if backbone_sequence:
             full_seq_builder.append(backbone_sequence.upper())
@@ -233,7 +220,7 @@ class VectorAssemblyEngine:
         if n_total == 0:
             return 0.0
 
-        if n_total <= 14:
+        if n_total <= 14:  # noqa: PLR2004
             return float((n_a + n_t) * 2 + (n_g + n_c) * 4)
 
         return float(64.9 + 41.0 * ((n_g + n_c) - 16.4) / n_total)
@@ -247,7 +234,7 @@ class VectorAssemblyEngine:
         max_length: int = 30,
         fwd_overhang: str = "",
         rev_overhang: str = "",
-    ) -> Tuple[Primer, Primer]:
+    ) -> tuple[Primer, Primer]:
         """Automated algorithm to design Forward and Reverse PCR primers
         for a target sequence.
 
@@ -256,9 +243,7 @@ class VectorAssemblyEngine:
         """
         target_seq = target_sequence.upper()
         if len(target_seq) < min_length * 2:
-            raise ValueError(
-                f"Target sequence too short ({len(target_seq)} bp) for primer design."
-            )
+            raise ValueError(f"Target sequence too short ({len(target_seq)} bp) for primer design.")
 
         # Design Forward Primer
         best_fwd_len = min_length
@@ -276,11 +261,7 @@ class VectorAssemblyEngine:
 
         fwd_binding = target_seq[:best_fwd_len]
         fwd_full_seq = fwd_overhang.upper() + fwd_binding
-        fwd_gc = (
-            (fwd_full_seq.count("G") + fwd_full_seq.count("C"))
-            / len(fwd_full_seq)
-            * 100.0
-        )
+        fwd_gc = (fwd_full_seq.count("G") + fwd_full_seq.count("C")) / len(fwd_full_seq) * 100.0
 
         fwd_primer = Primer(
             id=str(uuid.uuid4())[:8],
@@ -313,11 +294,7 @@ class VectorAssemblyEngine:
         rev_binding_region = target_seq[-best_rev_len:]
         rev_binding_rc = str(Seq(rev_binding_region).reverse_complement())
         rev_full_seq = rev_overhang.upper() + rev_binding_rc
-        rev_gc = (
-            (rev_full_seq.count("G") + rev_full_seq.count("C"))
-            / len(rev_full_seq)
-            * 100.0
-        )
+        rev_gc = (rev_full_seq.count("G") + rev_full_seq.count("C")) / len(rev_full_seq) * 100.0
 
         rev_primer = Primer(
             id=str(uuid.uuid4())[:8],

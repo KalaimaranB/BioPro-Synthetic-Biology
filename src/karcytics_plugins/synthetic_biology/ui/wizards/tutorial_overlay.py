@@ -2,8 +2,6 @@
 Synthetic Biology workspace.
 """
 
-from typing import Dict, List, Optional
-
 from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui import (
     QBrush,
@@ -27,7 +25,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-SYNTHETIC_BIOLOGY_TUTORIAL_STEPS: List[Dict[str, str]] = [
+SYNTHETIC_BIOLOGY_TUTORIAL_STEPS: list[dict[str, str]] = [
     {
         "title": "System Initialization Protocol",
         "text": (
@@ -149,16 +147,14 @@ class AcademyTutorialDialog(QDialog):
 
     def __init__(
         self,
-        parent: Optional[QWidget] = None,
-        steps: Optional[List[Dict[str, str]]] = None,
+        parent: QWidget | None = None,
+        steps: list[dict[str, str]] | None = None,
     ):
         super().__init__(parent)
         self.steps = steps or SYNTHETIC_BIOLOGY_TUTORIAL_STEPS
         self.current_step = 0
 
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
-        )
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setModal(True)
 
@@ -166,7 +162,7 @@ class AcademyTutorialDialog(QDialog):
         self._update_geometry()
         self.render_step(0)
 
-    def _setup_ui(self):
+    def _setup_ui(self):  # noqa: PLR0915
         # Center container for positioning mascot + white card
         self.center_container = QWidget(self)
         self.center_container.setFixedSize(620, 250)

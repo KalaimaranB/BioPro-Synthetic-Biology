@@ -41,9 +41,9 @@ def test_species_list_filtering_and_plot_update():
         def __getitem__(self, item):
             if item == "time":
                 return np.array([0, 1, 2, 3, 4, 5])
-            elif item in ("[LacI]", "LacI"):
+            if item in ("[LacI]", "LacI"):
                 return np.array([10, 8, 6, 4, 2, 0])
-            elif item in ("[TetR]", "TetR"):
+            if item in ("[TetR]", "TetR"):
                 return np.array([0, 2, 4, 6, 8, 10])
             return np.array([0, 0, 0, 0, 0, 0])
 

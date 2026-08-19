@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from ...analysis.assembly.async_worker import AssemblyWorker
@@ -24,12 +22,10 @@ class PlasmidAssemblyController(QObject):
     def __init__(self, state: SynBioState, parent=None):
         super().__init__(parent)
         self.state = state
-        self._active_worker: Optional[AssemblyWorker] = None
+        self._active_worker: AssemblyWorker | None = None
 
     @pyqtSlot(str, list)
-    def handle_assemble_request(
-        self, vector_name: str, parts: List[BiologicalPart]
-    ) -> None:
+    def handle_assemble_request(self, vector_name: str, parts: list[BiologicalPart]) -> None:
         """Launches background vector assembly worker."""
         self._active_worker = AssemblyWorker(
             task_type="assemble",

@@ -4,7 +4,7 @@ Provides comparative visualization of steady state protein expression curves
 between wild-type baseline parts and mutated sequences.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import matplotlib
 
@@ -98,10 +98,10 @@ def apply_standard_axes(
 
 
 def generate_transfer_curve(
-    wt_params: Dict[str, Any],
-    mut_params: Dict[str, Any],
+    wt_params: dict[str, Any],
+    mut_params: dict[str, Any],
     part_type: str = "promoter",
-    title: Optional[str] = None,
+    title: str | None = None,
 ) -> Figure:
     """Generate a comparative transfer/accumulation curve figure contrasting wild type
     vs mutation.
@@ -166,13 +166,11 @@ def generate_transfer_curve(
         r_max = max(100.0, max_kd * 100.0)
 
         # Logarithmic repressor concentration array using numpy.logspace
-        R = np.logspace(np.log10(r_min), np.log10(r_max), 500)
+        R = np.logspace(np.log10(r_min), np.log10(r_max), 500)  # noqa: N806
 
         # Repressive Hill Equation calculation
-        wt_P = wt_ymin + (wt_ymax - wt_ymin) / (
-            1.0 + (R / max(1e-6, wt_kd)) ** max(0.1, wt_n)
-        )
-        mut_P = mut_ymin + (mut_ymax - mut_ymin) / (
+        wt_P = wt_ymin + (wt_ymax - wt_ymin) / (1.0 + (R / max(1e-6, wt_kd)) ** max(0.1, wt_n))  # noqa: N806
+        mut_P = mut_ymin + (mut_ymax - mut_ymin) / (  # noqa: N806
             1.0 + (R / max(1e-6, mut_kd)) ** max(0.1, mut_n)
         )
 
@@ -196,25 +194,17 @@ def generate_transfer_curve(
     elif clean_type == "cds":
         # Extract CDS kinetics parameters
         wt_alpha = float(
-            wt_params.get("translation_rate")
-            or wt_params.get("wt_translation_rate")
-            or 0.1
+            wt_params.get("translation_rate") or wt_params.get("wt_translation_rate") or 0.1
         )
         wt_gamma = float(
-            wt_params.get("degradation_rate")
-            or wt_params.get("wt_degradation_rate")
-            or 0.01
+            wt_params.get("degradation_rate") or wt_params.get("wt_degradation_rate") or 0.01
         )
 
         mut_alpha = float(
-            mut_params.get("translation_rate")
-            or mut_params.get("mut_translation_rate")
-            or 0.1
+            mut_params.get("translation_rate") or mut_params.get("mut_translation_rate") or 0.1
         )
         mut_gamma = float(
-            mut_params.get("degradation_rate")
-            or mut_params.get("mut_degradation_rate")
-            or 0.01
+            mut_params.get("degradation_rate") or mut_params.get("mut_degradation_rate") or 0.01
         )
 
         # Time array using numpy.linspace
@@ -225,8 +215,8 @@ def generate_transfer_curve(
         wt_steady = wt_alpha / max(1e-5, wt_gamma)
         mut_steady = mut_alpha / max(1e-5, mut_gamma)
 
-        wt_P = wt_steady * (1.0 - np.exp(-max(1e-5, wt_gamma) * t))
-        mut_P = mut_steady * (1.0 - np.exp(-max(1e-5, mut_gamma) * t))
+        wt_P = wt_steady * (1.0 - np.exp(-max(1e-5, wt_gamma) * t))  # noqa: N806
+        mut_P = mut_steady * (1.0 - np.exp(-max(1e-5, mut_gamma) * t))  # noqa: N806
 
         # Plot curves: solid green for wild type, dashed red for mutation
         ax.plot(t, wt_P, "g-", label="Wild Type Baseline", linewidth=2.2, alpha=0.9)
@@ -244,8 +234,6 @@ def generate_transfer_curve(
         )
 
     else:
-        raise ValueError(
-            f"Unsupported part type '{part_type}' for transfer curve generation."
-        )
+        raise ValueError(f"Unsupported part type '{part_type}' for transfer curve generation.")
 
     return fig
