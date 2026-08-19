@@ -1,56 +1,30 @@
-# ⚠️ Core Dependency Installation Reminder
+# ⚠️ Core Dependency Installation Reminder — likely obsolete, needs confirmation
 
-## Dependencies to install into BioPro Core
+> This file predates the plugin's move to `process_model = "isolated"`
+> (see `pyproject.toml`'s `[tool.karcytics.plugin]` and `ui_daemon.py`): an
+> isolated plugin runs in its own subprocess with its own `.venv`/interpreter
+> and never imports into the Hub's process, so its dependencies should no
+> longer need installing into Karcytics core's own environment at all — that
+> requirement only applied under the old in-process execution model. Confirm
+> against Karcytics core's current plugin-loading code before assuming any of
+> the steps below are still needed; if isolated plugins now fully manage their
+> own dependencies, this file can likely be deleted.
 
-The Synthetic Biology plugin declares the following `core_dependencies` in its `manifest.json`.
-These must also be installed into the **BioPro core** application's environment so they are
-available at runtime when the plugin is loaded.
+## Dependencies (if still needed by Karcytics core)
 
-### Required packages:
+This plugin's actual dependencies, per `pyproject.toml`:
 
-| Package | Purpose | Install Command |
-|---------|---------|-----------------|
-| `numpy` | Numerical computation | Already in core ✅ |
-| `scipy` | ODE solver for kinetic simulation | Already in core ✅ |
-| `pandas` | Data handling | Already in core ✅ |
-| `matplotlib` | Plotting & visualization | Already in core ✅ |
-| `networkx` | Circuit graph representation & orthogonality checking | `uv pip install networkx` |
-| `sbol3` | SBOL3 standard biological parts data format | `uv pip install sbol3` |
-| `tellurium` | Systems biology simulation engine (Antimony/SBML) | `uv pip install tellurium` |
-| `mesa` | Agent-based modeling for intercellular communication | `uv pip install mesa` |
+| Package | Purpose |
+|---------|---------|
+| `karcytics-sdk` | Plugin base classes, UI kit, signing/trust |
+| `PyQt6` | UI framework |
+| `numpy`, `scipy`, `pandas`, `matplotlib` | Numerical computation, ODE solving, plotting |
+| `networkx` | Circuit graph representation & orthogonality checking |
+| `sbol3` | SBOL3 standard biological parts data format |
+| `biopython` | Sequence/codon utilities |
+| `pyqtgraph` | Additional plotting widgets |
+| `tellurium` | Systems biology simulation engine (Antimony/SBML) |
+| `requests` | HTTP client |
 
-### Steps:
-
-1. Open the **BioPro** core project:
-   ```bash
-   cd ~/GitHub\ Projects/BioPro
-   source .venv/bin/activate
-   ```
-
-2. Install the new dependencies:
-   ```bash
-   uv pip install networkx sbol3 tellurium mesa
-   ```
-
-3. Add them to BioPro's `requirements.in`:
-   ```
-   networkx>=3.1
-   sbol3>=1.1
-   tellurium>=2.2
-   mesa>=2.0
-   ```
-
-4. Recompile the lock file:
-   ```bash
-   uv pip compile requirements.in -o requirements.txt
-   ```
-
-5. If using PyInstaller, add them to `BioPro.spec` hidden imports:
-   ```python
-   hiddenimports += ["networkx", "sbol3", "tellurium", "mesa"]
-   ```
-
-### Also update BioPro-Distribution
-
-When registering the plugin in `registry.json`, ensure the `core_dependencies`
-array matches so the auto-updater can pre-install them before loading the plugin.
+(Note: `mesa`, previously listed here for agent-based modeling, is not currently
+a declared dependency — either it was removed, or that integration never shipped.)

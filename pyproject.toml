@@ -27,6 +27,7 @@ dev = [
     "pytest>=9.0.3,<10.0",
     "pytest-qt>=4.3,<5.0",
     "pytest-cov>=4.1,<5.0",
+    "pytest-timeout>=2.3,<3.0",
     "ruff>=0.4,<1.0",
     "mypy>=1.9,<2.0",
     "pip-audit>=2.7,<3.0",
@@ -65,11 +66,12 @@ author_public_key = "ed9ceefd12e7eebe2774cb6779bbbcf0a799b994f2c0159643c940e5ae1
 
 # ── Pytest ────────────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]
-markers = ["unit", "integration", "functional", "ui", "slow"]
+markers = ["unit", "integration", "functional", "ui", "slow", "edge_case"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-v --tb=short"
 timeout = 120
+timeout_method = "thread"
 
 # Ruff config lives in ruff.toml (matches the flow-cytometry reference module).
 

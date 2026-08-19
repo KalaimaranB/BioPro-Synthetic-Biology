@@ -1,11 +1,12 @@
 {
     "security_version": 1,
     "plugin_id": "synthetic_biology",
-    "manifest_hash": "b614b96762fbce24051d66c465c9c34f8255e86cb0915920f455be8d2c474786",
+    "manifest_hash": "915eaab45a8882c433c00518dd8adbb0932fde811bd10161677b2342e709e665",
     "exclusions": [
         "tests"
     ],
     "hashes": {
+        ".ci_keys/runner_delegation.json": "531151dd8d46d9374222f40a0460f5e163e5bff0319511c74d6567f46572e567",
         ".pre-commit-config.yaml": "e37d54f277097fd2215361907bea31234ba197bf70616e15886c84684e482bb7",
         "catalogue.json": "a7000a10458d9d7944aefa032a48ab8594ea9d6b5778eadab3aee5a6db528a84",
         "mkdocs.yml": "37bcad204c494c8f62b8290111c7e271e70f4af377f272b11b14f61dbdb9b098",

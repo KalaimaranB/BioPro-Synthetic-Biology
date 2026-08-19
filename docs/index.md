@@ -1,6 +1,6 @@
-# 🧬 BioPro Synthetic Biology
+# 🧬 Karcytics Synthetic Biology
 
-Welcome to the **Synthetic Biology Workspace** documentation — a BioPro plugin for designing, validating, and simulating biological logic gates and synthetic genetic circuits.
+Welcome to the **Synthetic Biology Workspace** documentation — a Karcytics plugin for designing, validating, and simulating biological logic gates and synthetic genetic circuits.
 
 ## Overview
 
@@ -13,13 +13,14 @@ This module bridges the gap between computer science and biology by providing to
 
 ## Architecture
 
-The plugin follows BioPro's standard architecture:
+The plugin follows Karcytics's standard plugin architecture, running as an isolated
+process (`process_model = "isolated"`) with its own PyQt6 UI daemon:
 
 | Layer | Directory | Purpose |
 |-------|-----------|---------|
-| **Analysis** | `analysis/` | Domain model, state, circuit engine, simulation |
-| **UI** | `ui/` | PyQt6 widgets, panels, canvas |
-| **Tests** | `tests/` | Unit, integration, and functional tests |
+| **Analysis** | `src/karcytics_plugins/synthetic_biology/analysis/` | Domain model, state, circuit engine, simulation (no PyQt6 imports) |
+| **UI** | `src/karcytics_plugins/synthetic_biology/ui/` | PyQt6 widgets, panels, canvas |
+| **Tests** | `tests/` | Unit tests |
 
 ## Getting Started
 
