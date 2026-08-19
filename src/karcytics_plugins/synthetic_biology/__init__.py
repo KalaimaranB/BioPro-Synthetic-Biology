@@ -6,7 +6,7 @@ biological logic gates and synthetic genetic circuits.
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __plugin_id__ = "synthetic_biology"
 
 
