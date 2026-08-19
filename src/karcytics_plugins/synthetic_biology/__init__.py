@@ -43,15 +43,15 @@ class BioProPlugin:
         self._panel = None
 
     def create_panel(self, parent=None):
-        """Instantiate and return the main SynBioPanel widget."""
-        from .analysis.state import SynBioState
-        from .ui.composition_root import ServiceFactory
+        """Instantiate and return the main SynBioPanel widget.
+
+        SynBioPanel builds its own ``SynBioState`` and ``ServiceFactory``
+        internally (see ``_setup_services``), so construction only needs
+        the plugin id and the Qt parent.
+        """
         from .ui.main_panel import SynBioPanel
 
-        state = SynBioState()
-        factory = ServiceFactory(state, parent_widget=parent)
-        factory.build_all()
-        self._panel = SynBioPanel(state, service_factory=factory, parent=parent)
+        self._panel = SynBioPanel(self.plugin_id, parent=parent)
         return self._panel
 
     def get_state(self) -> dict:

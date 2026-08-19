@@ -2979,6 +2979,7 @@ dependencies = [
     { name = "sbol3" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "tellurium" },
 ]
 
 [package.optional-dependencies]
@@ -2990,9 +2991,6 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-qt" },
     { name = "ruff" },
-]
-simulation = [
-    { name = "tellurium" },
 ]
 
 [package.metadata]
@@ -3015,9 +3013,9 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4,<1.0" },
     { name = "sbol3", specifier = ">=1.1" },
     { name = "scipy", specifier = ">=1.11" },
-    { name = "tellurium", marker = "extra == 'simulation'", specifier = ">=2.2" },
+    { name = "tellurium", specifier = ">=2.2" },
 ]
-provides-extras = ["simulation", "dev"]
+provides-extras = ["dev"]
 
 [[package]]
 name = "tellurium"
