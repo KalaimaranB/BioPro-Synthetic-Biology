@@ -9,11 +9,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 TOML_PATH = ROOT_DIR / "pyproject.toml"
 DEPRECATED_MANIFEST_PATH = ROOT_DIR / "manifest.json.deprecated"
 LEGACY_INIT = (
-    ROOT_DIR
-    / "src"
-    / "karcytics_plugins"
-    / "synthetic_biology"
-    / "__init__.py"
+    ROOT_DIR / "src" / "karcytics_plugins" / "synthetic_biology" / "__init__.py"
 )
 INIT_PATH = LEGACY_INIT
 

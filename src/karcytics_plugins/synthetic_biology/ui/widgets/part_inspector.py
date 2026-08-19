@@ -703,10 +703,11 @@ class PartInspector(QWidget):
                 seq, part_type=part_type, k=3
             )
             # Fallback directly to SequencePredictor using default repo candidates
+            import karcytics_plugins.synthetic_biology.analysis.prediction.sequence_predictor as sp
             from karcytics_plugins.synthetic_biology.analysis.api.kinetics import (
                 CelloKineticsDatabase,
             )
-            import karcytics_plugins.synthetic_biology.analysis.prediction.sequence_predictor as sp
+
             SequencePredictor = sp.SequencePredictor
 
             CelloKineticsDatabase.get_parameters("AmtR")
@@ -880,8 +881,10 @@ class PartInspector(QWidget):
 
         try:
             import karcytics_plugins.synthetic_biology.analysis.prediction.graphing_utils as gu
+
             generate_transfer_curve = gu.generate_transfer_curve
             import karcytics_plugins.synthetic_biology.analysis.prediction.sequence_predictor as sp
+
             compare_kinetics = sp.compare_kinetics
 
             comparison = compare_kinetics(seq, candidate_parts, part_type=part_type)

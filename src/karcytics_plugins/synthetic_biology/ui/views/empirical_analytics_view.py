@@ -312,6 +312,7 @@ class EmpiricalAnalyticsView(QWidget):
         edgs = self.state.circuit_edges
         if not comps:
             import karcytics_plugins.synthetic_biology.analysis.simulation.circuit_engine as ce
+
             CircuitSimulationEngine = ce.CircuitSimulationEngine
 
             comps, edgs = CircuitSimulationEngine.create_preset_repressilator()

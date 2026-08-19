@@ -10,16 +10,14 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import (
-    QApplication,
-    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
     QFrame,
-    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
@@ -28,17 +26,14 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
-    QScrollArea,
-    QSizePolicy,
     QSpinBox,
+    QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
-from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 
 from ...analysis.assembly.protocol_engine import (
     BenchProtocol,
@@ -103,8 +98,6 @@ class ProtocolWorker(QThread):
             self.finished.emit(protocol)
         except Exception as exc:
             self.error.emit(str(exc))
-
-
 
 
 class LaboratoryExecutionView(QWidget):
