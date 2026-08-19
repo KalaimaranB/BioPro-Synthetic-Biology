@@ -4,6 +4,7 @@ import csv
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from karcytics_plugins.synthetic_biology.analysis.assembly.protocol_engine import (
     ProtocolEngine,
@@ -123,10 +124,17 @@ class TestRobotExporter(unittest.TestCase):
                 self.assertIn("B1", dest_wells)
 
     def test_export_file_permission_error(self):
-        # Attempt to write to a non-existent root directory without creation permissions
-        invalid_path = Path("/invalid_root_directory_12345/test.csv")
-        with self.assertRaises(RobotExportError):
-            WorklistGenerator.export_transfers_to_tecan_csv([], invalid_path)
+        # Simulate an OS-level failure (permission denied, disk full, etc.)
+        # instead of relying on a real "unwritable path", since filesystem
+        # permission semantics aren't portable across platforms — e.g. a
+        # nonexistent POSIX root path like "/invalid_root_directory_12345"
+        # can be silently creatable at a Windows CI runner's drive root,
+        # which made this test pass on macOS/Linux but fail on Windows.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            csv_path = Path(tmpdir) / "test.csv"
+            with patch("pathlib.Path.mkdir", side_effect=OSError("permission denied")):
+                with self.assertRaises(RobotExportError):
+                    WorklistGenerator.export_transfers_to_tecan_csv([], csv_path)
 
 
 if __name__ == "__main__":
