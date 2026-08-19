@@ -1,6 +1,10 @@
 """Tests for SynBioState serialization and round-tripping."""
 
-from analysis.state import CircuitState, SynBioState, ViewState
+from karcytics_plugins.synthetic_biology.analysis.state import (
+    CircuitState,
+    SynBioState,
+    ViewState,
+)
 
 
 class TestCircuitState:
@@ -89,7 +93,7 @@ class TestSynBioState:
 
     def test_circuit_components_and_edges_properties(self):
         """Verify circuit_components, circuit_edges, and plasmid properties."""
-        from analysis.models.domain import (
+        from karcytics_plugins.synthetic_biology.analysis.models.domain import (
             CircuitComponent,
             CircuitEdge,
             PlasmidVector,

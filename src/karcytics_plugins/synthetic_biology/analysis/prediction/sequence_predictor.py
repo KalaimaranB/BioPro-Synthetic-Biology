@@ -13,8 +13,8 @@ Uses the Strategy Pattern to route prediction queries:
    catalogue as a safe fallback.
 """
 
-from abc import ABC, abstractmethod
 import math
+from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple
 
 

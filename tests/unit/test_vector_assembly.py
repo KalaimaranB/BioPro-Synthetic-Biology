@@ -1,14 +1,15 @@
 """Unit tests for Vector Assembly Engine and Biopython integration."""
 
 import pytest
-from analysis.assembly.vector_builder import (
+
+from karcytics_plugins.synthetic_biology.analysis.assembly.vector_builder import (
     VectorAssemblyEngine,
 )
-from analysis.parts.components import (
+from karcytics_plugins.synthetic_biology.analysis.parts.components import (
     CDS,
+    RBS,
     Promoter,
     Terminator,
-    RBS,
 )
 
 

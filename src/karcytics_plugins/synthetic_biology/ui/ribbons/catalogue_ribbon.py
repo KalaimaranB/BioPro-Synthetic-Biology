@@ -1,19 +1,5 @@
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel
-
-try:
-    from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
-except ImportError:
-    try:
-        from biopro_sdk.plugin.theme_fallback import Colors, Fonts
-    except ImportError:
-
-        class Colors:
-            FG_PRIMARY = "#e6edf3"
-            FG_SECONDARY = "#8b949e"
-
-        class Fonts:
-            SIZE_MEDIUM = "14px"
-            SIZE_SMALL = 11
+from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget
 
 
 class CatalogueRibbon(QWidget):

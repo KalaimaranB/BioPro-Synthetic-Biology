@@ -7,9 +7,10 @@ parsing capabilities.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import os
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+
 import numpy as np
 
 
@@ -53,9 +54,7 @@ class FCSEventData:
             "file_path": self.file_path,
             "total_events": self.total_events,
             "channels": self.channels,
-            "channel_stats": {
-                k: v.to_dict() for k, v in self.channel_stats.items()
-            },
+            "channel_stats": {k: v.to_dict() for k, v in self.channel_stats.items()},
             "time_series_expression": self.time_series_expression,
             "metadata": self.metadata,
             "is_valid": self.is_valid,

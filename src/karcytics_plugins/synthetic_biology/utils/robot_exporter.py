@@ -10,7 +10,7 @@ from __future__ import annotations
 import csv
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Mapping, Sequence, Tuple, Union
 
 
 class RobotExportError(IOError):
@@ -144,9 +144,9 @@ class WorklistGenerator:
     @classmethod
     def export_to_tecan_csv(
         cls,
-        reactions_list: List[Union[Dict[str, Any], Any]],
+        reactions_list: Sequence[Union[Dict[str, Any], Any]],
         filepath: Union[str, Path],
-        source_plate_map: Optional[Dict[str, str]] = None,
+        source_plate_map: Mapping[str, Union[str, Tuple[str, str]]] | None = None,
         default_dest_plate: str = "DEST_PLATE_1",
         default_liquid_class: str = "Water_FreeSingle",
         zero_padded_wells: bool = False,
@@ -310,7 +310,7 @@ class WorklistGenerator:
     @staticmethod
     def _resolve_source(
         component_name: str,
-        plate_map: Dict[str, Union[str, Tuple[str, str]]],
+        plate_map: Mapping[str, Union[str, Tuple[str, str]]],
         default_plate: str,
         default_well: str,
     ) -> Tuple[str, str]:

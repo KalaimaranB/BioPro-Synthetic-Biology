@@ -9,7 +9,9 @@ CircuitSimulationController signals & slots.
 from __future__ import annotations
 
 from typing import List, Optional
+
 import pyqtgraph as pg
+from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import (
@@ -26,44 +28,15 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from analysis.models.domain import (
+from ...analysis.models.domain import (
     CircuitComponent,
     CircuitEdge,
     SimulationParameters,
     SimulationResult,
 )
-from analysis.simulation.circuit_engine import CircuitSimulationEngine
-from analysis.state import SynBioState
-from ui.controllers.circuit_controller import CircuitSimulationController
-
-try:
-    from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-except ImportError:
-    try:
-        from biopro_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-    except ImportError:
-
-        class Colors:
-            BG_DARKEST = "#0d1117"
-            BG_DARK = "#161b22"
-            BG_MEDIUM = "#21262d"
-            FG_PRIMARY = "#e6edf3"
-            FG_SECONDARY = "#8b949e"
-            FG_DISABLED = "#484f58"
-            BORDER = "#30363d"
-            ACCENT_PRIMARY = "#00bcd4"
-
-        class Fonts:
-            SIZE_SMALL = 11
-
-        class _DummySignal:
-            def connect(self, cb):
-                pass
-
-        class _DummyThemeManager:
-            theme_changed = _DummySignal()
-
-        theme_manager = _DummyThemeManager()
+from ...analysis.simulation.circuit_engine import CircuitSimulationEngine
+from ...analysis.state import SynBioState
+from ...ui.controllers.circuit_controller import CircuitSimulationController
 
 
 class CircuitSimulationView(QWidget):
@@ -188,9 +161,7 @@ class CircuitSimulationView(QWidget):
             axis.setTextPen(axis_pen)
 
         title_color = (
-            Colors.ACCENT_PRIMARY
-            if hasattr(Colors, "ACCENT_PRIMARY")
-            else fg_color
+            Colors.ACCENT_PRIMARY if hasattr(Colors, "ACCENT_PRIMARY") else fg_color
         )
         self.plot_widget.setTitle(
             "Predicted Protein & RNA Expression Levels Over Time",

@@ -1,8 +1,8 @@
 from unittest.mock import patch
 
 # pyrefly: ignore [missing-import]
-from analysis.state import SynBioState
-from ui.composition_root import ServiceFactory
+from karcytics_plugins.synthetic_biology.analysis.state import SynBioState
+from karcytics_plugins.synthetic_biology.ui.composition_root import ServiceFactory
 
 
 def test_service_factory_build_all_handles_root_cwd(tmp_path):

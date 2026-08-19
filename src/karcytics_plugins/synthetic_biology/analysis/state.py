@@ -12,10 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-try:
-    from karcytics_sdk.plugin import PluginState, get_logger
-except ImportError:
-    from biopro_sdk.plugin import PluginState, get_logger
+from karcytics_sdk.plugin import PluginState, get_logger
 
 from . import events  # noqa: F401
 from .models.domain import (
@@ -171,9 +168,7 @@ class SynBioState(PluginState):
     @circuit_components.setter
     def circuit_components(self, components: List[CircuitComponent]) -> None:
         """Store list of circuit component domain models in state."""
-        self.data.circuit_nodes = [
-            c.to_dict() if hasattr(c, "to_dict") else c for c in components
-        ]
+        self.data.circuit_nodes = [c.to_dict() for c in components]
 
     def set_circuit_components(self, components: List[CircuitComponent]) -> None:
         """Centralized update for circuit components."""
@@ -191,9 +186,7 @@ class SynBioState(PluginState):
     @circuit_edges.setter
     def circuit_edges(self, edges: List[CircuitEdge]) -> None:
         """Store list of circuit edge domain models in state."""
-        self.data.circuit_edges = [
-            e.to_dict() if hasattr(e, "to_dict") else e for e in edges
-        ]
+        self.data.circuit_edges = [e.to_dict() for e in edges]
 
     def set_circuit_edges(self, edges: List[CircuitEdge]) -> None:
         """Centralized update for circuit edges."""

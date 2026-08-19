@@ -4,12 +4,14 @@ import unittest
 
 try:
     import PyQt6.QtCore  # noqa: F401
-    from analysis.assembly.protocol_engine import (
+
+    from karcytics_plugins.synthetic_biology.analysis.assembly.protocol_engine import (
         BenchProtocol,
     )
-    from ui.views.laboratory_execution_view import (
+    from karcytics_plugins.synthetic_biology.ui.views.laboratory_execution_view import (
         ProtocolWorker,
     )
+
     HAS_PYQT6 = True
 except ImportError:
     HAS_PYQT6 = False

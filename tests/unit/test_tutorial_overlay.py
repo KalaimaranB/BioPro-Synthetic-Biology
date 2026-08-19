@@ -7,19 +7,13 @@ from unittest.mock import MagicMock
 if "sbol3" not in sys.modules:
     sys.modules["sbol3"] = MagicMock()
 
-from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QApplication
 
-try:
-    from ui.wizards.tutorial_overlay import (
-        AcademyTutorialDialog,
-        SYNTHETIC_BIOLOGY_TUTORIAL_STEPS,
-    )
-except ImportError:
-    from ui.wizards.tutorial_overlay import (
-        AcademyTutorialDialog,
-        SYNTHETIC_BIOLOGY_TUTORIAL_STEPS,
-    )
+from karcytics_plugins.synthetic_biology.ui.wizards.tutorial_overlay import (
+    SYNTHETIC_BIOLOGY_TUTORIAL_STEPS,
+    AcademyTutorialDialog,
+)
 
 app = QApplication.instance() or QApplication([])
 

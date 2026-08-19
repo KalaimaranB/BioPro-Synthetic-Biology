@@ -5,16 +5,17 @@ workers, and SynBioState.
 from __future__ import annotations
 
 from typing import List, Optional
+
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
-from analysis.models.domain import (
+from ...analysis.models.domain import (
     CircuitComponent,
     CircuitEdge,
     SimulationParameters,
     SimulationResult,
 )
-from analysis.simulation.async_worker import CircuitSimWorker
-from analysis.state import SynBioState
+from ...analysis.simulation.async_worker import CircuitSimWorker
+from ...analysis.state import SynBioState
 
 
 class CircuitSimulationController(QObject):

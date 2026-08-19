@@ -1,19 +1,19 @@
 """Unit tests for Phase 3 Empirical Analytics services and ML optimization loop."""
 
-from analysis.empirical.fcs_ingestion import (
+from karcytics_plugins.synthetic_biology.analysis.empirical.fcs_ingestion import (
     FCSDataIngestionService,
 )
-from analysis.empirical.ngs_alignment import (
-    NGSAlignmentService,
-)
-from analysis.empirical.ml_optimizer import (
+from karcytics_plugins.synthetic_biology.analysis.empirical.ml_optimizer import (
     CircuitMLOptimizationEngine,
 )
-from analysis.models.domain import (
-    PlasmidVector,
-    GeneticFeature,
+from karcytics_plugins.synthetic_biology.analysis.empirical.ngs_alignment import (
+    NGSAlignmentService,
+)
+from karcytics_plugins.synthetic_biology.analysis.models.domain import (
     CircuitComponent,
     CircuitEdge,
+    GeneticFeature,
+    PlasmidVector,
 )
 
 
@@ -96,8 +96,8 @@ def test_ml_optimization_loop():
 
 
 def test_empirical_controller_teardown():
-    from analysis.state import SynBioState
-    from ui.controllers.empirical_controller import (
+    from karcytics_plugins.synthetic_biology.analysis.state import SynBioState
+    from karcytics_plugins.synthetic_biology.ui.controllers.empirical_controller import (
         EmpiricalAnalyticsController,
     )
 
@@ -108,10 +108,12 @@ def test_empirical_controller_teardown():
 
 
 def test_empirical_view_instantiation_and_teardown():
-    from PyQt6.QtWidgets import QApplication
     import sys
-    from analysis.state import SynBioState
-    from ui.views.empirical_analytics_view import (
+
+    from PyQt6.QtWidgets import QApplication
+
+    from karcytics_plugins.synthetic_biology.analysis.state import SynBioState
+    from karcytics_plugins.synthetic_biology.ui.views.empirical_analytics_view import (
         EmpiricalAnalyticsView,
     )
 
@@ -123,5 +125,3 @@ def test_empirical_view_instantiation_and_teardown():
     assert view.ml_tab is not None
 
     view.teardown()
-
-

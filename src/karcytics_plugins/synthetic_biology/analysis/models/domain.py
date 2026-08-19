@@ -233,7 +233,7 @@ class CircuitComponent:
         if isinstance(data, CircuitComponent):
             return data
         if not isinstance(data, dict):
-            return cls(id="", name="")
+            return cls(id="", name="", component_type="cds")
         return cls(
             id=data.get("id", ""),
             name=data.get("name", ""),
@@ -272,7 +272,7 @@ class CircuitEdge:
         if isinstance(data, CircuitEdge):
             return data
         if not isinstance(data, dict):
-            return cls(source_id="", target_id="")
+            return cls(source_id="", target_id="", interaction_type="repression")
         return cls(
             source_id=data.get("source_id", ""),
             target_id=data.get("target_id", ""),

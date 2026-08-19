@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import json
 from typing import List
+
+from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from PyQt6.QtCore import QMimeData, Qt, pyqtSignal, pyqtSlot
 from PyQt6.QtGui import QDrag
 from PyQt6.QtWidgets import (
@@ -35,40 +37,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from analysis.models.domain import PlasmidVector
-from analysis.parts.base import BiologicalPart
-from analysis.parts.components import CDS, RBS, Promoter, Terminator
-from analysis.state import SynBioState
-from ui.controllers.plasmid_controller import PlasmidAssemblyController
-
-
-try:
-    from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-except ImportError:
-    try:
-        from biopro_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-    except ImportError:
-
-        class Colors:
-            BG_DARKEST = "#0d1117"
-            BG_DARK = "#161b22"
-            BG_MEDIUM = "#21262d"
-            FG_PRIMARY = "#e6edf3"
-            FG_SECONDARY = "#8b949e"
-            BORDER = "#30363d"
-            ACCENT_PRIMARY = "#00bcd4"
-
-        class Fonts:
-            SIZE_SMALL = 11
-
-        class _DummySignal:
-            def connect(self, cb):
-                pass
-
-        class _DummyThemeManager:
-            theme_changed = _DummySignal()
-
-        theme_manager = _DummyThemeManager()
+from ...analysis.models.domain import PlasmidVector
+from ...analysis.parts.base import BiologicalPart
+from ...analysis.parts.components import CDS, RBS, Promoter, Terminator
+from ...analysis.state import SynBioState
+from ...ui.controllers.plasmid_controller import PlasmidAssemblyController
 
 
 class PartPaletteWidget(QListWidget):
@@ -333,7 +306,9 @@ class PlasmidAssemblyView(QWidget):
         self.feature_table.setHorizontalHeaderLabels(
             ["Name", "Type", "Start", "End", "Strand"]
         )
-        self.feature_table.horizontalHeader().setSectionResizeMode(
+        if (hv := self.feature_table.horizontalHeader()) is not None:
+
+            hv.setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
         right_layout.addWidget(self.feature_table)

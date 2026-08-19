@@ -3,22 +3,22 @@
 import pytest
 from PyQt6.QtWidgets import QApplication
 
-from analysis.state import SynBioState
-from ui.controllers.plasmid_controller import (
-    PlasmidAssemblyController,
-)
-from ui.controllers.crispr_controller import (
-    CRISPRDesignController,
-)
-from ui.controllers.circuit_controller import (
+from karcytics_plugins.synthetic_biology.analysis.state import SynBioState
+from karcytics_plugins.synthetic_biology.ui.controllers.circuit_controller import (
     CircuitSimulationController,
 )
-from ui.views.plasmid_assembly_view import (
-    PlasmidAssemblyView,
+from karcytics_plugins.synthetic_biology.ui.controllers.crispr_controller import (
+    CRISPRDesignController,
 )
-from ui.views.crispr_view import CRISPRDesignView
-from ui.views.circuit_simulation_view import (
+from karcytics_plugins.synthetic_biology.ui.controllers.plasmid_controller import (
+    PlasmidAssemblyController,
+)
+from karcytics_plugins.synthetic_biology.ui.views.circuit_simulation_view import (
     CircuitSimulationView,
+)
+from karcytics_plugins.synthetic_biology.ui.views.crispr_view import CRISPRDesignView
+from karcytics_plugins.synthetic_biology.ui.views.plasmid_assembly_view import (
+    PlasmidAssemblyView,
 )
 
 

@@ -5,34 +5,18 @@ between wild-type baseline parts and mutated sequences.
 """
 
 from typing import Any, Dict, Optional
+
 import matplotlib
 
 matplotlib.use("QtAgg")
-from matplotlib.figure import Figure
 import numpy as np
+from karcytics_sdk.plugin.theme_fallback import Colors
+from matplotlib.figure import Figure
 
-try:
-    from karcytics_sdk.plugin.theme_fallback import Colors
-except ImportError:
-    try:
-        from biopro_sdk.plugin.theme_fallback import Colors
-    except ImportError:
-
-        class Colors:
-            BG_DARKEST = "#0d1117"
-            FG_PRIMARY = "#c9d1d9"
-            SUCCESS = "#4caf50"
-            ACCENT_PRIMARY = "#f44336"
-
-    DARK_BG = getattr(Colors, "BG_DARKEST", "#0d1117")
-    TEXT_COLOR = getattr(Colors, "FG_PRIMARY", "#c9d1d9")
-    WT_COLOR = getattr(Colors, "SUCCESS", "#4caf50")
-    MUT_COLOR = getattr(Colors, "ACCENT_PRIMARY", "#f44336")
-except Exception:
-    DARK_BG = "#0d1117"
-    TEXT_COLOR = "#c9d1d9"
-    WT_COLOR = "#4caf50"
-    MUT_COLOR = "#f44336"
+DARK_BG = getattr(Colors, "BG_DARKEST", "#0d1117")
+TEXT_COLOR = getattr(Colors, "FG_PRIMARY", "#c9d1d9")
+WT_COLOR = getattr(Colors, "SUCCESS", "#4caf50")
+MUT_COLOR = getattr(Colors, "ACCENT_PRIMARY", "#f44336")
 
 
 def apply_standard_axes(

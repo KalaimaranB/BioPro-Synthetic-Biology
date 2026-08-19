@@ -177,8 +177,8 @@ class Reagent:
             id=str(data.get("id", "")),
             name=str(data.get("name", "")),
             lot_number=str(data.get("lot_number", "")),
-            concentration=float(data.get("concentration", 0.0)),
-            volume_ul=float(data.get("volume_ul", 0.0)),
+            concentration=float(data.get("concentration") or 0.0),
+            volume_ul=float(data.get("volume_ul") or 0.0),
             concentration_unit=str(data.get("concentration_unit", "uM")),
             storage_location=storage_loc,
             barcode=data.get("barcode"),
@@ -256,8 +256,8 @@ class Oligo:
             p_name = str(primer.get("name", "Unnamed_Primer"))
             seq = str(primer.get("sequence", ""))
             overhang = str(primer.get("overhang", ""))
-            tm = float(primer.get("calculated_tm", primer.get("target_tm", 60.0)))
-            gc = float(primer.get("gc_content", 50.0))
+            tm = float(primer.get("calculated_tm") or primer.get("target_tm") or 60.0)
+            gc = float(primer.get("gc_content") or 50.0)
         else:
             p_id = getattr(primer, "id", f"OLG-{uuid.uuid4().hex[:6].upper()}")
             p_name = getattr(primer, "name", "Unnamed_Primer")
@@ -270,7 +270,7 @@ class Oligo:
                     getattr(primer, "target_tm", 60.0),
                 )
             )
-            gc = float(getattr(primer, "gc_content", 50.0))
+            gc = float(getattr(primer, "gc_content", None) or 50.0)
 
         full_sequence = f"{overhang}{seq}".strip().upper()
 
@@ -335,8 +335,8 @@ class Oligo:
             id=str(data.get("id", "")),
             name=str(data.get("name", "")),
             sequence=str(data.get("sequence", "")),
-            tm=float(data.get("tm", 0.0)),
-            gc_content=float(data.get("gc_content", 0.0)),
+            tm=float(data.get("tm") or 0.0),
+            gc_content=float(data.get("gc_content") or 0.0),
             plate_id=str(data.get("plate_id", "")),
             well_position=str(data.get("well_position", "")),
             scale=str(data.get("scale", "25nm")),
@@ -400,11 +400,7 @@ class PlasmidInventoryItem:
             sequence=str(data.get("sequence", "")),
             vector_backbone=str(data.get("vector_backbone", "")),
             lot_number=str(data.get("lot_number", "")),
-            barcode=str(
-                data.get(
-                    "barcode", generate_plasmid_barcode()
-                )
-            ),
+            barcode=str(data.get("barcode", generate_plasmid_barcode())),
             storage_location=storage_loc,
             concentration_ng_ul=(
                 float(data["concentration_ng_ul"])
@@ -412,8 +408,6 @@ class PlasmidInventoryItem:
                 else None
             ),
             created_at=str(
-                data.get(
-                    "created_at", datetime.now(timezone.utc).isoformat()
-                )
+                data.get("created_at", datetime.now(timezone.utc).isoformat())
             ),
         )

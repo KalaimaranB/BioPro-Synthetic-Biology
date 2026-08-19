@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import List, Optional
+
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from ..models.domain import (

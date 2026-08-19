@@ -1,27 +1,26 @@
 """Simulation view for plotting ODE and Gillespie kinetic simulations."""
 
+# Matplotlib PyQt6 integration
+import matplotlib
 import numpy as np
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
     QHBoxLayout,
     QLabel,
-    QSplitter,
     QListWidget,
     QListWidgetItem,
     QPushButton,
+    QSplitter,
+    QVBoxLayout,
+    QWidget,
 )
-
-# Matplotlib PyQt6 integration
-import matplotlib
 
 matplotlib.use("QtAgg")
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
-from analysis.parts.components import Promoter, CDS, sgRNA
-from analysis.prediction.graphing_utils import apply_standard_axes
+from ...analysis.parts.components import CDS, Promoter, sgRNA
+from ...analysis.prediction.graphing_utils import apply_standard_axes
 
 
 class SimulateView(QWidget):
@@ -105,23 +104,7 @@ class SimulateView(QWidget):
         self._apply_theme()
 
     def _apply_theme(self):
-        try:
-            from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
-        except ImportError:
-            try:
-                from biopro_sdk.plugin.theme_fallback import Colors, Fonts
-            except ImportError:
-                class Colors:
-                    BG_DARKEST = "#0d1117"
-                    BG_DARK = "#161b22"
-                    BG_MEDIUM = "#21262d"
-                    FG_PRIMARY = "#e6edf3"
-                    FG_SECONDARY = "#8b949e"
-                    BORDER = "#30363d"
-                    ACCENT_PRIMARY = "#00bcd4"
-
-                class Fonts:
-                    SIZE_SMALL = 11
+        from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
 
         dark_bg = getattr(Colors, "BG_DARKEST", "#0d1117")
         dark_panel = getattr(Colors, "BG_DARK", "#161b22")
@@ -131,9 +114,7 @@ class SimulateView(QWidget):
         accent = getattr(Colors, "ACCENT_PRIMARY", "#00bcd4")
 
         try:
-            font_sz = (
-                int(str(getattr(Fonts, "SIZE_SMALL", 12)).replace("px", "")) + 2
-            )
+            font_sz = int(str(getattr(Fonts, "SIZE_SMALL", 12)).replace("px", "")) + 2
         except (ValueError, TypeError, AttributeError):
             font_sz = 14
 

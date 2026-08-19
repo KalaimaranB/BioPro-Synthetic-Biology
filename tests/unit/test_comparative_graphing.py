@@ -4,13 +4,14 @@ parameter extraction, and curve generation).
 
 from matplotlib.figure import Figure
 
-from analysis.parts.components import Promoter, CDS
-
-from analysis.prediction.sequence_predictor import (
-    identify_wildtype,
-    compare_kinetics,
+from karcytics_plugins.synthetic_biology.analysis.parts.components import CDS, Promoter
+from karcytics_plugins.synthetic_biology.analysis.prediction.graphing_utils import (
+    generate_transfer_curve,
 )
-from analysis.prediction.graphing_utils import generate_transfer_curve
+from karcytics_plugins.synthetic_biology.analysis.prediction.sequence_predictor import (
+    compare_kinetics,
+    identify_wildtype,
+)
 
 
 def test_identify_wildtype():

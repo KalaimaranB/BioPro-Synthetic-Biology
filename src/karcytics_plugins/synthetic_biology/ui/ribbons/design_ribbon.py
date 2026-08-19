@@ -1,17 +1,10 @@
 """Design Ribbon — Fetch and select biological parts via dynamic dropdown."""
 
+from karcytics_sdk.plugin.components import PrimaryButton
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QMessageBox, QWidget
 
-try:
-    from karcytics_sdk.plugin.components import PrimaryButton
-except ImportError:
-    try:
-        from biopro_sdk.plugin.components import PrimaryButton
-    except ImportError:
-        from PyQt6.QtWidgets import QPushButton as PrimaryButton
-
-from analysis.parts.components import BiologicalPart
+from ...analysis.parts.components import BiologicalPart
 
 
 class DesignRibbon(QWidget):
@@ -93,22 +86,8 @@ class DesignRibbon(QWidget):
         self.update_part_selector(self.role_combo.currentText())
 
     def _apply_theme(self):
-        try:
-            from karcytics_sdk.plugin.theme_fallback import Colors
-        except ImportError:
-            try:
-                from biopro_sdk.plugin.theme_fallback import Colors
-            except ImportError:
-                class Colors:
-                    BG_DARKEST = "#0d1117"
-                    BG_DARK = "#161b22"
-                    BG_MEDIUM = "#21262d"
-                    FG_PRIMARY = "#e6edf3"
-                    FG_SECONDARY = "#8b949e"
-                    FG_DISABLED = "#484f58"
-                    BORDER = "#30363d"
-                    ACCENT_PRIMARY = "#00bcd4"
-                    ACCENT_PRIMARY_HOVER = "#0097a7"
+        from karcytics_sdk.plugin.theme_fallback import Colors
+
 
         combo_style = f"""
             QComboBox {{

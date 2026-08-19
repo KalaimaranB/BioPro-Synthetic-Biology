@@ -1,39 +1,11 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSplitter, QScrollArea
+from karcytics_sdk.plugin.theme_fallback import Colors
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QScrollArea, QSplitter, QVBoxLayout, QWidget
 
-from analysis.catalogue.service import PartsCatalogueService
-from ui.widgets.flow_layout import FlowLayout
-from ui.widgets.part_card import PartCard
-from ui.widgets.part_inspector import PartInspector
-
-
-try:
-    from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-except ImportError:
-    try:
-        from biopro_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-    except ImportError:
-
-        class Colors:
-            BG_DARKEST = "#0d1117"
-            BG_DARK = "#161b22"
-            BG_MEDIUM = "#21262d"
-            FG_PRIMARY = "#e6edf3"
-            FG_SECONDARY = "#8b949e"
-            BORDER = "#30363d"
-            ACCENT_PRIMARY = "#00bcd4"
-
-        class Fonts:
-            SIZE_SMALL = 11
-
-        class _DummySignal:
-            def connect(self, cb):
-                pass
-
-        class _DummyThemeManager:
-            theme_changed = _DummySignal()
-
-        theme_manager = _DummyThemeManager()
+from ...analysis.catalogue.service import PartsCatalogueService
+from ...ui.widgets.flow_layout import FlowLayout
+from ...ui.widgets.part_card import PartCard
+from ...ui.widgets.part_inspector import PartInspector
 
 
 class CatalogueView(QWidget):

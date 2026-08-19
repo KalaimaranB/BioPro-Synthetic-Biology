@@ -13,6 +13,7 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 from Bio.Seq import Seq
+
 from ..models.domain import gRNACandidate
 
 

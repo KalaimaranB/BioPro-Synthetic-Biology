@@ -13,7 +13,7 @@ from typing import List, Tuple
 
 from Bio import SeqIO
 from Bio.Seq import Seq
-from Bio.SeqFeature import SeqFeature, FeatureLocation
+from Bio.SeqFeature import FeatureLocation, SeqFeature
 from Bio.SeqRecord import SeqRecord
 
 from ..models.domain import GeneticFeature, PlasmidVector, Primer
@@ -95,7 +95,7 @@ class VectorAssemblyEngine:
         # Check topology metadata
         is_circular = True
         if "topology" in record.annotations:
-            is_circular = record.annotations["topology"].lower() == "circular"
+            is_circular = str(record.annotations["topology"]).lower() == "circular"
 
         return PlasmidVector(
             id=str(uuid.uuid4())[:8],

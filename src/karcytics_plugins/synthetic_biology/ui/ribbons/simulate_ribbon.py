@@ -1,16 +1,8 @@
 """Simulate Ribbon — Kinetic simulation controls."""
 
+from karcytics_sdk.plugin.components import BioSpinBox, PrimaryButton
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget
-
-try:
-    from karcytics_sdk.plugin.components import BioSpinBox, PrimaryButton
-except ImportError:
-    try:
-        from biopro_sdk.plugin.components import BioSpinBox, PrimaryButton
-    except ImportError:
-        from PyQt6.QtWidgets import QPushButton as PrimaryButton
-        from PyQt6.QtWidgets import QSpinBox as BioSpinBox
 
 
 class SimulateRibbon(QWidget):

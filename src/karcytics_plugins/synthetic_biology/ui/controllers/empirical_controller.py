@@ -3,26 +3,27 @@
 from __future__ import annotations
 
 from typing import List, Optional
+
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
-from analysis.empirical.fcs_ingestion import (
+from ...analysis.empirical.fcs_ingestion import (
     FCSDataIngestionService,
     FCSEventData,
 )
-from analysis.empirical.ml_optimizer import (
+from ...analysis.empirical.ml_optimizer import (
     CircuitMLOptimizationEngine,
     HillOptimizationResult,
 )
-from analysis.empirical.ngs_alignment import (
+from ...analysis.empirical.ngs_alignment import (
     NGSAlignmentResult,
     NGSAlignmentService,
 )
-from analysis.models.domain import (
+from ...analysis.models.domain import (
     CircuitComponent,
     CircuitEdge,
     PlasmidVector,
 )
-from analysis.state import SynBioState
+from ...analysis.state import SynBioState
 
 
 class EmpiricalWorker(QThread):

@@ -1,8 +1,9 @@
 """Unit tests for Inventory & Oligo Tracking data models (Phase 2 LIMS)."""
 
 import unittest
-from analysis.models.domain import Primer
-from models.inventory_models import (
+
+from karcytics_plugins.synthetic_biology.analysis.models.domain import Primer
+from karcytics_plugins.synthetic_biology.models.inventory_models import (
     Oligo,
     PlasmidInventoryItem,
     Reagent,

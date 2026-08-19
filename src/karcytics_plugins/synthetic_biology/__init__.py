@@ -35,16 +35,18 @@ class BioProPlugin:
     ``cleanup``, and ``shutdown``.
     """
 
-    def __init__(self, plugin_id: str = "synthetic_biology", parent: object | None = None):
+    def __init__(
+        self, plugin_id: str = "synthetic_biology", parent: object | None = None
+    ):
         self.plugin_id = plugin_id
         self._parent = parent
         self._panel = None
 
     def create_panel(self, parent=None):
         """Instantiate and return the main SynBioPanel widget."""
-        from .ui.main_panel import SynBioPanel
-        from .ui.composition_root import ServiceFactory
         from .analysis.state import SynBioState
+        from .ui.composition_root import ServiceFactory
+        from .ui.main_panel import SynBioPanel
 
         state = SynBioState()
         factory = ServiceFactory(state, parent_widget=parent)

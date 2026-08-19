@@ -1,6 +1,7 @@
 import json
-import urllib.request
 import os
+import urllib.request
+from typing import Any
 
 
 class UCFParser:
@@ -78,7 +79,7 @@ class CelloKineticsDatabase:
     """
 
     _ucf = UCFParser()
-    _classic_params = {}
+    _classic_params: dict[str, Any] = {}
 
     @classmethod
     def _load_classic_params(cls):

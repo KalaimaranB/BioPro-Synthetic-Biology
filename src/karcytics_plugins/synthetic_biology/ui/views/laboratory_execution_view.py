@@ -34,17 +34,17 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from analysis.assembly.protocol_engine import (
+from ...analysis.assembly.protocol_engine import (
     BenchProtocol,
     ProtocolEngine,
 )
-from models.inventory_models import (
+from ...models.inventory_models import (
     Oligo,
     PlasmidInventoryItem,
     Reagent,
     StorageLocation,
 )
-from utils.robot_exporter import RobotExportError, WorklistGenerator
+from ...utils.robot_exporter import RobotExportError, WorklistGenerator
 
 
 class ProtocolWorker(QThread):
@@ -99,34 +99,7 @@ class ProtocolWorker(QThread):
             self.error.emit(str(exc))
 
 
-try:
-    from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-except ImportError:
-    try:
-        from biopro_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-    except ImportError:
-
-        class Colors:
-            BG_DARKEST = "#0d1117"
-            BG_DARK = "#161b22"
-            BG_MEDIUM = "#21262d"
-            FG_PRIMARY = "#e6edf3"
-            FG_SECONDARY = "#8b949e"
-            FG_DISABLED = "#484f58"
-            BORDER = "#30363d"
-            ACCENT_PRIMARY = "#00bcd4"
-
-        class Fonts:
-            SIZE_SMALL = 11
-
-        class _DummySignal:
-            def connect(self, cb):
-                pass
-
-        class _DummyThemeManager:
-            theme_changed = _DummySignal()
-
-        theme_manager = _DummyThemeManager()
+from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 
 
 class LaboratoryExecutionView(QWidget):
@@ -354,7 +327,9 @@ class LaboratoryExecutionView(QWidget):
         self.table_master_mix.setHorizontalHeaderLabels(
             ["Reagent Component", "Per Reaction (µL)", "Total Master Mix (µL)"]
         )
-        self.table_master_mix.horizontalHeader().setSectionResizeMode(
+        if (hv := self.table_master_mix.horizontalHeader()) is not None:
+
+            hv.setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
         mm_layout.addWidget(self.table_master_mix)
@@ -380,7 +355,9 @@ class LaboratoryExecutionView(QWidget):
                 "Volume (µL)",
             ]
         )
-        self.table_pipetting.horizontalHeader().setSectionResizeMode(
+        if (hv := self.table_pipetting.horizontalHeader()) is not None:
+
+            hv.setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
         pip_layout.addWidget(self.table_pipetting)
@@ -439,7 +416,9 @@ class LaboratoryExecutionView(QWidget):
                 "Liquid_Class",
             ]
         )
-        self.table_worklist.horizontalHeader().setSectionResizeMode(
+        if (hv := self.table_worklist.horizontalHeader()) is not None:
+
+            hv.setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
         table_layout.addWidget(self.table_worklist)
@@ -468,7 +447,9 @@ class LaboratoryExecutionView(QWidget):
                 "Details",
             ]
         )
-        self.table_inventory.horizontalHeader().setSectionResizeMode(
+        if (hv := self.table_inventory.horizontalHeader()) is not None:
+
+            hv.setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
         box_layout.addWidget(self.table_inventory)
@@ -634,32 +615,52 @@ class LaboratoryExecutionView(QWidget):
                 dest_well = WorklistGenerator.index_to_well(rxn_idx)
                 rr = protocol.reaction_ratio
                 # MM
-                transfers.append((
-                    self.txt_source_plate.text(), "A1",
-                    self.txt_dest_plate.text(), dest_well,
-                    f"{rr.master_mix_volume_ul:.3f}", "MasterMix_Viscous"
-                ))
+                transfers.append(
+                    (
+                        self.txt_source_plate.text(),
+                        "A1",
+                        self.txt_dest_plate.text(),
+                        dest_well,
+                        f"{rr.master_mix_volume_ul:.3f}",
+                        "MasterMix_Viscous",
+                    )
+                )
                 # Water
                 if rr.water_volume_ul > 0:
-                    transfers.append((
-                        self.txt_source_plate.text(), "B1",
-                        self.txt_dest_plate.text(), dest_well,
-                        f"{rr.water_volume_ul:.3f}", "Water_FreeSingle"
-                    ))
+                    transfers.append(
+                        (
+                            self.txt_source_plate.text(),
+                            "B1",
+                            self.txt_dest_plate.text(),
+                            dest_well,
+                            f"{rr.water_volume_ul:.3f}",
+                            "Water_FreeSingle",
+                        )
+                    )
                 # Vector
-                transfers.append((
-                    "VECTOR_PLATE_1", "A1",
-                    self.txt_dest_plate.text(), dest_well,
-                    f"{rr.vector_spec.volume_ul:.3f}", "DNA_LowVolume"
-                ))
+                transfers.append(
+                    (
+                        "VECTOR_PLATE_1",
+                        "A1",
+                        self.txt_dest_plate.text(),
+                        dest_well,
+                        f"{rr.vector_spec.volume_ul:.3f}",
+                        "DNA_LowVolume",
+                    )
+                )
                 # Inserts
                 for ins_idx, ins in enumerate(rr.insert_specs):
                     src_w = WorklistGenerator.index_to_well(ins_idx)
-                    transfers.append((
-                        "INSERT_PLATE_1", src_w,
-                        self.txt_dest_plate.text(), dest_well,
-                        f"{ins.volume_ul:.3f}", "DNA_LowVolume"
-                    ))
+                    transfers.append(
+                        (
+                            "INSERT_PLATE_1",
+                            src_w,
+                            self.txt_dest_plate.text(),
+                            dest_well,
+                            f"{ins.volume_ul:.3f}",
+                            "DNA_LowVolume",
+                        )
+                    )
 
             for tr in transfers:
                 row = self.table_worklist.rowCount()
@@ -691,10 +692,9 @@ class LaboratoryExecutionView(QWidget):
 
         if filepath:
             try:
-                reactions = (
-                    [self.current_protocol.reaction_ratio]
-                    * self.current_protocol.num_reactions
-                )
+                reactions = [
+                    self.current_protocol.reaction_ratio
+                ] * self.current_protocol.num_reactions
                 out_file = WorklistGenerator.export_to_tecan_csv(
                     reactions_list=reactions,
                     filepath=filepath,

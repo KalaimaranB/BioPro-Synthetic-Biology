@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from analysis.parts.components import CDS, RBS, Promoter, Terminator
+from ...analysis.parts.components import CDS, RBS, Promoter, Terminator
 
 
 class PropertiesView(QWidget):
@@ -51,19 +51,7 @@ class PropertiesView(QWidget):
 
     def refresh_styles(self) -> None:
         """Apply theme styling dynamically to list and inspector widgets."""
-        try:
-            from karcytics_sdk.plugin.theme_fallback import Colors
-        except ImportError:
-            try:
-                from biopro_sdk.plugin.theme_fallback import Colors
-            except ImportError:
-                class Colors:
-                    BG_DARKEST = "#0d1117"
-                    BG_DARK = "#161b22"
-                    BG_MEDIUM = "#21262d"
-                    FG_PRIMARY = "#e6edf3"
-                    BORDER = "#30363d"
-                    ACCENT_PRIMARY = "#00bcd4"
+        from karcytics_sdk.plugin.theme_fallback import Colors
 
         self.part_list.setStyleSheet(
             f"QListWidget {{ background: {Colors.BG_DARKEST}; "
@@ -121,15 +109,8 @@ class PropertiesView(QWidget):
 
         # Header
         title = QLabel(f"<b>{part.id}</b> ({part.__class__.__name__})")
-        try:
-            from karcytics_sdk.plugin.theme_fallback import Colors
-        except ImportError:
-            try:
-                from biopro_sdk.plugin.theme_fallback import Colors
-            except ImportError:
-                class Colors:
-                    ACCENT_PRIMARY = "#00bcd4"
-                    BORDER = "#30363d"
+
+
         self.form_layout.addRow(title)
         self.form_layout.addRow(QLabel(f"<i>{part.name}</i>"))
 
@@ -273,24 +254,12 @@ class PropertiesView(QWidget):
             lambda val, attr=attr_name: self._on_param_changed(attr, val)
         )
 
-        try:
-            from karcytics_sdk.plugin.theme_fallback import Colors
-        except ImportError:
-            try:
-                from biopro_sdk.plugin.theme_fallback import Colors
-            except ImportError:
+        from karcytics_sdk.plugin.theme_fallback import Colors
 
-                class Colors:
-                    BG_DARKEST = "#0d1117"
-                    FG_PRIMARY = "#c9d1d9"
-                    BORDER = "#30363d"
-
-            spin.setStyleSheet(
-                f"background: {Colors.BG_DARKEST}; color: {Colors.FG_PRIMARY}; "
-                f"border: 1px solid {Colors.BORDER}; padding: 4px;"
-            )
-        except ImportError:
-            pass
+        spin.setStyleSheet(
+            f"background: {Colors.BG_DARKEST}; color: {Colors.FG_PRIMARY}; "
+            f"border: 1px solid {Colors.BORDER}; padding: 4px;"
+        )
 
         self.form_layout.addRow(label, spin)
 

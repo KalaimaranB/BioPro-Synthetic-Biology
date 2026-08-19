@@ -10,11 +10,14 @@ from unittest.mock import MagicMock
 if "sbol3" not in sys.modules:
     sys.modules["sbol3"] = MagicMock()
 
-from analysis.catalogue.repository import JsonPartRepository
-from analysis.catalogue.service import PartsCatalogueService
-from analysis.parts.components import CDS, Promoter
-
-from analysis.prediction.sequence_predictor import (
+from karcytics_plugins.synthetic_biology.analysis.catalogue.repository import (
+    JsonPartRepository,
+)
+from karcytics_plugins.synthetic_biology.analysis.catalogue.service import (
+    PartsCatalogueService,
+)
+from karcytics_plugins.synthetic_biology.analysis.parts.components import CDS, Promoter
+from karcytics_plugins.synthetic_biology.analysis.prediction.sequence_predictor import (
     SequencePredictor,
     levenshtein_distance,
     translate_dna_to_protein,

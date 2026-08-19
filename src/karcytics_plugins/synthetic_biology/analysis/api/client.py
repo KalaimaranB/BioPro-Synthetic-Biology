@@ -4,13 +4,13 @@ Uses Dependency Inversion Principle via the `RegistryClient` protocol.
 """
 
 import xml.etree.ElementTree as ET
-from typing import Protocol
+from typing import Any, Protocol
 
 import requests
 import sbol3
 
 from ..parts.base import BiologicalPart
-from ..parts.components import CDS, RBS, Promoter, Terminator, Insulator, sgRNA
+from ..parts.components import CDS, RBS, Insulator, Promoter, Terminator, sgRNA
 
 
 class RegistryClient(Protocol):
@@ -68,7 +68,7 @@ class IGemClient:
         if seq_elem is not None and seq_elem.text:
             sequence = seq_elem.text.strip().replace("\n", "")
 
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "id": part_id,
             "name": short_desc,
             "description": part_elem.findtext("part_desc", ""),
@@ -124,7 +124,7 @@ class IGemClient:
 
             if reps:
                 kwargs["repressors"] = reps
-            return Promoter(**kwargs)
+            return Promoter(**kwargs)  # type: ignore[arg-type]
 
         elif "coding" in part_type or "cds" in part_type:
             # Attempt to extract product data if not explicitly set
@@ -132,7 +132,7 @@ class IGemClient:
                 protein = kwargs["properties"].get("protein")
                 if protein:
                     kwargs["product"] = protein
-            return CDS(**kwargs)
+            return CDS(**kwargs)  # type: ignore[arg-type]
 
         elif "terminator" in part_type:
             # Attempt to extract efficiency (e.g. '0.984[CC]/0.97[JK]')
@@ -157,10 +157,10 @@ class IGemClient:
                         pass
             return RBS(**kwargs)
         elif "rna" in part_type or "sgrna" in part_type or "guide" in part_type:
-            return sgRNA(**kwargs)
+            return sgRNA(**kwargs)  # type: ignore[arg-type]
 
         elif "insulator" in part_type or "ribozyme" in part_type:
-            return Insulator(**kwargs)
+            return Insulator(**kwargs)  # type: ignore[arg-type]
 
         else:
             # Fallback to CDS if we don't know, or we could have a GenericPart
@@ -219,18 +219,18 @@ class SynBioHubClient:
             roles = comp.roles
             # SO:0000167 is promoter
             if "http://identifiers.org/so/SO:0000167" in roles:
-                return Promoter(**kwargs)
+                return Promoter(**kwargs)  # type: ignore[arg-type]
             # SO:0000316 is CDS
             elif "http://identifiers.org/so/SO:0000316" in roles:
-                return CDS(**kwargs)
+                return CDS(**kwargs)  # type: ignore[arg-type]
             # SO:0000141 is terminator
             elif "http://identifiers.org/so/SO:0000141" in roles:
-                return Terminator(**kwargs)
+                return Terminator(**kwargs)  # type: ignore[arg-type]
             # SO:0000139 is RBS
             elif "http://identifiers.org/so/SO:0000139" in roles:
-                return RBS(**kwargs)
+                return RBS(**kwargs)  # type: ignore[arg-type]
             else:
-                return CDS(**kwargs)
+                return CDS(**kwargs)  # type: ignore[arg-type]
 
         except (requests.RequestException, sbol3.SBOLError, Exception):
             return None

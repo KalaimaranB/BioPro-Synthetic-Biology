@@ -10,10 +10,8 @@ own modules under ``ui/widgets/``, ``ui/canvas/``, and ``ui/ribbons/``.
 
 from __future__ import annotations
 
-try:
-    from karcytics_sdk.plugin import PluginBase, get_logger
-except ImportError:
-    from biopro_sdk.plugin import PluginBase, get_logger
+from karcytics_sdk.plugin import PluginBase, get_logger
+from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
     QLabel,
@@ -22,49 +20,10 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-try:
-    from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-except ImportError:
-    try:
-        from biopro_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-    except ImportError:
-
-        class Colors:
-            BG_DARKEST = "#0d1117"
-            BG_DARK = "#161b22"
-            BG_MEDIUM = "#21262d"
-            BG_LIGHT = "#30363d"
-            FG_PRIMARY = "#e6edf3"
-            FG_SECONDARY = "#8b949e"
-            FG_DISABLED = "#484f58"
-            BORDER = "#30363d"
-            BORDER_FOCUS = "#58a6ff"
-            ACCENT_PRIMARY = "#00bcd4"
-            ACCENT_PRIMARY_HOVER = "#0097a7"
-            ACCENT_NEGATIVE = "#ef5350"
-
-        class Fonts:
-            SIZE_SMALL = 11
-            SIZE_TITLE = 24
-            FAMILY_UI = "Inter, sans-serif"
-
-        class _DummySignal:
-            def connect(self, cb):
-                pass
-
-            def disconnect(self, cb):
-                pass
-
-        class _DummyThemeManager:
-            theme_changed = _DummySignal()
-
-            def apply_style(self, widget, style_template):
-                pass
-
-        theme_manager = _DummyThemeManager()
+from ..analysis.parts.base import BiologicalPart
 
 # Relative imports — all within this plugin
-from analysis.state import SynBioState
+from ..analysis.state import SynBioState
 
 logger = get_logger(__name__, "synthetic_biology")
 
@@ -152,7 +111,7 @@ class SynBioPanel(PluginBase):
         from .views.properties_view import PropertiesView
         from .views.simulate_view import SimulateView
 
-        self._parts_cache = []
+        self._parts_cache: list[BiologicalPart] = []
 
         # ── Controllers & Attached Views ──────────────────────────────
         self._plasmid_controller = PlasmidAssemblyController(self.state)
@@ -405,7 +364,7 @@ class SynBioPanel(PluginBase):
         """Package the workspace state for the SDK."""
         return self.state
 
-    def set_state(self, state: SynBioState) -> None:
+    def set_state(self, state: SynBioState) -> None:  # type: ignore[override]
         """Restore the workspace from an SDK state object."""
         if not state:
             return

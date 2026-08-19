@@ -2,31 +2,30 @@
 Synthetic Biology workspace.
 """
 
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
-from PyQt6.QtCore import Qt, QRectF
+from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui import (
+    QBrush,
     QColor,
     QFont,
+    QLinearGradient,
     QPainter,
     QPainterPath,
     QPen,
-    QBrush,
     QPixmap,
-    QLinearGradient,
 )
 from PyQt6.QtWidgets import (
     QDialog,
-    QWidget,
-    QVBoxLayout,
+    QFrame,
+    QGraphicsDropShadowEffect,
     QHBoxLayout,
     QLabel,
-    QFrame,
-    QPushButton,
     QProgressBar,
-    QGraphicsDropShadowEffect,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
-
 
 SYNTHETIC_BIOLOGY_TUTORIAL_STEPS: List[Dict[str, str]] = [
     {

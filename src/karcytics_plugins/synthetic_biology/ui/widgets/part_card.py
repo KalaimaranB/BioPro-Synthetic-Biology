@@ -1,29 +1,10 @@
 """Card widget representing a single biological part in the catalogue."""
 
+from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QFrame, QLabel, QVBoxLayout
 
-from analysis.parts.base import BiologicalPart
-
-try:
-    from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
-except ImportError:
-    try:
-        from biopro_sdk.plugin.theme_fallback import Colors, Fonts
-    except ImportError:
-
-        class Colors:
-            BG_DARKEST = "#0d1117"
-            BG_DARK = "#161b22"
-            BG_MEDIUM = "#21262d"
-            FG_PRIMARY = "#e6edf3"
-            FG_SECONDARY = "#8b949e"
-            FG_DISABLED = "#484f58"
-            BORDER = "#30363d"
-            ACCENT_PRIMARY = "#00bcd4"
-
-        class Fonts:
-            SIZE_SMALL = 11
+from ...analysis.parts.base import BiologicalPart
 
 
 class PartCard(QFrame):
@@ -31,7 +12,7 @@ class PartCard(QFrame):
 
     clicked = pyqtSignal(str)
 
-    def __init__(self, part: BiologicalPart = None, parent=None):
+    def __init__(self, part: BiologicalPart | None = None, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.part_id = part.id if part else ""

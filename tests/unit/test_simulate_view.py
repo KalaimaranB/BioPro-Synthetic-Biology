@@ -12,7 +12,7 @@ if "sbol3" not in sys.modules:
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QListWidget, QListWidgetItem, QSplitter
 
-from ui.views.simulate_view import SimulateView
+from karcytics_plugins.synthetic_biology.ui.views.simulate_view import SimulateView
 
 # Ensure QApplication instance exists for PyQt widget tests
 app = QApplication.instance() or QApplication([])

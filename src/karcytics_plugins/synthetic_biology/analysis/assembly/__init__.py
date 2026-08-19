@@ -15,7 +15,7 @@ from .vector_builder import VectorAssemblyEngine
 try:
     from .async_worker import AssemblyWorker
 except ImportError:
-    AssemblyWorker = None  # PyQt6 not available in head-less / test environment
+    AssemblyWorker: type | None = None  # type: ignore
 
 __all__ = [
     "VectorAssemblyEngine",

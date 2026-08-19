@@ -1,6 +1,11 @@
 """Unit tests for the Biological Parts domain model."""
 
-from analysis.parts.components import CDS, RBS, Promoter, Terminator
+from karcytics_plugins.synthetic_biology.analysis.parts.components import (
+    CDS,
+    RBS,
+    Promoter,
+    Terminator,
+)
 
 
 class TestPromoter:

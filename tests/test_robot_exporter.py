@@ -5,10 +5,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from analysis.assembly.protocol_engine import (
+from karcytics_plugins.synthetic_biology.analysis.assembly.protocol_engine import (
     ProtocolEngine,
 )
-from utils.robot_exporter import (
+from karcytics_plugins.synthetic_biology.utils.robot_exporter import (
     RobotExportError,
     TransferInstruction,
     WorklistGenerator,

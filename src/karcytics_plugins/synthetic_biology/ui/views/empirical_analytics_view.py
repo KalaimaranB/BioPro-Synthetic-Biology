@@ -12,7 +12,9 @@ STRICT CONSTRAINTS ENFORCED:
 from __future__ import annotations
 
 from typing import Optional
+
 import pyqtgraph as pg
+from karcytics_sdk.plugin.theme_fallback import Fonts
 from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
@@ -26,51 +28,18 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSplitter,
-    QTabWidget,
     QTableWidget,
     QTableWidgetItem,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
-from analysis.empirical.fcs_ingestion import FCSEventData
-from analysis.empirical.ml_optimizer import HillOptimizationResult
-from analysis.empirical.ngs_alignment import NGSAlignmentResult
-from analysis.state import SynBioState
-from ui.controllers.empirical_controller import EmpiricalAnalyticsController
-
-try:
-    from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-except ImportError:
-    try:
-        from biopro_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-    except ImportError:
-
-        class Colors:
-            BG_DARKEST = "#0d1117"
-            BG_DARK = "#161b22"
-            BG_MEDIUM = "#21262d"
-            FG_PRIMARY = "#e6edf3"
-            FG_SECONDARY = "#8b949e"
-            BORDER = "#30363d"
-            ACCENT_PRIMARY = "#00bcd4"
-
-        class Fonts:
-            SIZE_SMALL = 11
-            SIZE_TITLE = 18
-            FAMILY_UI = "Inter, sans-serif"
-
-        class _DummySignal:
-            def connect(self, cb):
-                pass
-
-            def disconnect(self, cb):
-                pass
-
-        class _DummyThemeManager:
-            theme_changed = _DummySignal()
-
-        theme_manager = _DummyThemeManager()
+from ...analysis.empirical.fcs_ingestion import FCSEventData
+from ...analysis.empirical.ml_optimizer import HillOptimizationResult
+from ...analysis.empirical.ngs_alignment import NGSAlignmentResult
+from ...analysis.state import SynBioState
+from ...ui.controllers.empirical_controller import EmpiricalAnalyticsController
 
 
 class EmpiricalAnalyticsView(QWidget):
@@ -191,7 +160,9 @@ class EmpiricalAnalyticsView(QWidget):
                 "Gated %",
             ]
         )
-        self.fcs_table.horizontalHeader().setSectionResizeMode(
+        if (hv := self.fcs_table.horizontalHeader()) is not None:
+
+            hv.setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
         layout.addWidget(self.fcs_table)
@@ -245,7 +216,9 @@ class EmpiricalAnalyticsView(QWidget):
                 "Severity",
             ]
         )
-        self.ngs_table.horizontalHeader().setSectionResizeMode(
+        if (hv := self.ngs_table.horizontalHeader()) is not None:
+
+            hv.setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
         layout.addWidget(self.ngs_table)
@@ -284,7 +257,9 @@ class EmpiricalAnalyticsView(QWidget):
         self.ml_table.setHorizontalHeaderLabels(
             ["Component", "Parameter", "Original", "Optimized", "Delta %"]
         )
-        self.ml_table.horizontalHeader().setSectionResizeMode(
+        if (hv := self.ml_table.horizontalHeader()) is not None:
+
+            hv.setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
 
@@ -333,9 +308,7 @@ class EmpiricalAnalyticsView(QWidget):
 
     def _on_browse_ngs(self) -> None:
         filter_str = "NGS Files (*.fasta *.fastq *.bam);;All Files (*)"
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Select NGS File", "", filter_str
-        )
+        path, _ = QFileDialog.getOpenFileName(self, "Select NGS File", "", filter_str)
         if path:
             self.ngs_path_edit.setText(path)
 
@@ -348,7 +321,9 @@ class EmpiricalAnalyticsView(QWidget):
         edgs = self.state.circuit_edges
         if not comps:
             # Load preset repressilator components for demonstration if empty
-            from analysis.simulation.circuit_engine import CircuitSimulationEngine
+            from karcytics_plugins.synthetic_biology.analysis.simulation.circuit_engine import (
+                CircuitSimulationEngine,
+            )
 
             comps, edgs = CircuitSimulationEngine.create_preset_repressilator()
         self.controller.run_ml_optimization(comps, edgs, self._active_fcs_data)

@@ -1,64 +1,33 @@
 import os
-from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QTabWidget,
-    QFormLayout,
-    QLineEdit,
-    QPushButton,
-    QTextEdit,
-    QLabel,
-    QComboBox,
-    QSizePolicy,
-    QMessageBox,
-    QDialog,
-    QTextBrowser,
-)
-from PyQt6.QtCore import pyqtSignal, Qt
+
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QSizePolicy,
+    QTabWidget,
+    QTextBrowser,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 try:
     from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 except ImportError:
     from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 
-from analysis.parts.base import BiologicalPart
-from analysis.parts.components import CDS, Promoter, Terminator, RBS
-try:
-    from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-except ImportError:
-    try:
-        from biopro_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-    except ImportError:
+from karcytics_sdk.plugin.theme_fallback import Colors
 
-        class Colors:
-            BG_DARKEST = "#0d1117"
-            BG_DARK = "#161b22"
-            BG_MEDIUM = "#21262d"
-            BG_LIGHT = "#30363d"
-            FG_PRIMARY = "#e6edf3"
-            FG_SECONDARY = "#8b949e"
-            FG_DISABLED = "#484f58"
-            BORDER = "#30363d"
-            ACCENT_PRIMARY = "#00bcd4"
-            ACCENT_PRIMARY_HOVER = "#0097a7"
-            ACCENT_NEGATIVE = "#ef5350"
-
-        class Fonts:
-            SIZE_SMALL = 11
-
-        class _DummySignal:
-            def connect(self, cb):
-                pass
-
-            def disconnect(self, cb):
-                pass
-
-        class _DummyThemeManager:
-            theme_changed = _DummySignal()
-
-        theme_manager = _DummyThemeManager()
+from ...analysis.parts.base import BiologicalPart
+from ...analysis.parts.components import CDS, RBS, Promoter, Terminator
 
 
 class WTGraphDialog(QDialog):
@@ -507,7 +476,7 @@ class PartInspector(QWidget):
         self.rbs_init_rate_lbl.setVisible(is_rbs)
         self.rbs_init_rate_edit.setVisible(is_rbs)
 
-    def set_part(self, part: BiologicalPart = None):
+    def set_part(self, part: BiologicalPart | None = None):
         """Populate the inspector. If None, clear for new part."""
         self.current_part = part
 
@@ -633,7 +602,7 @@ class PartInspector(QWidget):
 
         if image_rel_path:
             # Resolve relative path to absolute
-            import analysis.catalogue.service as svc
+            import karcytics_plugins.synthetic_biology.analysis.catalogue.service as svc
 
             base_dir = os.path.dirname(os.path.abspath(svc.__file__))
             abs_path = os.path.join(
@@ -734,8 +703,12 @@ class PartInspector(QWidget):
                 seq, part_type=part_type, k=3
             )
             # Fallback directly to SequencePredictor using default repo candidates
-            from analysis.prediction.sequence_predictor import SequencePredictor
-            from analysis.api.kinetics import CelloKineticsDatabase
+            from karcytics_plugins.synthetic_biology.analysis.api.kinetics import (
+                CelloKineticsDatabase,
+            )
+            from karcytics_plugins.synthetic_biology.analysis.prediction.sequence_predictor import (
+                SequencePredictor,
+            )
 
             CelloKineticsDatabase.get_parameters("AmtR")
 
@@ -876,7 +849,9 @@ class PartInspector(QWidget):
         if self.catalogue_service:
             candidate_parts = self.catalogue_service.get_all_parts()
         else:
-            from analysis.api.kinetics import CelloKineticsDatabase
+            from karcytics_plugins.synthetic_biology.analysis.api.kinetics import (
+                CelloKineticsDatabase,
+            )
 
             CelloKineticsDatabase.get_parameters("AmtR")
             classic_params = CelloKineticsDatabase._classic_params
@@ -905,9 +880,11 @@ class PartInspector(QWidget):
                     )
 
         try:
-            from analysis.prediction.sequence_predictor import compare_kinetics
-            from analysis.prediction.graphing_utils import (
+            from karcytics_plugins.synthetic_biology.analysis.prediction.graphing_utils import (
                 generate_transfer_curve,
+            )
+            from karcytics_plugins.synthetic_biology.analysis.prediction.sequence_predictor import (
+                compare_kinetics,
             )
 
             comparison = compare_kinetics(seq, candidate_parts, part_type=part_type)

@@ -1,12 +1,13 @@
 """Unit tests for NetworkX & SciPy Predictive Circuit Simulation Engine."""
 
 import pytest
-from analysis.simulation.circuit_engine import (
-    CircuitSimulationEngine,
-)
-from analysis.models.domain import (
+
+from karcytics_plugins.synthetic_biology.analysis.models.domain import (
     SimulationParameters,
     SimulationResult,
+)
+from karcytics_plugins.synthetic_biology.analysis.simulation.circuit_engine import (
+    CircuitSimulationEngine,
 )
 
 

@@ -1,6 +1,7 @@
 """QGraphicsView for rendering SBOLv style genetic circuits."""
 
 import hashlib
+
 from PyQt6.QtCore import QPointF, Qt
 from PyQt6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen, QPolygonF
 from PyQt6.QtWidgets import (
@@ -10,12 +11,12 @@ from PyQt6.QtWidgets import (
     QGraphicsView,
 )
 
-from analysis.parts.components import (
+from ...analysis.parts.components import (
     CDS,
     RBS,
+    Insulator,
     Promoter,
     Terminator,
-    Insulator,
     sgRNA,
 )
 
@@ -25,8 +26,8 @@ class CircuitCanvas(QGraphicsView):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.scene = QGraphicsScene(self)
-        self.setScene(self.scene)
+        self._scene = QGraphicsScene(self)
+        self.setScene(self._scene)
         self.setRenderHint(self.renderHints().Antialiasing)
 
         # Basic styling
@@ -56,25 +57,25 @@ class CircuitCanvas(QGraphicsView):
 
     def render_circuit(self):
         """Render all parts along the DNA strand with SBOLv compliant graphics."""
-        self.scene.clear()
+        self._scene.clear()
 
         if not self._parts:
             # Draw empty backbone
-            self.scene.addLine(-500, 0, 500, 0, QPen(self.c_backbone, 3))
+            self._scene.addLine(-500, 0, 500, 0, QPen(self.c_backbone, 3))
             return
 
         # Pre-calculate precise text widths using actual QGraphicsTextItem measurements
         part_widths = []
         for part in self._parts:
-            temp_text = self.scene.addText(part.name, self._font)
+            temp_text = self._scene.addText(part.name, self._font)
             tw = temp_text.boundingRect().width()
-            self.scene.removeItem(temp_text)
+            self._scene.removeItem(temp_text)
             # Ensure a minimum of 100 pixels, plus 20px padding around text
             part_widths.append(max(100, tw + 20))
 
         total_width = sum(part_widths)
         start_x = -total_width / 2
-        self.scene.addLine(
+        self._scene.addLine(
             start_x - 50, 0, start_x + total_width + 50, 0, QPen(self.c_backbone, 3)
         )
 
@@ -142,7 +143,7 @@ class CircuitCanvas(QGraphicsView):
 
         item = QGraphicsPathItem(path)
         item.setPen(QPen(self.c_promoter, 3))
-        self.scene.addItem(item)
+        self._scene.addItem(item)
 
         arrow = QPolygonF(
             [QPointF(cx + 25, -45), QPointF(cx + 35, -40), QPointF(cx + 25, -35)]
@@ -150,9 +151,9 @@ class CircuitCanvas(QGraphicsView):
         arrow_item = QGraphicsPolygonItem(arrow)
         arrow_item.setBrush(QBrush(self.c_promoter))
         arrow_item.setPen(QPen(Qt.PenStyle.NoPen))
-        self.scene.addItem(arrow_item)
+        self._scene.addItem(arrow_item)
 
-        text = self.scene.addText(name, self._font)
+        text = self._scene.addText(name, self._font)
         text.setDefaultTextColor(self.c_text)
         tw = text.boundingRect().width()
         text.setPos(x + (cell_w - tw) / 2, 25)
@@ -168,9 +169,9 @@ class CircuitCanvas(QGraphicsView):
         item = QGraphicsPathItem(path)
         item.setBrush(QBrush(self.c_rbs))
         item.setPen(QPen(Qt.PenStyle.NoPen))
-        self.scene.addItem(item)
+        self._scene.addItem(item)
 
-        text = self.scene.addText(name, self._font)
+        text = self._scene.addText(name, self._font)
         text.setDefaultTextColor(self.c_text)
         tw = text.boundingRect().width()
         text.setPos(x + (cell_w - tw) / 2, -40)
@@ -191,9 +192,9 @@ class CircuitCanvas(QGraphicsView):
         item = QGraphicsPolygonItem(poly)
         item.setBrush(QBrush(self.c_cds))
         item.setPen(QPen(self.c_cds.darker(), 1))
-        self.scene.addItem(item)
+        self._scene.addItem(item)
 
-        text = self.scene.addText(name, self._font)
+        text = self._scene.addText(name, self._font)
         text.setDefaultTextColor(self.c_text)
         tw = text.boundingRect().width()
         text.setPos(x + (cell_w - tw) / 2, 25)
@@ -210,9 +211,9 @@ class CircuitCanvas(QGraphicsView):
 
         item = QGraphicsPathItem(path)
         item.setPen(QPen(self.c_terminator, 3))
-        self.scene.addItem(item)
+        self._scene.addItem(item)
 
-        text = self.scene.addText(name, self._font)
+        text = self._scene.addText(name, self._font)
         text.setDefaultTextColor(self.c_text)
         tw = text.boundingRect().width()
         text.setPos(x + (cell_w - tw) / 2, 25)
@@ -221,10 +222,10 @@ class CircuitCanvas(QGraphicsView):
     def _draw_generic(self, x: float, name: str, cell_w: float):
         """Draw generic box."""
         cx = x + cell_w / 2 - 20
-        self.scene.addRect(
+        self._scene.addRect(
             cx, -10, 40, 20, QPen(self.c_text), QBrush(QColor("#bdc3c7"))
         )
-        text = self.scene.addText(name, self._font)
+        text = self._scene.addText(name, self._font)
         text.setDefaultTextColor(self.c_text)
         tw = text.boundingRect().width()
         text.setPos(x + (cell_w - tw) / 2, 25)
@@ -243,7 +244,7 @@ class CircuitCanvas(QGraphicsView):
 
         item = QGraphicsPathItem(path)
         item.setPen(QPen(color, 2, Qt.PenStyle.DashLine))
-        self.scene.addItem(item)
+        self._scene.addItem(item)
 
         # Repression "T" head
         head = QPainterPath()
@@ -251,7 +252,7 @@ class CircuitCanvas(QGraphicsView):
         head.lineTo(target_x + 8, -45)
         head_item = QGraphicsPathItem(head)
         head_item.setPen(QPen(color, 3))
-        self.scene.addItem(head_item)
+        self._scene.addItem(head_item)
 
     def _draw_insulator(self, x: float, name: str, cell_w: float):
         """Draw SBOLv Insulator (outer box)."""
@@ -269,7 +270,7 @@ class CircuitCanvas(QGraphicsView):
         )
         item.setBrush(QBrush(self.c_insulator))
         item.setPen(QPen(self.c_insulator, 2))
-        self.scene.addItem(item)
+        self._scene.addItem(item)
 
         # Inner box
         inner = QGraphicsPolygonItem(
@@ -284,9 +285,9 @@ class CircuitCanvas(QGraphicsView):
         )
         inner.setBrush(QBrush(self.c_backbone))
         inner.setPen(QPen(Qt.PenStyle.NoPen))
-        self.scene.addItem(inner)
+        self._scene.addItem(inner)
 
-        text = self.scene.addText(name, self._font)
+        text = self._scene.addText(name, self._font)
         text.setDefaultTextColor(self.c_text)
         tw = text.boundingRect().width()
         text.setPos(x + (cell_w - tw) / 2, 25)
@@ -304,9 +305,9 @@ class CircuitCanvas(QGraphicsView):
 
         item = QGraphicsPathItem(path)
         item.setPen(QPen(self.c_sgrna, 3))
-        self.scene.addItem(item)
+        self._scene.addItem(item)
 
-        text = self.scene.addText(name, self._font)
+        text = self._scene.addText(name, self._font)
         text.setDefaultTextColor(self.c_text)
         tw = text.boundingRect().width()
         text.setPos(x + (cell_w - tw) / 2, 25)

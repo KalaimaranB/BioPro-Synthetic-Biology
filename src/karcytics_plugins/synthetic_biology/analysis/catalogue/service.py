@@ -1,12 +1,12 @@
-import os
 import json
+import os
 import urllib.request
 from typing import List, Optional
 
 from ..api.kinetics import CelloKineticsDatabase
-from .repository import PartRepository
 from ..parts.base import BiologicalPart
 from ..parts.components import CDS, Promoter
+from .repository import PartRepository
 
 
 class PartsCatalogueService:
@@ -152,6 +152,7 @@ class PartsCatalogueService:
             seq = params.get("sequence", "")
 
             # Determine if it's a CDS or Promoter based on params
+            part: BiologicalPart
             if "y_max" in params or "y_min" in params:
                 part = Promoter(
                     id=part_id,
@@ -190,6 +191,7 @@ class PartsCatalogueService:
             desc = f"{part_id} from Cello UCF"
             seq = sequences.get(part_id, "")
 
+            part: BiologicalPart  # type: ignore[no-redef]
             if "y_max" in params or "y_min" in params:
                 part = Promoter(
                     id=part_id,

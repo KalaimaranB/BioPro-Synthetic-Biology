@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from typing import List, Optional
+
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
-from analysis.crispr.async_worker import CRISPRWorker
-from analysis.models.domain import gRNACandidate
-from analysis.state import SynBioState
+from ...analysis.crispr.async_worker import CRISPRWorker
+from ...analysis.models.domain import gRNACandidate
+from ...analysis.state import SynBioState
 
 
 class CRISPRDesignController(QObject):

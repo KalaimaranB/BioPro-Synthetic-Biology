@@ -8,10 +8,10 @@ Dependency Inversion Principle.
 import os
 from typing import Any
 
-from analysis.state import SynBioState
-from analysis.api.client import IGemClient, SynBioHubClient
-from analysis.catalogue.repository import JsonPartRepository
-from analysis.catalogue.service import PartsCatalogueService
+from ..analysis.api.client import IGemClient, SynBioHubClient
+from ..analysis.catalogue.repository import JsonPartRepository
+from ..analysis.catalogue.service import PartsCatalogueService
+from ..analysis.state import SynBioState
 
 
 class ServiceFactory:

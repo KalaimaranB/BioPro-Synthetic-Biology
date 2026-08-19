@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from typing import List, Optional
+
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
-from analysis.assembly.async_worker import AssemblyWorker
-from analysis.models.domain import PlasmidVector, Primer
-from analysis.parts.base import BiologicalPart
-from analysis.state import SynBioState
+from ...analysis.assembly.async_worker import AssemblyWorker
+from ...analysis.models.domain import PlasmidVector, Primer
+from ...analysis.parts.base import BiologicalPart
+from ...analysis.state import SynBioState
 
 
 class PlasmidAssemblyController(QObject):

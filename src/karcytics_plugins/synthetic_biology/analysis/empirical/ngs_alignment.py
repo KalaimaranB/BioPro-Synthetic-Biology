@@ -6,9 +6,10 @@ theoretical plasmid maps to flag unexpected mutations and CRISPR off-target edit
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import os
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+
 from ..models.domain import PlasmidVector
 
 
