@@ -1,7 +1,3 @@
-[build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "synthetic-biology-module"
 version = "0.1.0"
@@ -9,15 +5,15 @@ description = "Biological logic gate construction, orthogonality checking, and k
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
-    { name = "Kalaimaran Balasothy" }
+    { name = "Kalaimaran Balasothy" },
 ]
 dependencies = [
+    "karcytics-sdk>=2.0.1",
     "PyQt6>=6.5",
     "numpy>=1.26",
     "scipy>=1.11",
     "networkx>=3.1",
     "sbol3>=1.1",
-    "mesa>=2.0",
     "pandas>=2.0",
     "matplotlib>=3.8",
     "biopython>=1.80",
@@ -29,47 +25,90 @@ simulation = [
     "tellurium>=2.2",
 ]
 dev = [
-    "pytest",
-    "pytest-qt",
-    "ruff",
-    "pre-commit",
+    "pytest>=8.0,<9.0",
+    "pytest-qt>=4.3,<5.0",
+    "pytest-cov>=4.1,<5.0",
+    "ruff>=0.4,<1.0",
+    "mypy>=1.9,<2.0",
+    "pip-audit>=2.7,<3.0",
+    "pre-commit>=3.6,<4.0",
 ]
 
 [tool.karcytics.plugin]
 id = "synthetic_biology"
+display_name = "Synthetic Biology"
 name = "Synthetic Biology Module"
 min_core_version = "2.0.0"
-entry_point = "ui.main_panel:SynBioPanel"
+entry_point = "karcytics_plugins.synthetic_biology:initialize"
+process_model = "isolated"
+is_beta = true
+# tests/ is excluded from the release ZIP so it must never be hashed into
+# security.json — otherwise the shipped ledger claims files never packaged,
+# and install-time discovery correctly rejects the plugin as UNTRUSTED.
+custom_exclusions = ["tests"]
 requires = ["task_scheduler", "logger", "event_bus"]
+tags = ["synthetic biology", "logic gates", "genetic circuits", "CRISPR", "kinetic simulation", "SBOL", "bioinformatics"]
+homepage = "https://github.com/KalaimaranB/BioPro-SyntheticBiology"
+description = """
+A scientist-centric environment for designing, validating, and simulating biological logic gates and \
+synthetic genetic circuits. Includes orthogonality checking, CRISPR gRNA design, kinetic simulation, \
+SBOL part catalogue, and plasmid assembly workflows.\
+"""
 authors = [
-    { name = "Kalaimaran Balasothy", role = "Lead Developer", permissions = ["sign_code"] }
+    { name = "Kalaimaran Balasothy", role = "Lead Developer", permissions = ["sign_code"], github = "KalaimaranB", details = "Biomedical Engineering student (Bioinformatics & Cellular Engineering) at UBC. Lead architect of Karcytics." },
 ]
 
-[tool.biopro.plugin]
-id = "synthetic_biology"
-name = "Synthetic Biology Module"
-min_core_version = "2.0.0"
-entry_point = "ui.main_panel:SynBioPanel"
-requires = ["task_scheduler", "logger", "event_bus"]
-authors = [
-    { name = "Kalaimaran Balasothy", role = "Lead Developer", permissions = ["sign_code"] }
-]
+[tool.karcytics.plugin.signing]
+# Author's Ed25519 public key — trust root: Karcytics Core Authority → Kalaimaran Balasothy
+# Verified by trust_chain.json (signature to be issued by Karcytics Core Authority)
+author_public_key = "ed9ceefd12e7eebe2774cb6779bbbcf0a799b994f2c0159643c940e5ae1d580f"
 
-[tool.setuptools.packages.find]
-where = ["src"]
 
+# ── Pytest ────────────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]
 markers = ["unit", "integration", "functional", "ui", "slow"]
 testpaths = ["tests"]
 pythonpath = ["src"]
+addopts = "-v --tb=short"
+timeout = 120
 
+# ── Ruff ──────────────────────────────────────────────────────────────────────
 [tool.ruff]
 line-length = 88
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F"]
+select = ["E", "F", "I"]
 
+# ── Mypy ──────────────────────────────────────────────────────────────────────
+[tool.mypy]
+explicit_package_bases = true
+namespace_packages = true
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = [
+    "PyQt6.*",
+    "numpy.*",
+    "scipy.*",
+    "pandas.*",
+    "matplotlib.*",
+    "networkx.*",
+    "sbol3.*",
+    "tellurium.*",
+    "pyqtgraph.*",
+    "Bio.*",
+    "mesa.*",
+    "karcytics_sdk.*",
+    "karcytics.*",
+]
+ignore_missing_imports = true
+
+# ── Pyright ───────────────────────────────────────────────────────────────────
 [tool.pyright]
 include = ["src", "tests"]
 extraPaths = ["src"]
+
+# ── uv ────────────────────────────────────────────────────────────────────────
+[tool.uv.sources]
+karcytics-sdk = { path = "../Karcytics-SDK", editable = true }

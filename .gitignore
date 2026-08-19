@@ -1,34 +1,58 @@
-# Byte-compiled / optimized / DLL files
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+*.pyd
 
-# Environments
+# ── Virtual environments ───────────────────────────────────────────────────────
 .venv/
+.plugin_venv/
 venv/
 ENV/
 env/
 
-# Caches
-.pytest_cache/
-.ruff_cache/
-
-# Python packaging and builds
+# ── Build & packaging ──────────────────────────────────────────────────────────
 *.egg-info/
 *.egg
 build/
 dist/
+.eggs/
+MANIFEST
 
-# OS-specific files
+# ── Tool caches ────────────────────────────────────────────────────────────────
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.tox/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# ── OS artefacts ───────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# Developer keys and certificates (SECURITY: private keys must never be committed!)
+# ── Editor / IDE ───────────────────────────────────────────────────────────────
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Private keys & certificates (NEVER commit) ────────────────────────────────
 *.pem
 *.key
 private.key
 dev_private_key.pem
 
-# Build and Test Artifacts
+# ── Scratch / generated output ────────────────────────────────────────────────
 *.npy
 *.zip
+*.log
+ruff_errors.txt
+debug_cat.json
+test_debug.py
+.Rhistory
