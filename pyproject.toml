@@ -1,6 +1,6 @@
 [project]
 name = "synthetic-biology-module"
-version = "0.1.0"
+version = "0.1.1"
 description = "Biological logic gate construction, orthogonality checking, and kinetic simulation for synthetic genetic circuits."
 readme = "README.md"
 requires-python = ">=3.11"
