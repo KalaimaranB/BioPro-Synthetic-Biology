@@ -46,7 +46,7 @@ is_beta = true
 # tests/ is excluded from the release ZIP so it must never be hashed into
 # security.json — otherwise the shipped ledger claims files never packaged,
 # and install-time discovery correctly rejects the plugin as UNTRUSTED.
-custom_exclusions = ["tests"]
+custom_exclusions = ["tests", "temp_test_cat.json"]
 requires = ["task_scheduler", "logger", "event_bus"]
 tags = ["synthetic biology", "logic gates", "genetic circuits", "CRISPR", "kinetic simulation", "SBOL", "bioinformatics"]
 homepage = "https://github.com/KalaimaranB/BioPro-SyntheticBiology"

@@ -311,8 +311,9 @@ class EmpiricalAnalyticsView(QWidget):
         comps = self.state.circuit_components
         edgs = self.state.circuit_edges
         if not comps:
-            from karcytics_plugins.synthetic_biology.analysis.simulation \
-                import circuit_engine as ce
+            from karcytics_plugins.synthetic_biology.analysis.simulation import (
+                circuit_engine as ce,
+            )
 
             CircuitSimulationEngine = ce.CircuitSimulationEngine
 
