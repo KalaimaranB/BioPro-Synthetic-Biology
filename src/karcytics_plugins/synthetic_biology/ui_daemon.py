@@ -85,12 +85,13 @@ def main() -> int | None:
 
         return panel
 
-    return run_ui_daemon(
+    run_ui_daemon(
         _build_panel,
         window_title="Synthetic Biology",
         window_size=(1400, 900),
         plugin_id="synthetic_biology",
     )
+    return 0
 
 
 if __name__ == "__main__":

@@ -69,6 +69,7 @@ class SynBioPanel(PluginBase):
         context: Any | None = None,
         **kwargs: Any,
     ) -> None:
+        actual_parent: QWidget | None
         if isinstance(plugin_id, QWidget):
             actual_parent = plugin_id
             actual_plugin_id = "synthetic_biology"
