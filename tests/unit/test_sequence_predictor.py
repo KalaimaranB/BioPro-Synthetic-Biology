@@ -10,11 +10,14 @@ from unittest.mock import MagicMock
 if "sbol3" not in sys.modules:
     sys.modules["sbol3"] = MagicMock()
 
-from analysis.catalogue.repository import JsonPartRepository
-from analysis.catalogue.service import PartsCatalogueService
-from analysis.parts.components import CDS, Promoter
-
-from analysis.prediction.sequence_predictor import (
+from karcytics_plugins.synthetic_biology.analysis.catalogue.repository import (
+    JsonPartRepository,
+)
+from karcytics_plugins.synthetic_biology.analysis.catalogue.service import (
+    PartsCatalogueService,
+)
+from karcytics_plugins.synthetic_biology.analysis.parts.components import CDS, Promoter
+from karcytics_plugins.synthetic_biology.analysis.prediction.sequence_predictor import (
     SequencePredictor,
     levenshtein_distance,
     translate_dna_to_protein,
@@ -89,10 +92,7 @@ def test_promoter_biophysics_spacer_strain():
 
     assert res_17["details"]["spacer_len"] == 17
     assert res_15["details"]["spacer_len"] == 15
-    assert (
-        res_15["details"]["binding_penalty_kB_T"]
-        > res_17["details"]["binding_penalty_kB_T"]
-    )
+    assert res_15["details"]["binding_penalty_kB_T"] > res_17["details"]["binding_penalty_kB_T"]
 
 
 def test_cds_cai_translation_rate():
@@ -110,10 +110,7 @@ def test_cds_cai_translation_rate():
     assert res_opt["is_predicted"] is True
     assert res_opt["model_type"] == "CAI & BLOSUM62 Stability Model"
     assert res_opt["details"]["cai_score"] > res_rare["details"]["cai_score"]
-    assert (
-        res_opt["parameters"]["translation_rate"]
-        > res_rare["parameters"]["translation_rate"]
-    )
+    assert res_opt["parameters"]["translation_rate"] > res_rare["parameters"]["translation_rate"]
 
 
 def test_cds_blosum62_degradation_rate():
@@ -145,8 +142,7 @@ def test_cds_blosum62_degradation_rate():
         > res_cons["details"]["structural_penalty_norm"]
     )
     assert (
-        res_noncons["parameters"]["degradation_rate"]
-        > res_cons["parameters"]["degradation_rate"]
+        res_noncons["parameters"]["degradation_rate"] > res_cons["parameters"]["degradation_rate"]
     )
 
 

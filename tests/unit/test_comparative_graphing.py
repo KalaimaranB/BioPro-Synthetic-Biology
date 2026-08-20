@@ -4,22 +4,21 @@ parameter extraction, and curve generation).
 
 from matplotlib.figure import Figure
 
-from analysis.parts.components import Promoter, CDS
-
-from analysis.prediction.sequence_predictor import (
-    identify_wildtype,
-    compare_kinetics,
+from karcytics_plugins.synthetic_biology.analysis.parts.components import CDS, Promoter
+from karcytics_plugins.synthetic_biology.analysis.prediction.graphing_utils import (
+    generate_transfer_curve,
 )
-from analysis.prediction.graphing_utils import generate_transfer_curve
+from karcytics_plugins.synthetic_biology.analysis.prediction.sequence_predictor import (
+    compare_kinetics,
+    identify_wildtype,
+)
 
 
 def test_identify_wildtype():
     """Test wild type reverse lookup finds part with lowest distance strictly > 0."""
     wt_seq = "CGTACTTGACAAGCTAGCTAGCTAGCTATATAATGCTAG"  # Baseline
     far_seq = "CGTACCCCACAAGCTAGCTAGCTAGCTATAGAATGCTAG"  # Multiple mutations (dist = 3)
-    near_seq = (
-        "CGTACTTGACAAGCTAGCTAGCTAGCTATATAATGCTAA"  # Single base swap at end (dist = 1)
-    )
+    near_seq = "CGTACTTGACAAGCTAGCTAGCTAGCTATATAATGCTAA"  # Single base swap at end (dist = 1)
     mut_seq = "CGTACTTGACAAGCTAGCTAGCTAGCTATATAATGCTAG"  # Exact match (dist = 0)
 
     wt_part = Promoter(id="WT_P1", name="Wild Type 1", sequence=wt_seq)

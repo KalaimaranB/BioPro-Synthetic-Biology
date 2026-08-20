@@ -1,6 +1,10 @@
-from analysis.catalogue.repository import JsonPartRepository
-from analysis.catalogue.service import PartsCatalogueService
-from analysis.parts.components import Promoter, CDS
+from karcytics_plugins.synthetic_biology.analysis.catalogue.repository import (
+    JsonPartRepository,
+)
+from karcytics_plugins.synthetic_biology.analysis.catalogue.service import (
+    PartsCatalogueService,
+)
+from karcytics_plugins.synthetic_biology.analysis.parts.components import CDS, Promoter
 
 
 def test_json_part_repository_saves_and_retrieves(tmp_path):

@@ -1,10 +1,11 @@
 """Unit tests for CRISPR/Cas9 Guide RNA Designer & CFD Off-Target Scorer."""
 
 import pytest
-from analysis.crispr.grna_designer import (
+
+from karcytics_plugins.synthetic_biology.analysis.crispr.grna_designer import (
     CRISPRDesignEngine,
 )
-from analysis.models.domain import gRNACandidate
+from karcytics_plugins.synthetic_biology.analysis.models.domain import gRNACandidate
 
 
 @pytest.mark.unit
@@ -45,7 +46,5 @@ def test_cfd_off_target_scoring():
     )
 
     genome_with_mismatch = "AAAAAAAAAAAAAAAAACTGGAGTTGTCCCAATTCTCGGAAAAAAAAAAAAAAAA"
-    score = CRISPRDesignEngine.score_off_targets(
-        cand, reference_genome=genome_with_mismatch
-    )
+    score = CRISPRDesignEngine.score_off_targets(cand, reference_genome=genome_with_mismatch)
     assert 0.0 <= score <= 100.0

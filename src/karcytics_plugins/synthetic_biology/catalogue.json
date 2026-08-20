@@ -1,0 +1,71 @@
+[
+  {
+    "id": "BBa_R0010",
+    "name": "BBa_R0010",
+    "description": "promoter (lacI regulated)",
+    "sequence": "caatacgcaaaccgcctctccccgcgcgttggccgattcattaatgcagctggcacgacaggtttcccgactggaaagcgggcagtgagcgcaacgcaattaatgtgagttagctcactcattaggcaccccaggctttacactttatgcttccggctcgtatgttgtgtggaattgtgagcggataacaatttcacacaa",
+    "is_custom": false,
+    "part_type": "promoter",
+    "properties": {},
+    "y_min": 0.5,
+    "y_max": 250.0,
+    "K_d": 40.0,
+    "n": 2.0,
+    "repressors": [],
+    "activators": []
+  },
+  {
+    "id": "BBa_R0040",
+    "name": "BBa_R0040",
+    "description": "TetR repressible promoter",
+    "sequence": "tccctatcagtgatagagattgacatccctatcagtgatagagatactgagcac",
+    "is_custom": false,
+    "part_type": "promoter",
+    "properties": {},
+    "y_min": 0.5,
+    "y_max": 250.0,
+    "K_d": 40.0,
+    "n": 2.0,
+    "repressors": [],
+    "activators": []
+  },
+  {
+    "id": "BBa_R0051",
+    "name": "BBa_R0051",
+    "description": "lambda cI repressible promoter",
+    "sequence": "aatatataaaaaaagattattaaaaatttattagttaaataagagacaaataaagttaac",
+    "is_custom": false,
+    "part_type": "promoter",
+    "properties": {},
+    "y_min": 0.5,
+    "y_max": 250.0,
+    "K_d": 40.0,
+    "n": 2.0,
+    "repressors": [],
+    "activators": []
+  },
+  {
+    "id": "BBa_C0012",
+    "name": "BBa_C0012",
+    "description": "lacI repressor from E. coli (+LVA)",
+    "sequence": "atggtgaatgtgaaaccagtaacgttatacgatgtcgcagagtatgccggtgtctcttatcagaccgtttcccgcgtggtgaaccaggccagccacgtttctgcgaaaacgcgggaaaaagtggaagcggcgatggcggagctgaattacattcccaaccgcgtggcacaacaactggcgggcaaacagtcgttgctgattggcgttgccacctccagtctggccctgcacgcgccgtcgcaaattgtcgcggcgattaaatctcgcgccgatcaactgggtgccagcgtggtggtgtcgatggtagaacgaagcggcgtcgaagcctgtaaagcggcggtgcacaatcttctcgcgcaacgcgtcagtgggctgatcattaactatccgctggatgaccaggatgccattgctgtggaagctgcctgcactaatgttccggcgttatttcttgatgtctctgaccagacacccatcaacagtattattttctcccatgaagacggtacgcgactgggcgtggagcatctggtcgcattgggtcaccagcaaatcgcgctgttagcgggcccattaagttctgtctcggcgcgtctgcgtctggctggctggcataaatatctcactcgcaatcaaattcagccgatagcggaacgggaaggcgactggagtgccatgtccggttttcaacaaaccatgcaaatgctgaatgagggcatcgttcccactgcgatgctggttgccaacgatcagatggcgctgggcgcaatgcgcgccattaccgagtccgggctgcgcgttggtgcggatatctcggtagtgggatacgacgataccgaagacagctcatgttatatcccgccgttaaccaccatcaaacaggattttcgcctgctggggcaaaccagcgtggaccgcttgctgcaactctctcagggccaggcggtgaagggcaatcagctgttgcccgtctcactggtgaaaagaaaaaccaccctggcgcccaatacgcaaaccgcctctccccgcgcgttggccgattcattaatgcagctggcacgacaggtttcccgactggaaagcgggcagtgagcgcaacgcaattaatgtgagttagctcactcattaggcaccccaggctttacactttatgcttccggctcgtataatgtgtgga",
+    "is_custom": false,
+    "part_type": "cds",
+    "properties": {},
+    "translation_rate": 0.1,
+    "degradation_rate": 0.01,
+    "product": "LacI"
+  },
+  {
+    "id": "BBa_C0040",
+    "name": "BBa_C0040",
+    "description": "tetR repressor from transposon Tn10 (+LVA)",
+    "sequence": "atgtccagattagataaaagtaaagtgattaacagcgcattagagctgcttaatgaggtcggaatcgaaggtttaacaacccgtaaactcgcccagaagctaggtgtagagcagcctacattgtattggcatgtaaaaaataagcgggctttgctcgacgccttagccattgagatgttagataggcaccatactcactttgccctttagaaggggaaagctggcaagattttttacgtaataacgctaaaagttttagatgtgctttactaagtcactcgaatgcgactggcgtgtta",
+    "is_custom": false,
+    "part_type": "cds",
+    "properties": {},
+    "translation_rate": 0.1,
+    "degradation_rate": 0.01,
+    "product": "TetR"
+  }
+]

@@ -1,0 +1,14 @@
+[
+    {
+        "subject_name": "Synthetic Biology CI Pipeline",
+        "subject_pub": "3a5e95c653b0d456b14f02360b4be220bca1c6f0f591533dc663e088bfe07db7",
+        "issuer_name": "Kalaimaran Balasothy",
+        "signature": "054fc0d52792194c42123c1c292fe09430cacc5e91af5f88da3fdd7886f079f30070ea8a8d5a304d67e5f317f748932d69dc800f65b530c63efc189b9d8e400a"
+    },
+    {
+        "subject_name": "Kalaimaran Balasothy",
+        "subject_pub": "4a2f07ed63d33c1b5aeb39405a7e7979d93d899836920818a6da317f65c6c6a5",
+        "issuer_name": "Karcytics Core Authority",
+        "signature": "9833f41123c96c3a171cfc516d754744de97aebaf3d497b9b34685ce6a5d223d13238540b99e270010ea32823976173a80361f21c2a189f02aea131f1bf7be02"
+    }
+]

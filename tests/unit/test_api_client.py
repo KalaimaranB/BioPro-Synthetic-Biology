@@ -2,14 +2,14 @@
 
 from unittest.mock import patch
 
-from analysis.api.client import IGemClient
-from analysis.parts.components import Promoter
+from karcytics_plugins.synthetic_biology.analysis.api.client import IGemClient
+from karcytics_plugins.synthetic_biology.analysis.parts.components import Promoter
 
 
 class TestIGemClient:
     """Tests for the IGemClient."""
 
-    @patch("analysis.api.client.requests.get")
+    @patch("karcytics_plugins.synthetic_biology.analysis.api.client.requests.get")
     def test_fetch_part_success(self, mock_get):
         # Mock the requests response
         mock_response = mock_get.return_value
@@ -39,7 +39,7 @@ class TestIGemClient:
         assert part.name == "TetR repressible promoter"
         assert part.sequence == "tccctatcagtgatagagattgacatccctatcagtgatagagatactgagcac"
 
-    @patch("analysis.api.client.requests.get")
+    @patch("karcytics_plugins.synthetic_biology.analysis.api.client.requests.get")
     def test_fetch_part_not_found(self, mock_get):
         # Mock a failed response
         import requests

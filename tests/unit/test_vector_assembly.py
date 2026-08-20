@@ -1,14 +1,15 @@
 """Unit tests for Vector Assembly Engine and Biopython integration."""
 
 import pytest
-from analysis.assembly.vector_builder import (
+
+from karcytics_plugins.synthetic_biology.analysis.assembly.vector_builder import (
     VectorAssemblyEngine,
 )
-from analysis.parts.components import (
+from karcytics_plugins.synthetic_biology.analysis.parts.components import (
     CDS,
+    RBS,
     Promoter,
     Terminator,
-    RBS,
 )
 
 
@@ -51,9 +52,7 @@ def test_design_primers():
 @pytest.mark.unit
 def test_assemble_vector():
     """Test stitching biological parts into a seamless PlasmidVector construct."""
-    promoter = Promoter(
-        id="p1", name="pTac", sequence="TTGACAATTAATCATCGGCTCGTATAATGTGTGG"
-    )
+    promoter = Promoter(id="p1", name="pTac", sequence="TTGACAATTAATCATCGGCTCGTATAATGTGTGG")
     rbs = RBS(id="r1", name="B0034", sequence="AAAGAGGAGAA")
     cds = CDS(id="c1", name="GFP", sequence="ATGAGTAAAGGAGAAGAACTTTTCACTGGAGTT")
     term = Terminator(
@@ -73,27 +72,19 @@ def test_assemble_vector():
     assert vector.features[1].name == "B0034"
     assert vector.features[2].name == "GFP"
     assert vector.features[3].name == "B0015"
-    assert len(vector.sequence) == sum(
-        len(p.sequence) for p in [promoter, rbs, cds, term]
-    )
+    assert len(vector.sequence) == sum(len(p.sequence) for p in [promoter, rbs, cds, term])
 
 
 @pytest.mark.unit
 def test_genbank_export_import():
     """Test GenBank standard sequence import/export via Biopython."""
-    promoter = Promoter(
-        id="p1", name="pTac", sequence="TTGACAATTAATCATCGGCTCGTATAATGTGTGG"
-    )
-    vector = VectorAssemblyEngine.assemble_vector(
-        vector_name="pGBKTest", parts=[promoter]
-    )
+    promoter = Promoter(id="p1", name="pTac", sequence="TTGACAATTAATCATCGGCTCGTATAATGTGTGG")
+    vector = VectorAssemblyEngine.assemble_vector(vector_name="pGBKTest", parts=[promoter])
 
     gbk_text = VectorAssemblyEngine.export_genbank(vector)
     assert "pGBKTest" in gbk_text
     assert "FEATURES" in gbk_text
 
-    imported_vector = VectorAssemblyEngine.parse_sequence_file(
-        gbk_text, file_format="genbank"
-    )
+    imported_vector = VectorAssemblyEngine.parse_sequence_file(gbk_text, file_format="genbank")
     assert imported_vector.length == vector.length
     assert len(imported_vector.features) >= 1

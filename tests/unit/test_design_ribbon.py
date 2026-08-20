@@ -8,8 +8,9 @@ if "sbol3" not in sys.modules:
     sys.modules["sbol3"] = MagicMock()
 
 from PyQt6.QtWidgets import QApplication, QComboBox
-from ui.ribbons.design_ribbon import DesignRibbon
-from analysis.parts.components import Promoter, CDS
+
+from karcytics_plugins.synthetic_biology.analysis.parts.components import CDS, Promoter
+from karcytics_plugins.synthetic_biology.ui.ribbons.design_ribbon import DesignRibbon
 
 app = QApplication.instance() or QApplication([])
 

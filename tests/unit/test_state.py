@@ -1,6 +1,10 @@
 """Tests for SynBioState serialization and round-tripping."""
 
-from analysis.state import CircuitState, SynBioState, ViewState
+from karcytics_plugins.synthetic_biology.analysis.state import (
+    CircuitState,
+    SynBioState,
+    ViewState,
+)
 
 
 class TestCircuitState:
@@ -13,9 +17,7 @@ class TestCircuitState:
         assert state.simulation_results == {}
 
     def test_to_dict(self):
-        state = CircuitState(
-            parts=[{"id": "p1"}], connections=[{"src": "p1", "dst": "p2"}]
-        )
+        state = CircuitState(parts=[{"id": "p1"}], connections=[{"src": "p1", "dst": "p2"}])
         d = state.to_dict()
         assert d["parts"] == [{"id": "p1"}]
         assert d["connections"] == [{"src": "p1", "dst": "p2"}]
@@ -89,7 +91,7 @@ class TestSynBioState:
 
     def test_circuit_components_and_edges_properties(self):
         """Verify circuit_components, circuit_edges, and plasmid properties."""
-        from analysis.models.domain import (
+        from karcytics_plugins.synthetic_biology.analysis.models.domain import (
             CircuitComponent,
             CircuitEdge,
             PlasmidVector,
@@ -101,9 +103,7 @@ class TestSynBioState:
         assert state.plasmid is None
 
         c1 = CircuitComponent(id="TetR", name="TetR", component_type="cds")
-        e1 = CircuitEdge(
-            source_id="TetR", target_id="LacI", interaction_type="repression"
-        )
+        e1 = CircuitEdge(source_id="TetR", target_id="LacI", interaction_type="repression")
         p1 = PlasmidVector(id="p1", name="Plasmid 1")
 
         state.circuit_components = [c1]

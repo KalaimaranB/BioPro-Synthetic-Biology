@@ -12,7 +12,7 @@ if "sbol3" not in sys.modules:
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QListWidget, QListWidgetItem, QSplitter
 
-from ui.views.simulate_view import SimulateView
+from karcytics_plugins.synthetic_biology.ui.views.simulate_view import SimulateView
 
 # Ensure QApplication instance exists for PyQt widget tests
 app = QApplication.instance() or QApplication([])
@@ -41,9 +41,9 @@ def test_species_list_filtering_and_plot_update():
         def __getitem__(self, item):
             if item == "time":
                 return np.array([0, 1, 2, 3, 4, 5])
-            elif item in ("[LacI]", "LacI"):
+            if item in ("[LacI]", "LacI"):
                 return np.array([10, 8, 6, 4, 2, 0])
-            elif item in ("[TetR]", "TetR"):
+            if item in ("[TetR]", "TetR"):
                 return np.array([0, 2, 4, 6, 8, 10])
             return np.array([0, 0, 0, 0, 0, 0])
 
