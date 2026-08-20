@@ -14,6 +14,8 @@ manifest_hash) ever changes, update the constants and hash_file() below
 to match.
 """
 
+# ruff: noqa: T201
+
 from __future__ import annotations
 
 import hashlib

@@ -1,9 +1,10 @@
 from pathlib import Path
 
+import karcytics_plugins.synthetic_biology.ui.composition_root as comp_root
+
 # pyrefly: ignore [missing-import]
 from karcytics_plugins.synthetic_biology.analysis.state import SynBioState
 from karcytics_plugins.synthetic_biology.ui.composition_root import ServiceFactory
-import karcytics_plugins.synthetic_biology.ui.composition_root as comp_root
 
 
 def test_service_factory_build_all_handles_explicit_path(tmp_path):

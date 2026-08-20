@@ -1,7 +1,7 @@
 import json
 import os
 from pathlib import Path
-from typing import List, Optional, Protocol
+from typing import Protocol
 
 from ..parts.base import BiologicalPart
 from ..parts.components import CDS, RBS, Insulator, Promoter, Terminator, sgRNA
