@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 from typing import List, Optional, Protocol
 
 from ..parts.base import BiologicalPart
@@ -37,8 +38,17 @@ class JsonPartRepository:
     managing serialization and persistence of parts.
     """
 
-    def __init__(self, file_path: str):
-        self.file_path = file_path
+    def __init__(self, file_path: str | Path | None = None):
+        if file_path is None:
+            plugin_dir = Path(__file__).resolve().parents[2]
+            file_path = plugin_dir / "catalogue.json"
+        else:
+            file_path = Path(file_path)
+            if not file_path.is_absolute():
+                plugin_dir = Path(__file__).resolve().parents[2]
+                file_path = plugin_dir / file_path
+
+        self.file_path = str(file_path)
         self._cache: dict[str, BiologicalPart] = {}
         self._load()
 

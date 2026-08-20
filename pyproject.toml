@@ -35,6 +35,12 @@ dev = [
     "pre-commit",
 ]
 
+[project.entry-points."karcytics.plugins"]
+synthetic_biology = "synthetic_biology:get_plugin"
+
+[project.entry-points."biopro.plugins"]
+synthetic_biology = "synthetic_biology:get_plugin"
+
 [tool.karcytics.plugin]
 id = "synthetic_biology"
 name = "Synthetic Biology Module"

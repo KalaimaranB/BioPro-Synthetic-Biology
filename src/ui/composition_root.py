@@ -5,7 +5,7 @@ and wiring of all domain and infrastructure services, adhering to the
 Dependency Inversion Principle.
 """
 
-import os
+from pathlib import Path
 from typing import Any
 
 from analysis.state import SynBioState
@@ -28,23 +28,20 @@ class ServiceFactory:
         self.parent_widget = parent_widget
         self._services: dict[str, Any] = {}
 
-    def build_all(self, catalogue_path: str | None = None) -> None:
+    def build_all(self, catalogue_path: str | Path | None = None) -> None:
         """Instantiates all services and wires them up."""
         self._services["igem_client"] = IGemClient()
         self._services["synbiohub_client"] = SynBioHubClient()
 
-        # Setup the Parts Catalogue
+        # Setup the Parts Catalogue anchored to plugin directory
         if not catalogue_path:
-            cwd = os.getcwd()
-            if cwd != "/" and not cwd.startswith("/System") and os.access(cwd, os.W_OK):
-                catalogue_path = os.path.join(cwd, "catalogue.json")
-            else:
-                user_data_dir = os.path.expanduser("~/.biopro/synthetic_biology")
-                try:
-                    os.makedirs(user_data_dir, exist_ok=True)
-                    catalogue_path = os.path.join(user_data_dir, "catalogue.json")
-                except OSError:
-                    catalogue_path = os.path.expanduser("~/catalogue.json")
+            plugin_dir = Path(__file__).resolve().parents[1]
+            catalogue_path = plugin_dir / "catalogue.json"
+        else:
+            catalogue_path = Path(catalogue_path)
+            if not catalogue_path.is_absolute():
+                plugin_dir = Path(__file__).resolve().parents[1]
+                catalogue_path = plugin_dir / catalogue_path
 
         repo = JsonPartRepository(catalogue_path)
         catalogue_service = PartsCatalogueService(repo)

@@ -1,36 +1,27 @@
-from unittest.mock import patch
+from pathlib import Path
 
 # pyrefly: ignore [missing-import]
 from analysis.state import SynBioState
 from ui.composition_root import ServiceFactory
+import ui.composition_root as comp_root
 
 
-def test_service_factory_build_all_handles_root_cwd(tmp_path):
-    # Mock os.getcwd to return root '/'
-    with patch("os.getcwd", return_value="/"):
-        factory = ServiceFactory(SynBioState())
-        # Should not raise OSError: Read-only file system
-        test_cat_path = tmp_path / "catalogue.json"
-        factory.build_all(catalogue_path=str(test_cat_path))
+def test_service_factory_build_all_handles_explicit_path(tmp_path):
+    factory = ServiceFactory(SynBioState())
+    test_cat_path = tmp_path / "catalogue.json"
+    factory.build_all(catalogue_path=str(test_cat_path))
 
-        service = factory.get("parts_catalogue")
-        assert service is not None
-        assert len(service.get_all_parts()) > 0
+    service = factory.get("parts_catalogue")
+    assert service is not None
+    assert len(service.get_all_parts()) > 0
+    assert service._repository.file_path == str(test_cat_path)
 
 
-def test_service_factory_fallback_to_user_dir(tmp_path):
-    def mock_expanduser(path):
-        if path.startswith("~"):
-            return path.replace("~", str(tmp_path), 1)
-        return path
+def test_service_factory_anchors_to_plugin_dir():
+    factory = ServiceFactory(SynBioState())
+    factory.build_all()
 
-    with (
-        patch("os.getcwd", return_value="/"),
-        patch("os.path.expanduser", side_effect=mock_expanduser),
-    ):
-        factory = ServiceFactory(SynBioState())
-        factory.build_all()
-
-        service = factory.get("parts_catalogue")
-        assert service is not None
-        assert (tmp_path / ".biopro" / "synthetic_biology" / "catalogue.json").exists()
+    service = factory.get("parts_catalogue")
+    assert service is not None
+    expected_path = Path(comp_root.__file__).resolve().parents[1] / "catalogue.json"
+    assert service._repository.file_path == str(expected_path)
