@@ -26,3 +26,18 @@ def test_service_factory_anchors_to_plugin_dir():
     assert service is not None
     expected_path = Path(comp_root.__file__).resolve().parents[1] / "catalogue.json"
     assert service._repository.file_path == str(expected_path)
+
+
+def test_synbio_panel_handles_plugin_context_parent():
+    from PyQt6.QtWidgets import QApplication
+
+    _app = QApplication.instance() or QApplication([])
+    from karcytics_plugins.synthetic_biology.ui.main_panel import SynBioPanel
+
+    class DummyPluginContext:
+        pass
+
+    ctx = DummyPluginContext()
+    panel = SynBioPanel(parent=ctx)
+    assert panel.context is ctx
+    assert panel.parent() is None

@@ -1,6 +1,8 @@
 """Card widget representing a single biological part in the catalogue."""
 
 from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
+
+# pyrefly: ignore [missing-import]
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QFrame, QLabel, QVBoxLayout
 
@@ -41,7 +43,7 @@ class PartCard(QFrame):
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl.setStyleSheet(
                 f"color: {Colors.FG_PRIMARY}; "
-                f"font-size: {Fonts.SIZE_SMALL + 2}px; font-weight: bold;"
+                f"font-size: {Fonts.SIZE_NORMAL}; font-weight: bold;"
             )
             layout.addWidget(lbl)
         else:
@@ -55,7 +57,7 @@ class PartCard(QFrame):
             type_lbl = QLabel(self.part_type)
             type_lbl.setStyleSheet(
                 f"color: {Colors.FG_SECONDARY}; "
-                f"font-size: {Fonts.SIZE_SMALL - 1}px; font-weight: bold;"
+                f"font-size: {Fonts.SIZE_SMALL}; font-weight: bold;"
             )
             layout.addWidget(type_lbl)
 
@@ -63,7 +65,7 @@ class PartCard(QFrame):
             name_lbl.setWordWrap(True)
             name_lbl.setStyleSheet(
                 f"color: {Colors.FG_PRIMARY}; "
-                f"font-size: {Fonts.SIZE_SMALL + 2}px; font-weight: bold;"
+                f"font-size: {Fonts.SIZE_NORMAL}; font-weight: bold;"
             )
             layout.addWidget(name_lbl)
 
@@ -78,7 +80,7 @@ class PartCard(QFrame):
             desc_lbl = QLabel(desc_text)
             desc_lbl.setWordWrap(True)
             desc_lbl.setStyleSheet(
-                f"color: {Colors.FG_DISABLED}; font-size: {Fonts.SIZE_SMALL - 1}px;"
+                f"color: {Colors.FG_DISABLED}; font-size: {Fonts.SIZE_SMALL};"
             )
             layout.addWidget(desc_lbl)
 

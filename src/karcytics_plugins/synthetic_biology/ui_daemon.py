@@ -36,8 +36,15 @@ if str(_SRC_DIR) not in sys.path:
 # karcytics_plugins.flow_cytometry.ui_daemon for the documented repro).
 # Importing numpy/scipy here, before that thread exists, means any later
 # import inside this plugin's own modules is just a sys.modules cache hit.
-import numpy  # noqa: E402, F401
-import scipy  # noqa: E402, F401
+try:
+    import numpy  # noqa: E402, F401
+except ImportError:
+    pass
+
+try:
+    import scipy  # noqa: E402, F401
+except ImportError:
+    pass
 
 
 def _build_plugin_context() -> Any:
@@ -52,7 +59,7 @@ def _build_plugin_context() -> Any:
     return PluginContext(services={}, manifest=manifest)
 
 
-def main() -> None:
+def main() -> int | None:
     from karcytics_sdk.plugin import run_ui_daemon
     from karcytics_sdk.plugin.ui_daemon_runtime import send_event
 
@@ -78,7 +85,7 @@ def main() -> None:
 
         return panel
 
-    run_ui_daemon(
+    return run_ui_daemon(
         _build_panel,
         window_title="Synthetic Biology",
         window_size=(1400, 900),
@@ -87,4 +94,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

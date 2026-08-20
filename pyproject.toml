@@ -34,11 +34,18 @@ dev = [
     "pre-commit>=3.6,<4.0",
 ]
 
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [project.entry-points."karcytics.plugins"]
-synthetic_biology = "synthetic_biology:get_plugin"
+synthetic_biology = "karcytics_plugins.synthetic_biology:get_plugin"
 
 [project.entry-points."biopro.plugins"]
-synthetic_biology = "synthetic_biology:get_plugin"
+synthetic_biology = "karcytics_plugins.synthetic_biology:get_plugin"
 
 [tool.karcytics.plugin]
 id = "synthetic_biology"
@@ -46,7 +53,9 @@ display_name = "Synthetic Biology"
 name = "Synthetic Biology Module"
 min_core_version = "2.0.0"
 entry_point = "karcytics_plugins.synthetic_biology:initialize"
-process_model = "isolated"
+process_model = "in_process"
+environment = ".venv"
+requirements = "requirements.txt"
 is_beta = true
 # tests/ is excluded from the release ZIP so it must never be hashed into
 # security.json — otherwise the shipped ledger claims files never packaged,

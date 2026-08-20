@@ -27,6 +27,18 @@ def initialize(context=None):
     return BioProPlugin(parent=context)
 
 
+def get_plugin(parent=None):
+    """Entry point function returning the initialized BioProPlugin instance."""
+    return BioProPlugin(parent=parent)
+
+
+def get_ui(parent=None):
+    """Entry point function returning the SynBioPanel QWidget directly."""
+    from .ui.main_panel import SynBioPanel
+
+    return SynBioPanel(parent=parent)
+
+
 class BioProPlugin:
     """Karcytics plugin implementation for the Synthetic Biology module.
 
@@ -40,6 +52,13 @@ class BioProPlugin:
         self._parent = parent
         self._panel = None
 
+    @classmethod
+    def get_panel_class(cls):
+        """Return the main PyQt6 SynBioPanel class to be mounted into host UI."""
+        from .ui.main_panel import SynBioPanel
+
+        return SynBioPanel
+
     def create_panel(self, parent=None):
         """Instantiate and return the main SynBioPanel widget.
 
@@ -49,7 +68,8 @@ class BioProPlugin:
         """
         from .ui.main_panel import SynBioPanel
 
-        self._panel = SynBioPanel(self.plugin_id, parent=parent)
+        effective_parent = parent if parent is not None else self._parent
+        self._panel = SynBioPanel(parent=effective_parent, plugin_id=self.plugin_id)
         return self._panel
 
     def get_state(self) -> dict:

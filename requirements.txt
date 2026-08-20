@@ -1,0 +1,12 @@
+karcytics-sdk>=2.0.1
+PyQt6>=6.5
+numpy>=1.26
+scipy>=1.11
+networkx>=3.1
+sbol3>=1.1
+pandas>=2.0
+matplotlib>=3.8
+biopython>=1.80
+pyqtgraph>=0.13
+requests>=2.28
+tellurium>=2.2

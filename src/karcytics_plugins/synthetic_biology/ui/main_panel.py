@@ -10,6 +10,8 @@ own modules under ``ui/widgets/``, ``ui/canvas/``, and ``ui/ribbons/``.
 
 from __future__ import annotations
 
+from typing import Any
+
 from karcytics_sdk.plugin import PluginBase, get_logger
 from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
 from PyQt6.QtCore import pyqtSignal
@@ -60,8 +62,32 @@ class SynBioPanel(PluginBase):
     # state_changed and status_message are provided by PluginBase
     results_ready = pyqtSignal(object)
 
-    def __init__(self, plugin_id: str = "synthetic_biology", parent=None) -> None:
-        super().__init__(plugin_id, parent)
+    def __init__(
+        self,
+        plugin_id: Any = "synthetic_biology",
+        parent: QWidget | None = None,
+        context: Any | None = None,
+        **kwargs: Any,
+    ) -> None:
+        if isinstance(plugin_id, QWidget):
+            actual_parent = plugin_id
+            actual_plugin_id = "synthetic_biology"
+        else:
+            actual_plugin_id = str(plugin_id) if plugin_id else "synthetic_biology"
+            actual_parent = parent
+
+        raw_context = context or kwargs.get("context")
+
+        if actual_parent is not None and isinstance(actual_parent, QWidget):
+            qt_parent = actual_parent
+        else:
+            qt_parent = None
+            if actual_parent is not None and raw_context is None:
+                raw_context = actual_parent
+
+        self.context = raw_context
+
+        super().__init__(actual_plugin_id, qt_parent)
 
         # ── State ─────────────────────────────────────────────────────
         self.state = SynBioState()
