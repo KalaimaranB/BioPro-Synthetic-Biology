@@ -45,10 +45,7 @@ def main() -> int:
     manifest_file = ROOT / "pyproject.toml"
 
     if not security_file.exists():
-        print(
-            "No security.json found yet — nothing to verify. "
-            "Run 'karcytics-sdk sign .' first."
-        )
+        print("No security.json found yet — nothing to verify. Run 'karcytics-sdk sign .' first.")
         return 0
 
     security_data = json.loads(security_file.read_text(encoding="utf-8"))

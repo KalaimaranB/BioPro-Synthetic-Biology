@@ -42,8 +42,7 @@ class PartCard(QFrame):
             lbl = QLabel("+ Add New Part")
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl.setStyleSheet(
-                f"color: {Colors.FG_PRIMARY}; "
-                f"font-size: {Fonts.SIZE_NORMAL}; font-weight: bold;"
+                f"color: {Colors.FG_PRIMARY}; font-size: {Fonts.SIZE_NORMAL}; font-weight: bold;"
             )
             layout.addWidget(lbl)
         else:
@@ -56,16 +55,14 @@ class PartCard(QFrame):
 
             type_lbl = QLabel(self.part_type)
             type_lbl.setStyleSheet(
-                f"color: {Colors.FG_SECONDARY}; "
-                f"font-size: {Fonts.SIZE_SMALL}; font-weight: bold;"
+                f"color: {Colors.FG_SECONDARY}; font-size: {Fonts.SIZE_SMALL}; font-weight: bold;"
             )
             layout.addWidget(type_lbl)
 
             name_lbl = QLabel(self.part_name)
             name_lbl.setWordWrap(True)
             name_lbl.setStyleSheet(
-                f"color: {Colors.FG_PRIMARY}; "
-                f"font-size: {Fonts.SIZE_NORMAL}; font-weight: bold;"
+                f"color: {Colors.FG_PRIMARY}; font-size: {Fonts.SIZE_NORMAL}; font-weight: bold;"
             )
             layout.addWidget(name_lbl)
 
@@ -79,9 +76,7 @@ class PartCard(QFrame):
 
             desc_lbl = QLabel(desc_text)
             desc_lbl.setWordWrap(True)
-            desc_lbl.setStyleSheet(
-                f"color: {Colors.FG_DISABLED}; font-size: {Fonts.SIZE_SMALL};"
-            )
+            desc_lbl.setStyleSheet(f"color: {Colors.FG_DISABLED}; font-size: {Fonts.SIZE_SMALL};")
             layout.addWidget(desc_lbl)
 
     def mouseReleaseEvent(self, event):
