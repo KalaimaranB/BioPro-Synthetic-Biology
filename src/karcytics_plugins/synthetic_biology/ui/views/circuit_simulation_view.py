@@ -131,7 +131,10 @@ class CircuitSimulationView(QWidget):
         pg.setConfigOption("antialias", True)
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
-        self.plot_widget.addLegend(offset=(10, 10))
+        legend = self.plot_widget.addLegend(offset=(-10, 10))
+        if legend:
+            legend.anchor((1, 0), (1, 0))
+            legend.setBrush(pg.mkBrush(color=(30, 30, 30, 220)))
 
         if isinstance(self.plot_widget, QWidget):
             right_layout.addWidget(self.plot_widget)
@@ -290,7 +293,10 @@ class CircuitSimulationView(QWidget):
     def render_simulation_results(self, result: SimulationResult):
         """Plots time-series curves on PyQtGraph PlotWidget."""
         self.plot_widget.clear()
-        self.plot_widget.addLegend(offset=(10, 10))
+        legend = self.plot_widget.addLegend(offset=(-10, 10))
+        if legend:
+            legend.anchor((1, 0), (1, 0))
+            legend.setBrush(pg.mkBrush(color=(30, 30, 30, 220)))
 
         if not result.success:
             self._show_error(result.status_message)

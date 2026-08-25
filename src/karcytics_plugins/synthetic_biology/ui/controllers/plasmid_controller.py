@@ -5,6 +5,7 @@ from __future__ import annotations
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from ...analysis.assembly.async_worker import AssemblyWorker
+from ...analysis.assembly.vector_builder import VectorAssemblyEngine
 from ...analysis.models.domain import PlasmidVector, Primer
 from ...analysis.parts.base import BiologicalPart
 from ...analysis.state import SynBioState
@@ -23,6 +24,31 @@ class PlasmidAssemblyController(QObject):
         super().__init__(parent)
         self.state = state
         self._active_worker: AssemblyWorker | None = None
+
+    def handle_primer_design(
+        self,
+        sequence: str = "",
+        target_tm: float = 60.0,
+        fwd_overhang: str = "",
+        rev_overhang: str = "",
+        target_seq: str = "",
+    ) -> list[Primer]:
+        """Calculates PCR primers synchronously via VectorAssemblyEngine and updates state."""
+        seq = sequence or target_seq
+        if not seq:
+            return []
+        fwd, rev = VectorAssemblyEngine.design_primers(
+            target_sequence=seq,
+            target_tm=target_tm,
+            fwd_overhang=fwd_overhang,
+            rev_overhang=rev_overhang,
+        )
+        plasmid = self.state.get_active_plasmid()
+        if plasmid:
+            plasmid.primers.extend([fwd, rev])
+            self.state.set_active_plasmid(plasmid)
+        self.primers_ready.emit(fwd, rev)
+        return [fwd, rev]
 
     @pyqtSlot(str, list)
     def handle_assemble_request(self, vector_name: str, parts: list[BiologicalPart]) -> None:

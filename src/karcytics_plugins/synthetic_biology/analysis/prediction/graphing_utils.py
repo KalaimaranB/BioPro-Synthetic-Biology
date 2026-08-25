@@ -86,12 +86,17 @@ def apply_standard_axes(
     else:
         ax.grid(True, which="major", color=grid_color, linestyle="--", alpha=0.7)
 
-    # Legend styling
+    # Legend styling - top-right with semi-opaque dark background
     if ax.get_legend_handles_labels()[1]:
-        legend = ax.legend(facecolor=light_bg_fig, edgecolor=grid_color, loc="best")
+        legend = ax.legend(
+            loc="upper right",
+            facecolor="#1e1e1e",
+            edgecolor=grid_color,
+            framealpha=0.86,
+        )
         if legend:
             for text in legend.get_texts():
-                text.set_color(dark_text_color)
+                text.set_color("#ffffff")
 
     # Call tight_layout to protect layout
     fig.tight_layout()

@@ -407,5 +407,35 @@
     "translation_rate": 0.1,
     "degradation_rate": 0.002,
     "product": "SrpR"
+  },
+  {
+    "id": "BBa_B0034",
+    "name": "RBS (Elowitz 1999) -- defines RBS efficiency",
+    "description": "",
+    "sequence": "aaagaggagaaa",
+    "is_custom": true,
+    "part_type": "rbs",
+    "properties": {
+      "efficiency": "1",
+      "biology": "NA"
+    },
+    "translation_initiation_rate": 1.0
+  },
+  {
+    "id": "BBa_B0015",
+    "name": "double terminator (B0010-B0012)",
+    "description": "",
+    "sequence": "ccaggcatcaaataaaacgaaaggctcagtcgaaagactgggcctttcgttttatctgttgtttgtcggtgaacgctctctactagagtcacactggctcaccttcgggtgggcctttctgcgtttata",
+    "is_custom": true,
+    "part_type": "terminator",
+    "properties": {
+      "chassis": "NA",
+      "forward_efficiency": "0.984[CC]/0.97[JK]",
+      "reverse_efficiency": "0.295[CC]/0.62[JK]",
+      "direction": "Forward",
+      "reversed_version": "2146",
+      "biology": "rrnBT1-T7TE"
+    },
+    "termination_efficiency": 0.984
   }
 ]

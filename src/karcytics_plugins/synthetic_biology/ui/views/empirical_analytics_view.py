@@ -258,7 +258,10 @@ class EmpiricalAnalyticsView(QWidget):
         self.plot_widget.setTitle("Original vs Empirically Fitted Kinetic Curves")
         self.plot_widget.setLabel("bottom", "Time (min)")
         self.plot_widget.setLabel("left", "Expression / Fluorescence")
-        self.plot_widget.addLegend()
+        legend = self.plot_widget.addLegend(offset=(-10, 10))
+        if legend:
+            legend.anchor((1, 0), (1, 0))
+            legend.setBrush(pg.mkBrush(color=(30, 30, 30, 220)))
 
         if isinstance(self.plot_widget, QWidget):
             plot_layout.addWidget(self.plot_widget)
@@ -367,6 +370,10 @@ class EmpiricalAnalyticsView(QWidget):
 
         # Plot comparison curves
         self.plot_widget.clear()
+        legend = self.plot_widget.addLegend(offset=(-10, 10))
+        if legend:
+            legend.anchor((1, 0), (1, 0))
+            legend.setBrush(pg.mkBrush(color=(30, 30, 30, 220)))
         t = list(range(50))
 
         for species, fit_curve in result.fitted_time_series.items():

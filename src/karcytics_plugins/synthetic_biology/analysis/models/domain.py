@@ -85,6 +85,11 @@ class Primer:
             "target_region": self.target_region,
         }
 
+    @property
+    def tm(self) -> float:
+        """Alias for calculated_tm for backward compatibility."""
+        return self.calculated_tm
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Primer:
         return cls(
