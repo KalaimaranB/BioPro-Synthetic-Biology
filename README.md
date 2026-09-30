@@ -1,6 +1,6 @@
 # 🧬 Karcytics Synthetic Biology Module
 
-[![CI/CD Pipeline](https://github.com/KalaimaranB/BioPro-SyntheticBiology/actions/workflows/release.yml/badge.svg)](https://github.com/KalaimaranB/BioPro-SyntheticBiology/actions/workflows/release.yml)
+[![CI/CD Pipeline](https://github.com/KalaimaranB/Karcytics-SyntheticBiology/actions/workflows/release.yml/badge.svg)](https://github.com/KalaimaranB/Karcytics-SyntheticBiology/actions/workflows/release.yml)
 
 A Karcytics plugin for designing, validating, and simulating biological logic gates and synthetic genetic circuits.
 
@@ -9,8 +9,8 @@ A Karcytics plugin for designing, validating, and simulating biological logic ga
 ```bash
 # Clone the repo (as a sibling of Karcytics-SDK, which this plugin depends on
 # via a local editable path during development — see [tool.uv.sources] below)
-git clone https://github.com/KalaimaranB/BioPro-SyntheticBiology.git
-cd BioPro-SyntheticBiology
+git clone https://github.com/KalaimaranB/Karcytics-SyntheticBiology.git
+cd Karcytics-SyntheticBiology
 
 # Install dependencies (including dev tools) with uv
 uv sync --all-extras
@@ -27,11 +27,11 @@ uv run mypy --explicit-package-bases src/
 ## Project Structure
 
 ```
-BioPro-SyntheticBiology/
+Karcytics-SyntheticBiology/
 ├── pyproject.toml                 # Project config + [tool.karcytics.plugin] manifest
 ├── ruff.toml                      # Lint rules (matches the Karcytics-flow-cytometry plugin)
 ├── src/karcytics_plugins/synthetic_biology/
-│   ├── __init__.py                # BioProPlugin entry point (initialize())
+│   ├── __init__.py                # SyntheticBiologyPlugin entry point (initialize())
 │   ├── ui_daemon.py                # Isolated-process UI daemon entry
 │   ├── analysis/                  # Domain model & computation (no PyQt6 imports)
 │   │   ├── state.py               # SynBioState (circuit + view layers)

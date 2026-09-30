@@ -48,3 +48,25 @@ def test_apply_standard_axes_formatting():
     assert fig.patch.get_facecolor() == matplotlib.colors.to_rgba("#ffffff")
     assert ax.get_facecolor() == matplotlib.colors.to_rgba("#F8F9FA")
     assert ax.xaxis.label.get_color() == "#333333"
+
+
+def test_apply_standard_axes_non_singular_limits():
+    """Test that apply_standard_axes prevents identical min/max axis limits."""
+    fig = Figure(figsize=(6, 4), dpi=100)
+    ax = fig.add_subplot(111)
+    ax.plot([1, 1, 1], [5, 5, 5])
+
+    apply_standard_axes(
+        ax=ax,
+        fig=fig,
+        x_label="Constant X",
+        y_label="Constant Y",
+        title="Flat Line Test",
+    )
+
+    xmin, xmax = ax.get_xlim()
+    ymin, ymax = ax.get_ylim()
+
+    assert xmin != xmax
+    assert ymin != ymax
+

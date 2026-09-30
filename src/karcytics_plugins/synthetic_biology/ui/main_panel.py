@@ -1,7 +1,7 @@
-"""Synthetic Biology workspace — the root panel injected by BioPro.
+"""Synthetic Biology workspace — the root panel injected by Karcytics.
 
 This is the main entry point UI class.  It sets up the workspace
-layout and exposes the BioPro-required interface: signals, export_state,
+layout and exposes the Karcytics-required interface: signals, export_state,
 load_state, cleanup, get_state, set_state.
 
 This file is intentionally thin — all complex widgets will live in their
@@ -33,8 +33,8 @@ logger = get_logger(__name__, "synthetic_biology")
 class SynBioPanel(PluginBase):
     """Root widget for the Synthetic Biology workspace.
 
-    Injected by BioPro's ``ModuleManager`` as the central workspace
-    widget.  Provides the full BioPro plugin interface.
+    Injected by Karcytics's ``ModuleManager`` as the central workspace
+    widget.  Provides the full Karcytics plugin interface.
 
     Layout (future)::
 
@@ -52,13 +52,13 @@ class SynBioPanel(PluginBase):
         └───────────┴────────────────────────┴───────────────┘
 
     Signals:
-        state_changed:  Emitted on any structural edit (BioPro hooks
+        state_changed:  Emitted on any structural edit (Karcytics hooks
                         this to ``HistoryManager`` for undo/redo).
         status_message: Piped to the core status bar.
         results_ready:  Emitted when simulation results are available.
     """
 
-    # ── BioPro-required signals ───────────────────────────────────────
+    # ── Karcytics-required signals ────────────────────────────────────
     # state_changed and status_message are provided by PluginBase
     results_ready = pyqtSignal(object)
 
@@ -132,6 +132,7 @@ class SynBioPanel(PluginBase):
         from .views.catalogue_view import CatalogueView
         from .views.circuit_simulation_view import CircuitSimulationView
         from .views.crispr_view import CRISPRDesignView
+        from .views.demo_showcase_view import DemoShowcaseView
         from .views.empirical_analytics_view import EmpiricalAnalyticsView
         from .views.laboratory_execution_view import LaboratoryExecutionView
         from .views.plasmid_assembly_view import PlasmidAssemblyView
@@ -153,11 +154,13 @@ class SynBioPanel(PluginBase):
             self.state, self._empirical_controller
         )
         self.lab_execution_view = LaboratoryExecutionView()
+        self.demo_showcase_view = DemoShowcaseView(self.state, main_panel=self)
         self.plasmid_tab = self.plasmid_view
         self.crispr_tab = self.crispr_view
         self.circuit_tab = self.circuit_view
         self.empirical_analytics_tab = self.empirical_analytics_view
         self.lab_execution_tab = self.lab_execution_view
+        self.demo_showcase_tab = self.demo_showcase_view
 
         # ── Top Tab Bar ───────────────────────────────────────────────
         self._tab_bar = QTabBar()
@@ -173,6 +176,7 @@ class SynBioPanel(PluginBase):
         self._tab_bar.addTab("Simulate")
         self._tab_bar.addTab("Quantitative Data")
         self._tab_bar.addTab("Parts Catalogue")
+        self._tab_bar.addTab("Demo Showcase")
         self._tab_bar.currentChanged.connect(self._on_tab_changed)
         layout.addWidget(self._tab_bar)
 
@@ -189,6 +193,7 @@ class SynBioPanel(PluginBase):
         self._sim_ribbon = SimulateRibbon(self._factory)
         self._data_ribbon = QWidget()
         self._catalogue_ribbon = CatalogueRibbon(self._factory)
+        self._demo_ribbon = QWidget()
 
         self._ribbon_stack.addWidget(self._design_ribbon)
         self._ribbon_stack.addWidget(self._bio_ribbon)
@@ -200,6 +205,7 @@ class SynBioPanel(PluginBase):
         self._ribbon_stack.addWidget(self._sim_ribbon)
         self._ribbon_stack.addWidget(self._data_ribbon)
         self._ribbon_stack.addWidget(self._catalogue_ribbon)
+        self._ribbon_stack.addWidget(self._demo_ribbon)
         layout.addWidget(self._ribbon_stack)
 
         # ── Central Views Stack ───────────────────────────────────────
@@ -220,6 +226,7 @@ class SynBioPanel(PluginBase):
         self._central_stack.addWidget(self._simulate_view)
         self._central_stack.addWidget(self._properties_view)
         self._central_stack.addWidget(self._catalogue_view)
+        self._central_stack.addWidget(self.demo_showcase_view)
 
         layout.addWidget(self._central_stack, 1)
 
@@ -294,6 +301,8 @@ class SynBioPanel(PluginBase):
             self._central_stack.setCurrentWidget(self._properties_view)
         elif index == 9:  # noqa: PLR2004
             self._central_stack.setCurrentWidget(self._catalogue_view)
+        elif index == 10:  # noqa: PLR2004
+            self._central_stack.setCurrentWidget(self.demo_showcase_view)
         else:
             self._central_stack.setCurrentWidget(self._circuit_canvas)
 
@@ -382,7 +391,7 @@ class SynBioPanel(PluginBase):
                 child.refresh_styles()
             child.update()
 
-    # ── State Management (BioPro interface) ───────────────────────────
+    # ── State Management (Karcytics interface) ─────────────────────────
 
     def get_state(self) -> SynBioState:
         """Package the workspace state for the SDK."""

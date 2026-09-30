@@ -1,4 +1,4 @@
-"""Mathematical Graphing Engine for BioPro Synthetic Biology.
+"""Mathematical Graphing Engine for Karcytics Synthetic Biology.
 
 Provides comparative visualization of steady state protein expression curves
 between wild-type baseline parts and mutated sequences.
@@ -79,6 +79,25 @@ def apply_standard_axes(
     # Dynamic scaling & protective margins
     ax.autoscale(enable=True, axis="both", tight=False)
     ax.margins(x=0.02, y=0.05)
+
+    # Ensure xlim and ylim min/max are never identical or non-finite
+    xmin, xmax = ax.get_xlim()
+    if np.isnan(xmin) or np.isnan(xmax) or np.isinf(xmin) or np.isinf(xmax):
+        xmin, xmax = 0.0, 1.0
+    if xmin == xmax:
+        delta = 1.0 if xmin == 0.0 else abs(xmin) * 0.1
+        xmin -= delta
+        xmax += delta
+    ax.set_xlim(xmin, xmax)
+
+    ymin, ymax = ax.get_ylim()
+    if np.isnan(ymin) or np.isnan(ymax) or np.isinf(ymin) or np.isinf(ymax):
+        ymin, ymax = 0.0, 1.0
+    if ymin == ymax:
+        delta = 1.0 if ymin == 0.0 else abs(ymin) * 0.1
+        ymin -= delta
+        ymax += delta
+    ax.set_ylim(ymin, ymax)
 
     # Light dashed grid lines
     if is_log_x or is_log_y:

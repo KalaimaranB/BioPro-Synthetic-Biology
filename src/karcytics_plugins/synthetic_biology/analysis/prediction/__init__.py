@@ -1,4 +1,4 @@
-"""Prediction engine package for BioPro Synthetic Biology."""
+"""Prediction engine package for Karcytics Synthetic Biology."""
 
 from .graphing_utils import apply_standard_axes, generate_transfer_curve
 from .sequence_predictor import SequencePredictor, compare_kinetics, identify_wildtype

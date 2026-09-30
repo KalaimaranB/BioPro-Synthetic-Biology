@@ -42,10 +42,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [project.entry-points."karcytics.plugins"]
-synthetic_biology = "karcytics_plugins.synthetic_biology:get_plugin"
-
-[project.entry-points."biopro.plugins"]
-synthetic_biology = "karcytics_plugins.synthetic_biology:get_plugin"
+synthetic_biology = "karcytics_plugins.synthetic_biology:initialize"
 
 [tool.karcytics.plugin]
 id = "synthetic_biology"
@@ -53,7 +50,7 @@ display_name = "Synthetic Biology"
 name = "Synthetic Biology Module"
 min_core_version = "2.0.0"
 entry_point = "karcytics_plugins.synthetic_biology:initialize"
-process_model = "in_process"
+process_model = "isolated"
 environment = ".venv"
 requirements = "requirements.txt"
 is_beta = true
@@ -63,7 +60,7 @@ is_beta = true
 custom_exclusions = ["tests"]
 requires = ["task_scheduler", "logger", "event_bus"]
 tags = ["synthetic biology", "logic gates", "genetic circuits", "CRISPR", "kinetic simulation", "SBOL", "bioinformatics"]
-homepage = "https://github.com/KalaimaranB/BioPro-SyntheticBiology"
+homepage = "https://github.com/KalaimaranB/Karcytics-SyntheticBiology"
 description = """
 A scientist-centric environment for designing, validating, and simulating biological logic gates and \
 synthetic genetic circuits. Includes orthogonality checking, CRISPR gRNA design, kinetic simulation, \

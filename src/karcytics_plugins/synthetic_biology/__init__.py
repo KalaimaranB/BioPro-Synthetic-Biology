@@ -10,6 +10,10 @@ __version__ = "0.1.1"
 __plugin_id__ = "synthetic_biology"
 
 
+from karcytics_sdk.plugin import PluginBase
+from PyQt6.QtWidgets import QWidget
+
+
 def initialize(context=None):
     """Karcytics SDK entry point — called by ModuleManager on plugin load.
 
@@ -21,15 +25,15 @@ def initialize(context=None):
 
     Returns:
     -------
-    BioProPlugin
+    SyntheticBiologyPlugin
         A fully-constructed plugin instance ready to be mounted by the host.
     """
-    return BioProPlugin(parent=context)
+    return SyntheticBiologyPlugin(parent=context)
 
 
 def get_plugin(parent=None):
-    """Entry point function returning the initialized BioProPlugin instance."""
-    return BioProPlugin(parent=parent)
+    """Entry point function returning the initialized SyntheticBiologyPlugin instance."""
+    return initialize(context=parent)
 
 
 def get_ui(parent=None):
@@ -39,7 +43,7 @@ def get_ui(parent=None):
     return SynBioPanel(parent=parent)
 
 
-class BioProPlugin:
+class SyntheticBiologyPlugin(PluginBase):
     """Karcytics plugin implementation for the Synthetic Biology module.
 
     Exposes the standard plugin contract expected by the host ModuleManager:
@@ -48,6 +52,7 @@ class BioProPlugin:
     """
 
     def __init__(self, plugin_id: str = "synthetic_biology", parent: object | None = None):
+        super().__init__(plugin_id, parent=parent if isinstance(parent, QWidget) else None)
         self.plugin_id = plugin_id
         self._parent = parent
         self._panel = None
@@ -91,3 +96,8 @@ class BioProPlugin:
     def shutdown(self) -> None:
         """Shut down plugin resources (delegates to cleanup)."""
         self.cleanup()
+
+
+# Backwards-compatibility alias for legacy code
+BioProPlugin = SyntheticBiologyPlugin
+

@@ -3,7 +3,7 @@
 # Matplotlib PyQt6 integration
 import matplotlib
 import numpy as np
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot  # noqa: TID251
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -23,6 +23,97 @@ from ...analysis.parts.components import CDS, Promoter, sgRNA
 from ...analysis.prediction.graphing_utils import apply_standard_axes
 
 
+class SimulateWorker(QThread):
+    """Background worker QThread executing Tellurium ODE / Gillespie numerical
+    simulation routines completely off the main GUI thread.
+    """
+
+    simulation_finished = pyqtSignal(dict)
+    simulation_error = pyqtSignal(str)
+
+    def __init__(
+        self,
+        model_str: str,
+        method: str,
+        max_time: int,
+        title: str,
+        parent=None,
+    ):
+        super().__init__(parent)
+        self.model_str = model_str
+        self.method = method
+        self.max_time = max_time
+        self.title = title
+
+    def run(self) -> None:
+        """Executes non-blocking numerical integration without touching Matplotlib GUI."""
+        try:
+            import tellurium as te
+
+            r = te.loada(self.model_str)
+            if self.method == "gillespie":
+                r.setIntegrator("gillespie")
+                r.integrator.seed = int(np.random.randint(1000000))
+                result = r.simulate(0, self.max_time, self.max_time * 5)
+            else:
+                result = r.simulate(0, self.max_time, self.max_time * 2)
+
+            payload = {
+                "result": result,
+                "method": self.method,
+                "title": self.title,
+            }
+            self.simulation_finished.emit(payload)
+        except Exception as e:
+            self.simulation_error.emit(str(e))
+
+
+class SafeFigureCanvasQTAgg(FigureCanvasQTAgg):
+    """Subclass of FigureCanvasQTAgg guarding against 0-dimension canvas drawing
+    that triggers Matplotlib C++ Agg backend Invalid affine transformation matrix
+    segfaults.
+    """
+
+    def _is_dimension_valid(self) -> bool:
+        if self.width() <= 1 or self.height() <= 1:
+            return False
+        if hasattr(self, "figure") and self.figure is not None:
+            bbox = getattr(self.figure, "bbox", None)
+            if bbox is not None and (bbox.width <= 1 or bbox.height <= 1):
+                return False
+        return True
+
+    def draw(self):
+        if not self._is_dimension_valid():
+            return
+        try:
+            super().draw()
+        except ValueError as e:
+            if "Invalid affine transformation matrix" in str(e):
+                return
+            raise
+
+    def paintEvent(self, event):
+        if not self._is_dimension_valid():
+            return
+        try:
+            super().paintEvent(event)
+        except ValueError as e:
+            if "Invalid affine transformation matrix" in str(e):
+                return
+            raise
+
+    def resizeEvent(self, event):
+        if event.size().width() <= 1 or event.size().height() <= 1:
+            return
+        try:
+            super().resizeEvent(event)
+        except ValueError as e:
+            if "Invalid affine transformation matrix" in str(e):
+                return
+            raise
+
+
 class SimulateView(QWidget):
     """Central view for running and plotting mathematical simulations."""
 
@@ -32,6 +123,7 @@ class SimulateView(QWidget):
         self._last_simulation_result = None
         self._last_simulation_method = None
         self._last_simulation_title = None
+        self._active_worker: SimulateWorker | None = None
         self._setup_ui()
 
     def _setup_ui(self):
@@ -57,7 +149,8 @@ class SimulateView(QWidget):
         canvas_layout.setContentsMargins(0, 0, 0, 0)
 
         self.figure = Figure(figsize=(8, 6), dpi=100)
-        self.canvas = FigureCanvasQTAgg(self.figure)
+        self.canvas = SafeFigureCanvasQTAgg(self.figure)
+        self.canvas.setMinimumSize(100, 100)
         canvas_layout.addWidget(self.canvas, 1)
 
         self.splitter.addWidget(canvas_container)
@@ -169,7 +262,26 @@ class SimulateView(QWidget):
         self.species_list.blockSignals(False)
         self.update_plot()
 
-    def update_plot(self):
+    def _render_invalid_simulation_error(self, ax):
+        """Helper to clear figure and display clean UI warning message when invalid
+        data (empty, NaN, inf) is encountered.
+        """
+        self.figure.clear()
+        err_ax = self.figure.add_subplot(111)
+        err_ax.text(
+            0.5,
+            0.5,
+            "Simulation generated invalid or infinite values. Check kinetic parameters.",
+            ha="center",
+            va="center",
+            color="red",
+            fontsize=12,
+        )
+        err_ax.set_xlim(-0.1, 1.1)
+        err_ax.set_ylim(-0.1, 1.1)
+        self.canvas.draw()
+
+    def update_plot(self):  # noqa: PLR0915
         """Redraw the simulation figure on the matplotlib canvas based on species
         selection.
         """
@@ -201,58 +313,168 @@ class SimulateView(QWidget):
                 color="white",
                 fontsize=12,
             )
-        else:
-            palette = [
-                "#00bcd4",
-                "#4caf50",
-                "#ff9800",
-                "#e91e63",
-                "#9c27b0",
-                "#03a9f4",
-                "#ff5722",
-                "#8bc34a",
-            ]
+            ax.set_xlim(-0.1, 1.1)
+            ax.set_ylim(-0.1, 1.1)
+            self.canvas.draw()
+            return
 
-            for idx, (display_name, col_name) in enumerate(checked_columns):
-                color = palette[idx % len(palette)]
-                lw = 1.0 if method == "gillespie" else 2.0
+        # Fetch and sanitize time array
+        try:
+            raw_t = result["time"]
+        except Exception:
+            self._render_invalid_simulation_error(ax)
+            return
 
-                # Fetch data array matching column name
-                if (
-                    hasattr(result, "colnames")
-                    and col_name in result.colnames
-                    or hasattr(result, "__getitem__")
-                    and col_name in result
-                ):
-                    data_y = result[col_name]
-                else:
-                    continue
+        t_arr = np.asarray(raw_t, dtype=float)
+        if t_arr.size == 0 or not np.all(np.isfinite(t_arr)):
+            self._render_invalid_simulation_error(ax)
+            return
 
-                ax.plot(
-                    result["time"],
-                    data_y,
-                    label=display_name,
-                    color=color,
-                    linewidth=lw,
-                )
+        # Fetch and sanitize concentration arrays
+        valid_traces = []
+        for display_name, col_name in checked_columns:
+            if (
+                hasattr(result, "colnames")
+                and col_name in result.colnames
+                or hasattr(result, "__getitem__")
+                and col_name in result
+            ):
+                data_y = result[col_name]
+            else:
+                continue
 
-            x_label = "Time (seconds)"
-            y_label = "Concentration" if method == "ode" else "Molecule Count"
+            y_arr = np.asarray(data_y, dtype=float)
+            if y_arr.size == 0 or not np.all(np.isfinite(y_arr)):
+                self._render_invalid_simulation_error(ax)
+                return
 
-            try:
-                apply_standard_axes(
-                    ax=ax,
-                    fig=self.figure,
-                    x_label=x_label,
-                    y_label=y_label,
-                    title=title,
-                )
-            except Exception:
-                for spine in ax.spines.values():
-                    spine.set_color("#30363d")
-                ax.set_facecolor("#0d1117")
-                self.figure.tight_layout()
+            valid_traces.append((display_name, y_arr))
 
+        if not valid_traces:
+            ax.text(
+                0.5,
+                0.5,
+                "No valid species data found to plot.",
+                ha="center",
+                va="center",
+                color="white",
+                fontsize=12,
+            )
+            ax.set_xlim(-0.1, 1.1)
+            ax.set_ylim(-0.1, 1.1)
+            self.canvas.draw()
+            return
+
+        palette = [
+            "#00bcd4",
+            "#4caf50",
+            "#ff9800",
+            "#e91e63",
+            "#9c27b0",
+            "#03a9f4",
+            "#ff5722",
+            "#8bc34a",
+        ]
+
+        for idx, (display_name, y_arr) in enumerate(valid_traces):
+            color = palette[idx % len(palette)]
+            lw = 1.0 if method == "gillespie" else 2.0
+
+            ax.plot(
+                t_arr,
+                y_arr,
+                label=display_name,
+                color=color,
+                linewidth=lw,
+            )
+
+        x_label = "Time (seconds)"
+        y_label = "Concentration" if method == "ode" else "Molecule Count"
+
+        try:
+            apply_standard_axes(
+                ax=ax,
+                fig=self.figure,
+                x_label=x_label,
+                y_label=y_label,
+                title=title,
+            )
+        except Exception:
+            for spine in ax.spines.values():
+                spine.set_color("#30363d")
+            ax.set_facecolor("#0d1117")
+            self.figure.tight_layout()
+
+        # Enforce non-identical axis limits to prevent singular transformation matrix
+        xmin, xmax = ax.get_xlim()
+        if np.isnan(xmin) or np.isnan(xmax) or np.isinf(xmin) or np.isinf(xmax):
+            xmin, xmax = 0.0, 1.0
+        if xmin == xmax:
+            delta = 1.0 if xmin == 0.0 else abs(xmin) * 0.1
+            xmin -= delta
+            xmax += delta
+        ax.set_xlim(xmin, xmax)
+
+        ymin, ymax = ax.get_ylim()
+        if np.isnan(ymin) or np.isnan(ymax) or np.isinf(ymin) or np.isinf(ymax):
+            ymin, ymax = 0.0, 1.0
+        if ymin == ymax:
+            delta = 1.0 if ymin == 0.0 else abs(ymin) * 0.1
+            ymin -= delta
+            ymax += delta
+        ax.set_ylim(ymin, ymax)
+
+        self.canvas.draw()
+
+    @pyqtSlot(dict)
+    def _on_simulation_finished(self, payload: dict) -> None:
+        """Callback slot handling successful Tellurium calculation from QThread worker.
+        Executes strictly on the Main Qt GUI thread.
+        """
+        result = payload.get("result")
+        method = payload.get("method", "ode")
+        title = payload.get("title", "Dynamic Circuit Simulation")
+
+        self._last_simulation_result = result
+        self._last_simulation_method = method
+        self._last_simulation_title = title
+
+        # Populate Species Selector ListWidget
+        self.control_panel.setVisible(True)
+        self.species_list.blockSignals(True)
+        self.species_list.clear()
+
+        colnames = getattr(result, "colnames", [])
+        for col in colnames[1:]:
+            clean_name = col.replace("[", "").replace("]", "")
+            item = QListWidgetItem(clean_name)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(Qt.CheckState.Checked)
+            item.setData(Qt.ItemDataRole.UserRole, col)
+            self.species_list.addItem(item)
+
+        self.species_list.blockSignals(False)
+
+        # Render selected traces on canvas safely on main GUI thread
+        self.update_plot()
+
+    @pyqtSlot(str)
+    def _on_simulation_error(self, err_msg: str) -> None:
+        """Callback slot handling calculation errors from background QThread worker.
+        Executes strictly on the Main Qt GUI thread.
+        """
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        ax.text(
+            0.5,
+            0.5,
+            f"Simulation Error:\n{err_msg}",
+            ha="center",
+            va="center",
+            color="red",
+            fontsize=10,
+        )
+        self.figure.tight_layout()
         self.canvas.draw()
 
     def plot_time_series(self, max_time: int = 1000, method: str = "ode"):  # noqa: PLR0915
@@ -267,12 +489,12 @@ class SimulateView(QWidget):
             "circuit components change dynamically over time as proteins are "
             "produced and degraded."
         )
-        self.figure.clear()
-        ax = self.figure.add_subplot(111)
 
         try:
-            import tellurium as te
+            import tellurium as te  # noqa: F401
         except ImportError:
+            self.figure.clear()
+            ax = self.figure.add_subplot(111)
             ax.text(
                 0.5,
                 0.5,
@@ -289,6 +511,8 @@ class SimulateView(QWidget):
         cdss = [c for c in self._parts if isinstance(c, (CDS, sgRNA))]
 
         if not promoters or not cdss:
+            self.figure.clear()
+            ax = self.figure.add_subplot(111)
             ax.text(
                 0.5,
                 0.5,
@@ -352,52 +576,23 @@ class SimulateView(QWidget):
 
         antimony_lines.append("end")
         model_str = "\n".join(antimony_lines)
+        title = (
+            "Dynamic Circuit Simulation (Stochastic Gillespie)"
+            if method == "gillespie"
+            else "Dynamic Circuit Simulation (Deterministic ODE)"
+        )
 
-        try:
-            # 2. Load and simulate
-            r = te.loada(model_str)
-            if method == "gillespie":
-                r.setIntegrator("gillespie")
-                r.integrator.seed = np.random.randint(1000000)
-                result = r.simulate(0, max_time, max_time * 5)
-                title = "Dynamic Circuit Simulation (Stochastic Gillespie)"
-            else:
-                result = r.simulate(0, max_time, max_time * 2)
-                title = "Dynamic Circuit Simulation (Deterministic ODE)"
+        # 2. Launch background calculation worker (decoupled from GUI thread)
+        if self._active_worker is not None and self._active_worker.isRunning():
+            self._active_worker.terminate()
+            self._active_worker.wait()
 
-            # Cache simulation result
-            self._last_simulation_result = result
-            self._last_simulation_method = method
-            self._last_simulation_title = title
-
-            # 3. Populate Species Selector ListWidget
-            self.control_panel.setVisible(True)
-            self.species_list.blockSignals(True)
-            self.species_list.clear()
-
-            colnames = getattr(result, "colnames", [])
-            for col in colnames[1:]:
-                clean_name = col.replace("[", "").replace("]", "")
-                item = QListWidgetItem(clean_name)
-                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-                item.setCheckState(Qt.CheckState.Checked)
-                item.setData(Qt.ItemDataRole.UserRole, col)
-                self.species_list.addItem(item)
-
-            self.species_list.blockSignals(False)
-
-            # 4. Render selected traces on canvas
-            self.update_plot()
-
-        except Exception as e:
-            ax.text(
-                0.5,
-                0.5,
-                f"Simulation Error:\n{str(e)}",
-                ha="center",
-                va="center",
-                color="red",
-                fontsize=10,
-            )
-            self.figure.tight_layout()
-            self.canvas.draw()
+        self._active_worker = SimulateWorker(
+            model_str=model_str,
+            method=method,
+            max_time=max_time,
+            title=title,
+        )
+        self._active_worker.simulation_finished.connect(self._on_simulation_finished)
+        self._active_worker.simulation_error.connect(self._on_simulation_error)
+        self._active_worker.start()

@@ -50,13 +50,20 @@ except ImportError:
 def _build_plugin_context() -> Any:
     from karcytics_sdk.plugin.context import PluginContext
     from karcytics_sdk.plugin.manifest import PluginManifest
+    from karcytics_sdk.plugin.runtime_services import event_bus, task_scheduler
 
     manifest = PluginManifest(
         name="synthetic_biology",
         entry_point="karcytics_plugins.synthetic_biology:initialize",
         sdk_version="2.0",
+        requires=["task_scheduler", "logger", "event_bus"],
     )
-    return PluginContext(services={}, manifest=manifest)
+    services = {
+        "task_scheduler": task_scheduler,
+        "logger": __import__("logging").getLogger("plugin.synthetic_biology"),
+        "event_bus": event_bus,
+    }
+    return PluginContext(services=services, manifest=manifest)
 
 
 def main() -> int | None:
@@ -71,7 +78,7 @@ def main() -> int | None:
         logger = get_logger(__name__, "synthetic_biology")
 
         context = _build_plugin_context()
-        logger.info("[phase1] _build_panel: initialize() -> BioProPlugin")
+        logger.info("[phase1] _build_panel: initialize() -> SyntheticBiologyPlugin")
         plugin = initialize(context)
 
         logger.info("[phase1] _build_panel: create_panel()")

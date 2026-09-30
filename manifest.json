@@ -5,7 +5,7 @@
   "version": "0.1.1",
   "description": "Biological logic gate construction, orthogonality checking, and kinetic simulation for synthetic genetic circuits.",
   "entry_point": "karcytics_plugins.synthetic_biology:initialize",
-  "process_model": "in_process",
+  "process_model": "isolated",
   "min_core_version": "2.0.0",
   "environment": ".venv",
   "requirements": "requirements.txt",

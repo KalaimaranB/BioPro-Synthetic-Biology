@@ -24,4 +24,4 @@ process (`process_model = "isolated"`) with its own PyQt6 UI daemon:
 
 ## Getting Started
 
-See the main [README](https://github.com/KalaimaranB/BioPro-SyntheticBiology) for setup instructions.
+See the main [README](https://github.com/KalaimaranB/Karcytics-SyntheticBiology) for setup instructions.

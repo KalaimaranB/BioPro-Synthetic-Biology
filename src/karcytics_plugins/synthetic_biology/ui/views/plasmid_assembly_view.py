@@ -251,7 +251,7 @@ class PlasmidAssemblyView(QWidget):
 
         # Toolbar
         toolbar = QHBoxLayout()
-        self.name_edit = QLineEdit("pBioPro_v1")
+        self.name_edit = QLineEdit("pKarcytics_v1")
         toolbar.addWidget(QLabel("Plasmid Name:"))
         toolbar.addWidget(self.name_edit)
 
@@ -394,7 +394,7 @@ class PlasmidAssemblyView(QWidget):
             )
             return
 
-        vector_name = self.name_edit.text().strip() or "pBioPro_Vector"
+        vector_name = self.name_edit.text().strip() or "pKarcytics_Vector"
         self.assembly_requested.emit(vector_name, parts)
 
     def _on_import_clicked(self):

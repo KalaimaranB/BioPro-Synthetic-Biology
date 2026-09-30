@@ -1,4 +1,4 @@
-"""Wizards and dialog overlays package for BioPro Synthetic Biology."""
+"""Wizards and dialog overlays package for Karcytics Synthetic Biology."""
 
 from .tutorial_overlay import AcademyTutorialDialog, TutorialOverlay
 

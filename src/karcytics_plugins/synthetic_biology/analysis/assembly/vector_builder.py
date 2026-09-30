@@ -106,7 +106,7 @@ class VectorAssemblyEngine:
             seq_obj,
             id=vector.id,
             name=vector.name[:16].replace(" ", "_"),
-            description=vector.description or "Synthetic construct assembled with BioPro",
+            description=vector.description or "Synthetic construct assembled with Karcytics",
         )
         record.annotations["molecule_type"] = "DNA"
         if vector.is_circular:

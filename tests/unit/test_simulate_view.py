@@ -89,3 +89,126 @@ def test_species_list_filtering_and_plot_update():
     # Clear all helper
     view._clear_all_species()
     assert len(view.figure.axes[0].get_lines()) == 0
+
+
+def test_nan_inf_simulation_result_handling():
+    """Test that SimulateView.update_plot displays UI warning on NaN or Inf array inputs."""
+    view = SimulateView()
+
+    class NanResult:
+        colnames = ["time", "[LacI]"]
+
+        def __getitem__(self, item):
+            if item == "time":
+                return np.array([0, 1, 2, 3])
+            return np.array([10.0, np.nan, 2.0, np.inf])
+
+    view._last_simulation_result = NanResult()
+    view.species_list.clear()
+    item = QListWidgetItem("LacI")
+    item.setCheckState(Qt.CheckState.Checked)
+    item.setData(Qt.ItemDataRole.UserRole, "[LacI]")
+    view.species_list.addItem(item)
+
+    view.update_plot()
+    ax = view.figure.axes[0]
+    assert len(ax.get_lines()) == 0
+    # Verify warning text on canvas
+    texts = [t.get_text() for t in ax.texts]
+    assert any("Simulation generated invalid or infinite values" in t for t in texts)
+
+
+def test_empty_array_simulation_result_handling():
+    """Test that SimulateView.update_plot displays UI warning on empty array inputs."""
+    view = SimulateView()
+
+    class EmptyResult:
+        colnames = ["time", "[LacI]"]
+
+        def __getitem__(self, item):
+            return np.array([], dtype=float)
+
+    view._last_simulation_result = EmptyResult()
+    view.species_list.clear()
+    item = QListWidgetItem("LacI")
+    item.setCheckState(Qt.CheckState.Checked)
+    item.setData(Qt.ItemDataRole.UserRole, "[LacI]")
+    view.species_list.addItem(item)
+
+    view.update_plot()
+    ax = view.figure.axes[0]
+    assert len(ax.get_lines()) == 0
+    texts = [t.get_text() for t in ax.texts]
+    assert any("Simulation generated invalid or infinite values" in t for t in texts)
+
+
+def test_axis_limits_non_singular():
+    """Test that SimulateView.update_plot enforces non-identical xlim and ylim bounds."""
+    view = SimulateView()
+
+    class ConstantResult:
+        colnames = ["time", "[LacI]"]
+
+        def __getitem__(self, item):
+            if item == "time":
+                return np.array([0, 1, 2, 3])
+            return np.array([5.0, 5.0, 5.0, 5.0])
+
+    view._last_simulation_result = ConstantResult()
+    view.species_list.clear()
+    item = QListWidgetItem("LacI")
+    item.setCheckState(Qt.CheckState.Checked)
+    item.setData(Qt.ItemDataRole.UserRole, "[LacI]")
+    view.species_list.addItem(item)
+
+    view.update_plot()
+    ax = view.figure.axes[0]
+    xmin, xmax = ax.get_xlim()
+    ymin, ymax = ax.get_ylim()
+    assert xmin != xmax
+    assert ymin != ymax
+
+
+def test_safe_figure_canvas_zero_dimension_protection():
+    """Test that SafeFigureCanvasQTAgg guards against 0-dimension canvas drawing."""
+    from matplotlib.figure import Figure
+
+    from karcytics_plugins.synthetic_biology.ui.views.simulate_view import SafeFigureCanvasQTAgg
+
+    fig = Figure(figsize=(6, 4), dpi=100)
+    canvas = SafeFigureCanvasQTAgg(fig)
+    canvas.resize(0, 0)
+
+    # Calling draw on a 0x0 canvas should return safely without raising exception
+    canvas.draw()
+    assert canvas.width() == 0 or canvas.height() == 0
+
+
+def test_simulate_worker_thread_decoupling():
+    """Test that SimulateWorker runs off-thread and emits simulation_finished signal."""
+    from unittest.mock import MagicMock
+    from karcytics_plugins.synthetic_biology.ui.views.simulate_view import SimulateWorker
+
+    worker = SimulateWorker(
+        model_str="model circuit()\n  species P1 = 10;\n  J0: => P1; 1.0;\nend",
+        method="ode",
+        max_time=10,
+        title="Test Thread Decoupling",
+    )
+
+    received_payload = {}
+
+    def on_finished(payload):
+        nonlocal received_payload
+        received_payload = payload
+
+    worker.simulation_finished.connect(on_finished)
+
+    # Test run() directly or via start()
+    worker.run()
+    assert "result" in received_payload
+    assert received_payload["method"] == "ode"
+    assert received_payload["title"] == "Test Thread Decoupling"
+
+
+

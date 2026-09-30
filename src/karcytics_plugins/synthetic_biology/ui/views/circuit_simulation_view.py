@@ -302,7 +302,23 @@ class CircuitSimulationView(QWidget):
             self._show_error(result.status_message)
             return
 
-        t_points = result.time_points
+        import numpy as np
+
+        t_points = np.asarray(result.time_points, dtype=float)
+        if t_points.size == 0 or not np.all(np.isfinite(t_points)):
+            self._show_error(
+                "Simulation generated invalid or infinite values. Check kinetic parameters."
+            )
+            return
+
+        for conc_values in result.species_concentrations.values():
+            conc_arr = np.asarray(conc_values, dtype=float)
+            if conc_arr.size == 0 or not np.all(np.isfinite(conc_arr)):
+                self._show_error(
+                    "Simulation generated invalid or infinite values. Check kinetic parameters."
+                )
+                return
+
         color_palette = [
             "#38BDF8",  # Sky Blue
             "#F43F5E",  # Rose Red

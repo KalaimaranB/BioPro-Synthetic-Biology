@@ -1,10 +1,10 @@
-# BioPro: Synthetic Biology Module
+# Karcytics: Synthetic Biology Module
 ## Logic Gate Construction & Simulation Plan
 
 ### Overview
 The goal of this module is to bridge the conceptual gap between computer science and biology. Unlike silicon-based digital logic where signals are perfectly isolated and instantaneous, biological logic gates operate in a shared environment (the cytoplasm) and are governed by biochemical kinetics, leakiness, and signal crosstalk. 
 
-This plan outlines a bottom-up approach to building a Synthetic Biology (SynBio) module for BioPro, starting with the fundamental construction of biological logic gates (AND, OR, NOT) before scaling to complex, multi-cellular systems.
+This plan outlines a bottom-up approach to building a Synthetic Biology (SynBio) module for Karcytics, starting with the fundamental construction of biological logic gates (AND, OR, NOT) before scaling to complex, multi-cellular systems.
 
 ---
 

@@ -1,4 +1,4 @@
-"""Biologically aware sequence prediction engine for BioPro Synthetic Biology.
+"""Biologically aware sequence prediction engine for Karcytics Synthetic Biology.
 
 Uses the Strategy Pattern to route prediction queries:
 1. PromoterBiophysicsStrategy: Calculates thermodynamic binding affinity scores

@@ -9,7 +9,7 @@ This feature introduces a **Literature Importer & Comparison Engine** that shift
 
 ### 1. Literature Import
 Instead of just typing numbers into a vacuum, researchers create "Parameter Profiles" tied directly to published literature.
-* **DOI Fetching:** The user inputs a DOI or PMID. BioPro queries an API (e.g., EuropePMC) to pull the paper's title, authors, and abstract.
+* **DOI Fetching:** The user inputs a DOI or PMID. Karcytics queries an API (e.g., EuropePMC) to pull the paper's title, authors, and abstract.
 * **Manual Data Logging:** The researcher reads the paper and manually inputs the kinetic parameters along with mandatory context metadata:
   * **Host Strain** (e.g., *E. coli* DH10B)
   * **Media** (e.g., M9, LB)
@@ -18,7 +18,7 @@ Instead of just typing numbers into a vacuum, researchers create "Parameter Prof
   * **Inducer concentrations** (if applicable)
 
 ### 2. The Context Comparison Engine (Manual Approval)
-When a user drags two parts onto the Canvas that have parameters sourced from different papers, BioPro will **not** automatically assume they are compatible.
+When a user drags two parts onto the Canvas that have parameters sourced from different papers, Karcytics will **not** automatically assume they are compatible.
 * **The Flag:** The UI will flag the connection with a "Context Mismatch" warning icon.
 * **Side-by-Side Review:** Clicking the warning opens a comparison window showing the experimental context of Paper A next to Paper B.
 * **Researcher Approval:** The software defers to the researcher's expertise. The researcher must review the differences and explicitly click **"Approve Compatibility"** to allow the simulation engine to combine the math. 

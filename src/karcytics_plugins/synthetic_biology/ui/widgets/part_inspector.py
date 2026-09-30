@@ -19,15 +19,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-try:
-    from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-except ImportError:
-    from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
-
 from karcytics_sdk.plugin.theme_fallback import Colors
 
 from ...analysis.parts.base import BiologicalPart
 from ...analysis.parts.components import CDS, RBS, Promoter, Terminator
+from ..views.simulate_view import SafeFigureCanvasQTAgg
 
 
 class WTGraphDialog(QDialog):
@@ -46,7 +42,8 @@ class WTGraphDialog(QDialog):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
 
-        self.canvas = FigureCanvasQTAgg(figure)
+        self.canvas = SafeFigureCanvasQTAgg(figure)
+        self.canvas.setMinimumSize(100, 100)
         layout.addWidget(self.canvas, 1)
 
         close_btn = QPushButton("Close")

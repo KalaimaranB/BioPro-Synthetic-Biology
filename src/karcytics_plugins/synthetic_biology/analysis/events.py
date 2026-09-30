@@ -2,7 +2,7 @@
 
 These string constants define the pub/sub channels used for decoupled
 communication between the analysis engine, the UI layer, and other
-BioPro plugins.
+karcytics plugins.
 """
 
 # ── Circuit Lifecycle ─────────────────────────────────────────────────

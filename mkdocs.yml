@@ -1,10 +1,10 @@
 site_name: Synthetic Biology Module Documentation
-site_url: https://KalaimaranB.github.io/BioPro-SyntheticBiology
+site_url: https://KalaimaranB.github.io/Karcytics-SyntheticBiology
 site_description: Documentation for the Synthetic Biology Module.
 site_author: Kalaimaran Balasothy
 
 repo_name: Synthetic Biology Module
-repo_url: https://github.com/KalaimaranB/BioPro-SyntheticBiology
+repo_url: https://github.com/KalaimaranB/Karcytics-SyntheticBiology
 
 theme:
   name: material
