@@ -17,7 +17,6 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QLabel,
     QPushButton,
-    QScrollArea,
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
@@ -55,7 +54,17 @@ class DemoShowcaseView(QWidget):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
 
-        # ── Header Banner ──────────────────────────────────────────────
+        header_card = self._build_header_card()
+        layout.addWidget(header_card)
+
+        splitter = QSplitter(Qt.Orientation.Horizontal, self)
+        splitter.addWidget(self._build_left_column())
+        splitter.addWidget(self._build_right_column())
+        splitter.setSizes([750, 750])
+
+        layout.addWidget(splitter, 1)
+
+    def _build_header_card(self) -> QFrame:
         header_card = QFrame(self)
         header_card.setObjectName("HeaderCard")
         header_layout = QHBoxLayout(header_card)
@@ -80,12 +89,9 @@ class DemoShowcaseView(QWidget):
         self.btn_load_demo.clicked.connect(self._on_load_demo_clicked)
         header_layout.addWidget(self.btn_load_demo)
 
-        layout.addWidget(header_card)
+        return header_card
 
-        # ── Main Content Splitter ─────────────────────────────────────
-        splitter = QSplitter(Qt.Orientation.Horizontal, self)
-
-        # Left Column: Demo Circuit Topology & Vector Details
+    def _build_left_column(self) -> QWidget:
         left_widget = QWidget(self)
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
@@ -154,9 +160,9 @@ class DemoShowcaseView(QWidget):
         plasmid_layout.addWidget(self.plasmid_table)
         left_layout.addWidget(plasmid_card)
 
-        splitter.addWidget(left_widget)
+        return left_widget
 
-        # Right Column: CRISPR Targets, ODE Kinetics, & Robot Export
+    def _build_right_column(self) -> QWidget:
         right_widget = QWidget(self)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
@@ -215,10 +221,7 @@ class DemoShowcaseView(QWidget):
 
         right_layout.addWidget(robot_card)
 
-        splitter.addWidget(right_widget)
-        splitter.setSizes([750, 750])
-
-        layout.addWidget(splitter, 1)
+        return right_widget
 
     def _on_load_demo_clicked(self) -> None:
         """Populate the SynBioState with the Repressilator showcase dataset."""

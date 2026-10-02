@@ -1,5 +1,6 @@
 import os
 
+from karcytics_sdk.plugin.theme_fallback import Colors
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
@@ -18,8 +19,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
-from karcytics_sdk.plugin.theme_fallback import Colors
 
 from ...analysis.parts.base import BiologicalPart
 from ...analysis.parts.components import CDS, RBS, Promoter, Terminator

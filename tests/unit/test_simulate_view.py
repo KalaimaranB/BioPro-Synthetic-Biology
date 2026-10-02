@@ -186,7 +186,6 @@ def test_safe_figure_canvas_zero_dimension_protection():
 
 def test_simulate_worker_thread_decoupling():
     """Test that SimulateWorker runs off-thread and emits simulation_finished signal."""
-    from unittest.mock import MagicMock
     from karcytics_plugins.synthetic_biology.ui.views.simulate_view import SimulateWorker
 
     worker = SimulateWorker(

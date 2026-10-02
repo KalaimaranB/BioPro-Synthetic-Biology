@@ -3,8 +3,8 @@
 import tomllib
 from pathlib import Path
 
-import pytest
 from karcytics_sdk.plugin import PluginBase
+
 from karcytics_plugins.synthetic_biology import (
     BioProPlugin,
     SyntheticBiologyPlugin,
