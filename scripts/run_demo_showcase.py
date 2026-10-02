@@ -54,28 +54,79 @@ def create_demo_state() -> SynBioState:
     state = SynBioState()
 
     # 1. Biological Parts & Circuit Topology (Repressilator: LacI, TetR, cI loop)
-    _p_tac = Promoter(id="P_tac", name="pTac Promoter", sequence="TTGACAATTAATCATCGGCTCGTATAATGTGTGG", y_max=1.0)
-    _rbs_strong = RBS(id="RBS_001", name="Strong Synthetic RBS", sequence="AAAGAGGAGAA", translation_initiation_rate=0.92)
-    _cds_laci = CDS(id="CDS_lacI", name="LacI Repressor", sequence="ATGAAACCAGTAACGTTATACGATGTCGCAGAGTATGCCGGTGTCTCTTATCAGACCGTTTCCCGCGTGGTGAACCAGGCCAGCCACGTTTCTGCGAAAACGCGGGAAAAAGTGGAAGCGGCGATGGCGGAGCTGAATTACATTCCCAACCGCGTGGCACAACAACTGGCGGGCAAACAGTCGTTGCTGATTGGCGTTGCCACCTCCAGTCTGGCCCTGCACGCGCCGTCGCAAATTGTCGCGGCGATTAAATCTCGCGCCGATCAACTGGGTGCCAGCGTGGTGGTGTCGATGGTAGAACGAAGCGGCGTCGAAGCCTGTAAAGCGGCGGTGCACAATCTTCTCGCGCAACGCGTCAGTGGGCTGATCATTAACTATCCGCTGGATGACCAGGATGCCATTGCTGTGGAAGCTGCCTGCACTAATGTTCCGGCGTTATTTCTTGATGTCTCTGACCAGACACCCATCAACAGTATTATTTTCTCCCATGAAGACGGTACGCGACTGGGCGTGGAGCATCTGGTCGCATTGGGTCACCAGCAAATCGCGCTGTTAGCGGGCCCATTAAGTTCTGTCTCGGCGCGTCTGCGTCTGGCTGGCTGGCATAAATATCTCACTCGCAATCAAATTCAGCCGATAGCGGAACGGGAAGGCGACTGGAGTGCCATGTCCGGTTTTCAACAAACCATGCAAATGCTGAATGAGGGCATCGTTCCCACTGCGATGCTGGTTGCCAACGATCAGATGGCGCTGGGCGCAATGCGCGCCATTACCGAGTCCGGGCTGCGCGTTGGTGCGGATATCTCGGTAGTGGGATACGACGATACCGAAGACAGCTCATGTTATATCCCGCCGTTAACCACCATCAAACAGGATTTTCGCCTGCTGGGGCAAACCAGCGTGGACCGCTTGCTGCAACTCTCTCAGGGCCAGGCGGTGAAGGGCAATCAGCTGTTGCCCGTCTCACTGGTGAAAAGAAAAACCACCCTGGCGCCCAATACGCAAACCGCCTCTCCCCGCGCGTTGGCCGATTCAAAAATGAAGCTGGCATCCTTCGTTGAAGTGCCCGAGAACGAGTCATGA", product="LacI")
-    _term_b1006 = Terminator(id="T_b1006", name="b1006 Terminator", sequence="AAAAAAACCCCGCCGAAGCGGGGGTTTTTTT", termination_efficiency=0.98)
+    _p_tac = Promoter(
+        id="P_tac", name="pTac Promoter", sequence="TTGACAATTAATCATCGGCTCGTATAATGTGTGG", y_max=1.0
+    )
+    _rbs_strong = RBS(
+        id="RBS_001",
+        name="Strong Synthetic RBS",
+        sequence="AAAGAGGAGAA",
+        translation_initiation_rate=0.92,
+    )
+    _cds_laci = CDS(
+        id="CDS_lacI",
+        name="LacI Repressor",
+        sequence="ATGAAACCAGTAACGTTATACGATGTCGCAGAGTATGCCGGTGTCTCTTATCAGACCGTTTCCCGCGTGGTGAACCAGGCCAGCCACGTTTCTGCGAAAACGCGGGAAAAAGTGGAAGCGGCGATGGCGGAGCTGAATTACATTCCCAACCGCGTGGCACAACAACTGGCGGGCAAACAGTCGTTGCTGATTGGCGTTGCCACCTCCAGTCTGGCCCTGCACGCGCCGTCGCAAATTGTCGCGGCGATTAAATCTCGCGCCGATCAACTGGGTGCCAGCGTGGTGGTGTCGATGGTAGAACGAAGCGGCGTCGAAGCCTGTAAAGCGGCGGTGCACAATCTTCTCGCGCAACGCGTCAGTGGGCTGATCATTAACTATCCGCTGGATGACCAGGATGCCATTGCTGTGGAAGCTGCCTGCACTAATGTTCCGGCGTTATTTCTTGATGTCTCTGACCAGACACCCATCAACAGTATTATTTTCTCCCATGAAGACGGTACGCGACTGGGCGTGGAGCATCTGGTCGCATTGGGTCACCAGCAAATCGCGCTGTTAGCGGGCCCATTAAGTTCTGTCTCGGCGCGTCTGCGTCTGGCTGGCTGGCATAAATATCTCACTCGCAATCAAATTCAGCCGATAGCGGAACGGGAAGGCGACTGGAGTGCCATGTCCGGTTTTCAACAAACCATGCAAATGCTGAATGAGGGCATCGTTCCCACTGCGATGCTGGTTGCCAACGATCAGATGGCGCTGGGCGCAATGCGCGCCATTACCGAGTCCGGGCTGCGCGTTGGTGCGGATATCTCGGTAGTGGGATACGACGATACCGAAGACAGCTCATGTTATATCCCGCCGTTAACCACCATCAAACAGGATTTTCGCCTGCTGGGGCAAACCAGCGTGGACCGCTTGCTGCAACTCTCTCAGGGCCAGGCGGTGAAGGGCAATCAGCTGTTGCCCGTCTCACTGGTGAAAAGAAAAACCACCCTGGCGCCCAATACGCAAACCGCCTCTCCCCGCGCGTTGGCCGATTCAAAAATGAAGCTGGCATCCTTCGTTGAAGTGCCCGAGAACGAGTCATGA",
+        product="LacI",
+    )
+    _term_b1006 = Terminator(
+        id="T_b1006",
+        name="b1006 Terminator",
+        sequence="AAAAAAACCCCGCCGAAGCGGGGGTTTTTTT",
+        termination_efficiency=0.98,
+    )
 
-    _p_tet = Promoter(id="P_tet", name="pTet Promoter", sequence="TCCCTATCAGTGATAGAGATTGACATCCCTATCAGTGATAGAGATACTGAGCAC", y_max=0.85)
-    _cds_tetr = CDS(id="CDS_tetR", name="TetR Repressor", sequence="ATGTCCAGATTAGATAAAAGTAAAGTGATTAACAGCGCATTAGAGCTGCTTAATGAGGTCGGAATCGAAGGTTTAACAACCCGTAAACTCGCCCAGAAGCTAGGTGTAGAGCAGCCTACACTGTATTGGCACGTGAAGAACAAGCGGGCCCTGCTCGACGCCCTGGCCATCGAGATGCTGGACAGGCATCATACCCACTTCTGCCCCCTGGAAGGCGAGTCATGGCAAGACTTTCTGCGGAACAACGCCAAGAGTTTCCGCTGTGCCCTCCTCTCACACCGCGACGGGGCCAAAGTGCATCTCGGCACCCGCCCAACAGAGAAACAGTACGAAACCCTGGAAAATCAGCTCGCGTTCCTGTGTCAGCAAGGCTTCTCCCTGGAGAACGCACTGTACGCTCTGTCCGCCGTGGGCCACTTCACACTGGGCTGCGTATTGGAGGAACAGGAGCATCAAGTAGCAAAAGAGGAAAGAGACACACCTACCACCGATTCTATGCCCCCACTTCTGAGACAAGCAATTGAGCTGTTCGACCATCAGGGAGCCGAACCTGCCTTCCTTTTCGGCCTGGAACTAATCATATGTGGCCTGGAGAAACAGCTAAAGTGCGAAAGCGGCTCCGCCGACGCACTGGACGATTTCGATCTGGACATGCTCCACGCCGACGCGCTCGACTAA", product="TetR")
+    _p_tet = Promoter(
+        id="P_tet",
+        name="pTet Promoter",
+        sequence="TCCCTATCAGTGATAGAGATTGACATCCCTATCAGTGATAGAGATACTGAGCAC",
+        y_max=0.85,
+    )
+    _cds_tetr = CDS(
+        id="CDS_tetR",
+        name="TetR Repressor",
+        sequence="ATGTCCAGATTAGATAAAAGTAAAGTGATTAACAGCGCATTAGAGCTGCTTAATGAGGTCGGAATCGAAGGTTTAACAACCCGTAAACTCGCCCAGAAGCTAGGTGTAGAGCAGCCTACACTGTATTGGCACGTGAAGAACAAGCGGGCCCTGCTCGACGCCCTGGCCATCGAGATGCTGGACAGGCATCATACCCACTTCTGCCCCCTGGAAGGCGAGTCATGGCAAGACTTTCTGCGGAACAACGCCAAGAGTTTCCGCTGTGCCCTCCTCTCACACCGCGACGGGGCCAAAGTGCATCTCGGCACCCGCCCAACAGAGAAACAGTACGAAACCCTGGAAAATCAGCTCGCGTTCCTGTGTCAGCAAGGCTTCTCCCTGGAGAACGCACTGTACGCTCTGTCCGCCGTGGGCCACTTCACACTGGGCTGCGTATTGGAGGAACAGGAGCATCAAGTAGCAAAAGAGGAAAGAGACACACCTACCACCGATTCTATGCCCCCACTTCTGAGACAAGCAATTGAGCTGTTCGACCATCAGGGAGCCGAACCTGCCTTCCTTTTCGGCCTGGAACTAATCATATGTGGCCTGGAGAAACAGCTAAAGTGCGAAAGCGGCTCCGCCGACGCACTGGACGATTTCGATCTGGACATGCTCCACGCCGACGCGCTCGACTAA",
+        product="TetR",
+    )
 
     # Domain Components
     nodes = [
-        CircuitComponent(id="comp_1", name="pTac Promoter", component_type="promoter", y_max=5.0, K_d=0.05, n=2.0),
-        CircuitComponent(id="comp_2", name="LacI Repressor", component_type="cds", degradation_rate=0.1, translation_rate=1.2),
-        CircuitComponent(id="comp_3", name="pTet Promoter", component_type="promoter", y_max=4.2, K_d=0.04, n=2.0),
-        CircuitComponent(id="comp_4", name="TetR Repressor", component_type="cds", degradation_rate=0.12, translation_rate=1.1),
+        CircuitComponent(
+            id="comp_1", name="pTac Promoter", component_type="promoter", y_max=5.0, K_d=0.05, n=2.0
+        ),
+        CircuitComponent(
+            id="comp_2",
+            name="LacI Repressor",
+            component_type="cds",
+            degradation_rate=0.1,
+            translation_rate=1.2,
+        ),
+        CircuitComponent(
+            id="comp_3", name="pTet Promoter", component_type="promoter", y_max=4.2, K_d=0.04, n=2.0
+        ),
+        CircuitComponent(
+            id="comp_4",
+            name="TetR Repressor",
+            component_type="cds",
+            degradation_rate=0.12,
+            translation_rate=1.1,
+        ),
         CircuitComponent(id="comp_5", name="b1006 Terminator", component_type="terminator"),
     ]
 
     edges = [
-        CircuitEdge(source_id="comp_1", target_id="comp_2", interaction_type="transcription", strength=2.5),
-        CircuitEdge(source_id="comp_2", target_id="comp_3", interaction_type="repression", strength=1.0),
-        CircuitEdge(source_id="comp_3", target_id="comp_4", interaction_type="transcription", strength=2.1),
-        CircuitEdge(source_id="comp_4", target_id="comp_1", interaction_type="repression", strength=1.0),
+        CircuitEdge(
+            source_id="comp_1", target_id="comp_2", interaction_type="transcription", strength=2.5
+        ),
+        CircuitEdge(
+            source_id="comp_2", target_id="comp_3", interaction_type="repression", strength=1.0
+        ),
+        CircuitEdge(
+            source_id="comp_3", target_id="comp_4", interaction_type="transcription", strength=2.1
+        ),
+        CircuitEdge(
+            source_id="comp_4", target_id="comp_1", interaction_type="repression", strength=1.0
+        ),
     ]
 
     state.set_circuit_components(nodes)
@@ -83,12 +134,60 @@ def create_demo_state() -> SynBioState:
 
     # 2. Plasmid Construct (pUC19 Golden Gate Assembly)
     features = [
-        GeneticFeature(id="feat_1", name="AmpR", feature_type="cds", start=120, end=980, strand=1, color="#3B82F6"),
-        GeneticFeature(id="feat_2", name="ori", feature_type="origin", start=1100, end=1780, strand=1, color="#10B981"),
-        GeneticFeature(id="feat_3", name="pTac", feature_type="promoter", start=1850, end=1950, strand=1, color="#F59E0B"),
-        GeneticFeature(id="feat_4", name="LacI", feature_type="cds", start=1960, end=3040, strand=1, color="#EC4899"),
-        GeneticFeature(id="feat_5", name="pTet", feature_type="promoter", start=3080, end=3180, strand=1, color="#8B5CF6"),
-        GeneticFeature(id="feat_6", name="TetR", feature_type="cds", start=3190, end=3820, strand=1, color="#EF4444"),
+        GeneticFeature(
+            id="feat_1",
+            name="AmpR",
+            feature_type="cds",
+            start=120,
+            end=980,
+            strand=1,
+            color="#3B82F6",
+        ),
+        GeneticFeature(
+            id="feat_2",
+            name="ori",
+            feature_type="origin",
+            start=1100,
+            end=1780,
+            strand=1,
+            color="#10B981",
+        ),
+        GeneticFeature(
+            id="feat_3",
+            name="pTac",
+            feature_type="promoter",
+            start=1850,
+            end=1950,
+            strand=1,
+            color="#F59E0B",
+        ),
+        GeneticFeature(
+            id="feat_4",
+            name="LacI",
+            feature_type="cds",
+            start=1960,
+            end=3040,
+            strand=1,
+            color="#EC4899",
+        ),
+        GeneticFeature(
+            id="feat_5",
+            name="pTet",
+            feature_type="promoter",
+            start=3080,
+            end=3180,
+            strand=1,
+            color="#8B5CF6",
+        ),
+        GeneticFeature(
+            id="feat_6",
+            name="TetR",
+            feature_type="cds",
+            start=3190,
+            end=3820,
+            strand=1,
+            color="#EF4444",
+        ),
     ]
     plasmid = PlasmidVector(
         id="plasmid_001",
@@ -170,7 +269,9 @@ class DemoShowcaseWindow(QMainWindow):
         banner_layout = QHBoxLayout(banner)
         banner_layout.setContentsMargins(12, 6, 12, 6)
 
-        title_label = QLabel("🚀 <b>KARCYTICS SYNTHETIC BIOLOGY</b> <font color='#A5B4FC'>| Executive Product Showcase</font>")
+        title_label = QLabel(
+            "🚀 <b>KARCYTICS SYNTHETIC BIOLOGY</b> <font color='#A5B4FC'>| Executive Product Showcase</font>"
+        )
         title_label.setStyleSheet("color: #F8FAFC; font-size: 15px; font-weight: bold;")
         banner_layout.addWidget(title_label)
 
@@ -191,7 +292,14 @@ class DemoShowcaseWindow(QMainWindow):
         self.btn_robot = QPushButton("🤖 5. Tecan Automation", self)
         self.btn_cat = QPushButton("📊 6. SBOL Catalogue", self)
 
-        for btn in (self.btn_design, self.btn_plasmid, self.btn_crispr, self.btn_sim, self.btn_robot, self.btn_cat):
+        for btn in (
+            self.btn_design,
+            self.btn_plasmid,
+            self.btn_crispr,
+            self.btn_sim,
+            self.btn_robot,
+            self.btn_cat,
+        ):
             btn.setStyleSheet(btn_style)
             banner_layout.addWidget(btn)
 

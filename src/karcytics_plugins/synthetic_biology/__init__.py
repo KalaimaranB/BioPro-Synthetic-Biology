@@ -100,4 +100,3 @@ class SyntheticBiologyPlugin(PluginBase):
 
 # Backwards-compatibility alias for legacy code
 BioProPlugin = SyntheticBiologyPlugin
-

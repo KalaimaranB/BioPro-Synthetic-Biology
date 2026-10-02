@@ -53,7 +53,9 @@ def test_entry_points_in_pyproject_toml():
 
     entry_points = data.get("project", {}).get("entry-points", {})
     assert "karcytics.plugins" in entry_points, "karcytics.plugins entry point section must exist"
-    assert "biopro.plugins" not in entry_points, "biopro.plugins entry point section must be removed"
+    assert "biopro.plugins" not in entry_points, (
+        "biopro.plugins entry point section must be removed"
+    )
 
     synbio_ep = entry_points["karcytics.plugins"].get("synthetic_biology")
     assert synbio_ep == "karcytics_plugins.synthetic_biology:initialize"

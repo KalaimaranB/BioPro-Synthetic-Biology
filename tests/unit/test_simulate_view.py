@@ -208,6 +208,3 @@ def test_simulate_worker_thread_decoupling():
     assert "result" in received_payload
     assert received_payload["method"] == "ode"
     assert received_payload["title"] == "Test Thread Decoupling"
-
-
-

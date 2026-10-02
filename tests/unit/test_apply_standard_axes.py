@@ -69,4 +69,3 @@ def test_apply_standard_axes_non_singular_limits():
 
     assert xmin != xmax
     assert ymin != ymax
-
