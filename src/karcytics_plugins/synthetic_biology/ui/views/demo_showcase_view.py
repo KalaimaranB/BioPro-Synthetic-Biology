@@ -111,7 +111,9 @@ class DemoShowcaseView(QWidget):
 
         self.topo_table = QTableWidget(5, 4, self)
         self.topo_table.setHorizontalHeaderLabels(["ID", "Name", "Type", "Key Parameters"])
-        self.topo_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        topo_header = self.topo_table.horizontalHeader()
+        if topo_header is not None:
+            topo_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.topo_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
         demo_parts = [
@@ -142,7 +144,9 @@ class DemoShowcaseView(QWidget):
 
         self.plasmid_table = QTableWidget(6, 4, self)
         self.plasmid_table.setHorizontalHeaderLabels(["Feature", "Type", "Coordinates", "Strand"])
-        self.plasmid_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        plasmid_header = self.plasmid_table.horizontalHeader()
+        if plasmid_header is not None:
+            plasmid_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.plasmid_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
         demo_feats = [
@@ -184,7 +188,9 @@ class DemoShowcaseView(QWidget):
         self.crispr_table.setHorizontalHeaderLabels(
             ["Target Gene", "Protospacer (20bp)", "PAM", "Efficiency", "Off-Target Risk"]
         )
-        self.crispr_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        crispr_header = self.crispr_table.horizontalHeader()
+        if crispr_header is not None:
+            crispr_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.crispr_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
         demo_grna = [

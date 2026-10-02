@@ -77,13 +77,13 @@ class SyntheticBiologyPlugin(PluginBase):
         self._panel = SynBioPanel(parent=effective_parent, plugin_id=self.plugin_id)
         return self._panel
 
-    def get_state(self) -> dict:
+    def get_state(self) -> dict:  # type: ignore[override]
         """Return a shallow dictionary representing the plugin's current state."""
         if self._panel and hasattr(self._panel, "state"):
             return self._panel.state.to_dict()
         return {}
 
-    def set_state(self, state: dict) -> None:
+    def set_state(self, state: dict) -> None:  # type: ignore[override]
         """Restore internal state from a dictionary."""
         if self._panel and hasattr(self._panel, "state"):
             self._panel.state.from_dict(state)
