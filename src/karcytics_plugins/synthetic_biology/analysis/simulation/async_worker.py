@@ -12,6 +12,8 @@ from ..models.domain import (
 )
 from .circuit_engine import CircuitSimulationEngine
 
+MAX_DOWNSAMPLE_POINTS = 1000
+
 
 class CircuitSimWorker(QThread):
     """Granular QThread worker dedicated strictly to executing SciPy solve_ivp
@@ -41,6 +43,18 @@ class CircuitSimWorker(QThread):
                 edges=self.edges,
                 params=self.params,
             )
+            # Data Decimation (Downsampling): reduce data points if time steps exceed MAX_DOWNSAMPLE_POINTS
+            if (
+                result is not None
+                and result.time_points
+                and len(result.time_points) > MAX_DOWNSAMPLE_POINTS
+            ):
+                step = len(result.time_points) // MAX_DOWNSAMPLE_POINTS
+                result.time_points = result.time_points[::step]
+                result.species_concentrations = {
+                    k: v[::step] for k, v in result.species_concentrations.items()
+                }
+
             self.simulation_finished.emit(result)
         except Exception as e:
             self.error_occurred.emit(str(e))

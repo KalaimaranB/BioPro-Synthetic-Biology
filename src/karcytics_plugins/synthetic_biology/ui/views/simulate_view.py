@@ -22,6 +22,8 @@ from matplotlib.figure import Figure
 from ...analysis.parts.components import CDS, Promoter, sgRNA
 from ...analysis.prediction.graphing_utils import apply_standard_axes
 
+MAX_DOWNSAMPLE_POINTS = 1000
+
 
 class SimulateWorker(QThread):
     """Background worker QThread executing Tellurium ODE / Gillespie numerical
@@ -57,6 +59,11 @@ class SimulateWorker(QThread):
                 result = r.simulate(0, self.max_time, self.max_time * 5)
             else:
                 result = r.simulate(0, self.max_time, self.max_time * 2)
+
+            # Data Decimation (Downsampling): reduce data points if time steps exceed MAX_DOWNSAMPLE_POINTS
+            if result is not None and len(result) > MAX_DOWNSAMPLE_POINTS:
+                step = len(result) // MAX_DOWNSAMPLE_POINTS
+                result = result[::step]
 
             payload = {
                 "result": result,
@@ -143,12 +150,12 @@ class SimulateView(QWidget):
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
         layout.addWidget(self.splitter, 1)
 
-        # Left Container: Matplotlib Plot Canvas
+        # Left Container: Matplotlib Plot Canvas with Static Constrained Layout
         canvas_container = QWidget()
         canvas_layout = QVBoxLayout(canvas_container)
         canvas_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.figure = Figure(figsize=(8, 6), dpi=100)
+        self.figure = Figure(figsize=(8, 6), dpi=100, layout="constrained")
         self.canvas = SafeFigureCanvasQTAgg(self.figure)
         self.canvas.setMinimumSize(100, 100)
         canvas_layout.addWidget(self.canvas, 1)
@@ -182,12 +189,29 @@ class SimulateView(QWidget):
 
         self.splitter.addWidget(self.control_panel)
 
-        # Configure Splitter initial sizes: 80% left canvas (800px), 20% right panel
-        # (200px)
+        # Configure Splitter initial sizes: 80% left canvas (800px), 20% right panel (200px)
         self.splitter.setSizes([800, 200])
 
         # Initially hide species selector until a time-series simulation is run
         self.control_panel.setVisible(False)
+
+        # Eager Initialization (Pre-warming): Instantiate default axes and pre-draw blank canvas in __init__
+        self.ax = self.figure.add_subplot(111)
+        self.ax.text(
+            0.5,
+            0.5,
+            "Run a kinetic simulation to plot time-series traces.",
+            ha="center",
+            va="center",
+            color="#8b949e",
+            fontsize=11,
+        )
+        self.ax.set_xlim(-0.1, 1.1)
+        self.ax.set_ylim(-0.1, 1.1)
+        for spine in self.ax.spines.values():
+            spine.set_color("#30363d")
+        self.ax.set_facecolor("#0d1117")
+        self.canvas.draw()
 
         # Apply dark theme
         self._apply_theme()
@@ -403,7 +427,6 @@ class SimulateView(QWidget):
             for spine in ax.spines.values():
                 spine.set_color("#30363d")
             ax.set_facecolor("#0d1117")
-            self.figure.tight_layout()
 
         # Enforce non-identical axis limits to prevent singular transformation matrix
         xmin, xmax = ax.get_xlim()
@@ -474,7 +497,6 @@ class SimulateView(QWidget):
             color="red",
             fontsize=10,
         )
-        self.figure.tight_layout()
         self.canvas.draw()
 
     def plot_time_series(self, max_time: int = 1000, method: str = "ode"):  # noqa: PLR0915
@@ -581,6 +603,26 @@ class SimulateView(QWidget):
             if method == "gillespie"
             else "Dynamic Circuit Simulation (Deterministic ODE)"
         )
+
+        # Render immediate visual feedback on canvas while worker performs JIT compilation
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        ax.text(
+            0.5,
+            0.5,
+            "⚡ Computing ODE Kinetic Simulation (LSODA / Tellurium)...\nPlease wait...",
+            ha="center",
+            va="center",
+            color="#00bcd4",
+            fontsize=12,
+            fontweight="bold",
+        )
+        ax.set_xlim(-0.1, 1.1)
+        ax.set_ylim(-0.1, 1.1)
+        for spine in ax.spines.values():
+            spine.set_color("#30363d")
+        ax.set_facecolor("#0d1117")
+        self.canvas.draw()
 
         # 2. Launch background calculation worker (decoupled from GUI thread)
         if self._active_worker is not None and self._active_worker.isRunning():

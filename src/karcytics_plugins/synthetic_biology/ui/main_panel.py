@@ -296,7 +296,8 @@ class SynBioPanel(PluginBase):
                 if catalogue:
                     self._parts_cache = catalogue.get_all_parts()
                 self._simulate_view.set_parts(self._parts_cache)
-            self._simulate_view.plot_time_series(max_time=100, method="ode")
+            if self._simulate_view._last_simulation_result is None:
+                self._simulate_view.plot_time_series(max_time=100, method="ode")
         elif index == 8:  # noqa: PLR2004
             self._central_stack.setCurrentWidget(self._properties_view)
         elif index == 9:  # noqa: PLR2004

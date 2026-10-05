@@ -69,7 +69,7 @@ class CircuitSimulationView(QWidget):
         # Load default Repressilator preset
         self._load_preset("Repressilator (3-Gene Oscillator)")
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:  # noqa: PLR0915
         self.setObjectName("circuit_simulation_view")
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
@@ -135,6 +135,9 @@ class CircuitSimulationView(QWidget):
         if legend:
             legend.anchor((1, 0), (1, 0))
             legend.setBrush(pg.mkBrush(color=(30, 30, 30, 220)))
+
+        # Eager Initialization (Pre-warming): instantiate and render initial canvas state
+        self.plot_widget.plot([], [], name="")
 
         if isinstance(self.plot_widget, QWidget):
             right_layout.addWidget(self.plot_widget)
