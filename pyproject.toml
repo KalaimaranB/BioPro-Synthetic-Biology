@@ -20,6 +20,8 @@ dependencies = [
     "pyqtgraph>=0.13",
     "requests>=2.28",
     "tellurium>=2.2",
+    "urllib3>=2.8.0",
+    "tornado>=6.5.9",
 ]
 
 [project.optional-dependencies]
