@@ -11,24 +11,26 @@ from __future__ import annotations
 from typing import Any
 
 from karcytics_sdk.plugin import OneShotWorkerThread
+from karcytics_sdk.plugin.components import (
+    BioComboBox,
+    BioDoubleSpinBox,
+    BioLineEdit,
+    BioSpinBox,
+    BioSplitter,
+    BioTableWidget,
+    PrimaryButton,
+)
 from karcytics_sdk.plugin.dialogs import get_save_path, show_error, show_info, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import (
-    QComboBox,
-    QDoubleSpinBox,
     QFormLayout,
     QFrame,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QLineEdit,
     QProgressBar,
-    QPushButton,
-    QSpinBox,
-    QSplitter,
-    QTableWidget,
     QTableWidgetItem,
     QTabWidget,
     QVBoxLayout,
@@ -212,70 +214,70 @@ class LaboratoryExecutionView(QWidget):
         form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
         # Assembly Method
-        self.combo_assembly_type = QComboBox()
+        self.combo_assembly_type = BioComboBox()
         self.combo_assembly_type.addItems(["Gibson Assembly", "Golden Gate Assembly"])
         form_layout.addRow("Assembly Method:", self.combo_assembly_type)
 
         # Num Reactions
-        self.spin_num_rxns = QSpinBox()
+        self.spin_num_rxns = BioSpinBox()
         self.spin_num_rxns.setRange(1, 96)
         self.spin_num_rxns.setValue(4)
         form_layout.addRow("Number of Reactions:", self.spin_num_rxns)
 
         # Overage %
-        self.spin_overage = QDoubleSpinBox()
+        self.spin_overage = BioDoubleSpinBox()
         self.spin_overage.setRange(0.0, 50.0)
         self.spin_overage.setValue(10.0)
         self.spin_overage.setSuffix(" %")
         form_layout.addRow("Overage Allowance:", self.spin_overage)
 
         # Total Reaction Volume
-        self.spin_total_vol = QDoubleSpinBox()
+        self.spin_total_vol = BioDoubleSpinBox()
         self.spin_total_vol.setRange(10.0, 100.0)
         self.spin_total_vol.setValue(20.0)
         self.spin_total_vol.setSuffix(" µL")
         form_layout.addRow("Reaction Volume:", self.spin_total_vol)
 
         # Target Vector Mass
-        self.spin_vector_mass = QDoubleSpinBox()
+        self.spin_vector_mass = BioDoubleSpinBox()
         self.spin_vector_mass.setRange(10.0, 500.0)
         self.spin_vector_mass.setValue(50.0)
         self.spin_vector_mass.setSuffix(" ng")
         form_layout.addRow("Vector Target Mass:", self.spin_vector_mass)
 
         # Vector Specs
-        self.txt_vector_name = QLineEdit("pET28a_Vector")
+        self.txt_vector_name = BioLineEdit("pET28a_Vector")
         form_layout.addRow("Vector Name:", self.txt_vector_name)
 
-        self.spin_vector_bp = QSpinBox()
+        self.spin_vector_bp = BioSpinBox()
         self.spin_vector_bp.setRange(500, 50000)
         self.spin_vector_bp.setValue(3000)
         self.spin_vector_bp.setSuffix(" bp")
         form_layout.addRow("Vector Length:", self.spin_vector_bp)
 
-        self.spin_vector_conc = QDoubleSpinBox()
+        self.spin_vector_conc = BioDoubleSpinBox()
         self.spin_vector_conc.setRange(1.0, 1000.0)
         self.spin_vector_conc.setValue(50.0)
         self.spin_vector_conc.setSuffix(" ng/µL")
         form_layout.addRow("Vector Conc:", self.spin_vector_conc)
 
         # Insert 1 Specs
-        self.txt_insert_name = QLineEdit("GFP_Insert")
+        self.txt_insert_name = BioLineEdit("GFP_Insert")
         form_layout.addRow("Insert 1 Name:", self.txt_insert_name)
 
-        self.spin_insert_bp = QSpinBox()
+        self.spin_insert_bp = BioSpinBox()
         self.spin_insert_bp.setRange(50, 20000)
         self.spin_insert_bp.setValue(1000)
         self.spin_insert_bp.setSuffix(" bp")
         form_layout.addRow("Insert 1 Length:", self.spin_insert_bp)
 
-        self.spin_insert_conc = QDoubleSpinBox()
+        self.spin_insert_conc = BioDoubleSpinBox()
         self.spin_insert_conc.setRange(1.0, 1000.0)
         self.spin_insert_conc.setValue(30.0)
         self.spin_insert_conc.setSuffix(" ng/µL")
         form_layout.addRow("Insert 1 Conc:", self.spin_insert_conc)
 
-        self.spin_molar_ratio = QDoubleSpinBox()
+        self.spin_molar_ratio = BioDoubleSpinBox()
         self.spin_molar_ratio.setRange(1.0, 10.0)
         self.spin_molar_ratio.setValue(3.0)
         self.spin_molar_ratio.setSuffix(" : 1")
@@ -289,17 +291,7 @@ class LaboratoryExecutionView(QWidget):
         self.progress_bar.setFixedHeight(6)
         self.progress_bar.setVisible(False)
         input_layout.addWidget(self.progress_bar)
-        self.btn_generate = QPushButton("⚡ Generate Bench Protocol")
-        self.btn_generate.setProperty("variant", "primary")
-        self.btn_generate.setObjectName("PrimaryButton")
-        hover_primary = getattr(Colors, "ACCENT_PRIMARY_HOVER", "#0097a7")
-        self.btn_generate.setStyleSheet(
-            f"QPushButton {{ background-color: {Colors.ACCENT_PRIMARY}; "
-            f"color: {Colors.BG_DARKEST}; font-weight: bold; padding: 10px; "
-            f"border-radius: 4px; font-size: 13px; }}\n"
-            f"QPushButton:hover {{ background-color: {hover_primary}; "
-            f"color: {Colors.BG_DARKEST}; }}"
-        )
+        self.btn_generate = PrimaryButton("⚡ Generate Bench Protocol")
         self.btn_generate.clicked.connect(self._on_generate_protocol_clicked)
         input_layout.addWidget(self.btn_generate)
 
@@ -309,7 +301,7 @@ class LaboratoryExecutionView(QWidget):
         output_box = QGroupBox("Calculated Master Mix & Reaction Pipetting Table")
         output_layout = QVBoxLayout(output_box)
 
-        output_splitter = QSplitter(Qt.Orientation.Vertical)
+        output_splitter = BioSplitter(Qt.Orientation.Vertical)
 
         # Table 1: Master Mix
         mm_widget = QWidget()
@@ -319,7 +311,9 @@ class LaboratoryExecutionView(QWidget):
         mm_lbl.setStyleSheet("font-weight: bold;")
         mm_layout.addWidget(mm_lbl)
 
-        self.table_master_mix = QTableWidget(0, 3)
+        self.table_master_mix = BioTableWidget()
+        self.table_master_mix.setRowCount(0)
+        self.table_master_mix.setColumnCount(3)
         self.table_master_mix.setHorizontalHeaderLabels(
             ["Reagent Component", "Per Reaction (µL)", "Total Master Mix (µL)"]
         )
@@ -336,7 +330,9 @@ class LaboratoryExecutionView(QWidget):
         pip_lbl.setStyleSheet("font-weight: bold;")
         pip_layout.addWidget(pip_lbl)
 
-        self.table_pipetting = QTableWidget(0, 7)
+        self.table_pipetting = BioTableWidget()
+        self.table_pipetting.setRowCount(0)
+        self.table_pipetting.setColumnCount(7)
         self.table_pipetting.setHorizontalHeaderLabels(
             [
                 "Component",
@@ -368,24 +364,14 @@ class LaboratoryExecutionView(QWidget):
         ctrl_layout = QHBoxLayout(ctrl_box)
 
         ctrl_layout.addWidget(QLabel("Source Plate ID:"))
-        self.txt_source_plate = QLineEdit("REAGENT_PLATE_1")
+        self.txt_source_plate = BioLineEdit("REAGENT_PLATE_1")
         ctrl_layout.addWidget(self.txt_source_plate)
 
         ctrl_layout.addWidget(QLabel("Destination Plate ID:"))
-        self.txt_dest_plate = QLineEdit("DEST_PLATE_1")
+        self.txt_dest_plate = BioLineEdit("DEST_PLATE_1")
         ctrl_layout.addWidget(self.txt_dest_plate)
 
-        self.btn_export_csv = QPushButton("🤖 Export to Tecan CSV")
-        self.btn_export_csv.setProperty("variant", "primary")
-        self.btn_export_csv.setObjectName("PrimaryButton")
-        hover_primary = getattr(Colors, "ACCENT_PRIMARY_HOVER", "#0097a7")
-        self.btn_export_csv.setStyleSheet(
-            f"QPushButton {{ background-color: {Colors.ACCENT_PRIMARY}; "
-            f"color: {Colors.BG_DARKEST}; font-weight: bold; padding: 8px 16px; "
-            f"border-radius: 4px; }}\n"
-            f"QPushButton:hover {{ background-color: {hover_primary}; "
-            f"color: {Colors.BG_DARKEST}; }}"
-        )
+        self.btn_export_csv = PrimaryButton("🤖 Export to Tecan CSV")
         self.btn_export_csv.clicked.connect(self._on_export_csv_clicked)
         ctrl_layout.addWidget(self.btn_export_csv)
 
@@ -395,7 +381,9 @@ class LaboratoryExecutionView(QWidget):
         table_box = QGroupBox("Generated Robotic Pipetting Worklist (Tecan Format)")
         table_layout = QVBoxLayout(table_box)
 
-        self.table_worklist = QTableWidget(0, 6)
+        self.table_worklist = BioTableWidget()
+        self.table_worklist.setRowCount(0)
+        self.table_worklist.setColumnCount(6)
         self.table_worklist.setHorizontalHeaderLabels(
             [
                 "Source_Plate",
@@ -422,7 +410,9 @@ class LaboratoryExecutionView(QWidget):
         box = QGroupBox("Phase 2 LIMS Inventory Items & Purchase-Ready Oligos")
         box_layout = QVBoxLayout(box)
 
-        self.table_inventory = QTableWidget(0, 7)
+        self.table_inventory = BioTableWidget()
+        self.table_inventory.setRowCount(0)
+        self.table_inventory.setColumnCount(7)
         self.table_inventory.setHorizontalHeaderLabels(
             [
                 "Item Barcode",

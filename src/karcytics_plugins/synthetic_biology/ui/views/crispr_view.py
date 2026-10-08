@@ -7,17 +7,15 @@ signals & slots.
 
 from __future__ import annotations
 
+from karcytics_sdk.plugin.components import BioComboBox, BioSplitter, BioTableWidget, PrimaryButton
 from karcytics_sdk.plugin.dialogs import show_error, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import (
-    QComboBox,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QPushButton,
-    QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
@@ -87,7 +85,7 @@ class CRISPRDesignView(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
 
-        splitter = QSplitter(Qt.Orientation.Vertical)
+        splitter = BioSplitter(Qt.Orientation.Vertical)
 
         # Top Control Box: Target Sequence Input & PAM Config
         top_widget = QGroupBox("CRISPR Target Sequence & PAM Selection")
@@ -96,7 +94,7 @@ class CRISPRDesignView(QWidget):
         config_layout = QHBoxLayout()
 
         config_layout.addWidget(QLabel("PAM Enzyme Motif:"))
-        self.pam_combo = QComboBox()
+        self.pam_combo = BioComboBox()
         self.pam_combo.addItems(
             [
                 "SpCas9 (NGG)",
@@ -108,7 +106,7 @@ class CRISPRDesignView(QWidget):
         )
         config_layout.addWidget(self.pam_combo)
 
-        self.btn_scan = QPushButton("🔍 Scan Guide RNA Candidates")
+        self.btn_scan = PrimaryButton("🔍 Scan Guide RNA Candidates")
         self.btn_scan.clicked.connect(self._on_scan_clicked)
         config_layout.addWidget(self.btn_scan)
 
@@ -133,7 +131,9 @@ class CRISPRDesignView(QWidget):
         bottom_layout.setContentsMargins(0, 0, 0, 0)
 
         # Table of Candidates
-        self.grna_table = QTableWidget(0, 8)
+        self.grna_table = BioTableWidget()
+        self.grna_table.setRowCount(0)
+        self.grna_table.setColumnCount(8)
         self.grna_table.setHorizontalHeaderLabels(
             [
                 "Protospacer (20bp)",

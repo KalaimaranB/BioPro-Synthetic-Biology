@@ -1,17 +1,21 @@
 import os
 
+from karcytics_sdk.plugin.components import (
+    BioComboBox,
+    BioLineEdit,
+    DangerButton,
+    PrimaryButton,
+    SecondaryButton,
+)
 from karcytics_sdk.plugin.dialogs import ask_yes_no, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
-    QComboBox,
     QDialog,
     QFormLayout,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
-    QPushButton,
     QSizePolicy,
     QTabWidget,
     QTextBrowser,
@@ -45,11 +49,7 @@ class WTGraphDialog(QDialog):
         self.canvas.setMinimumSize(100, 100)
         layout.addWidget(self.canvas, 1)
 
-        close_btn = QPushButton("Close")
-        close_btn.setStyleSheet(
-            f"background: {Colors.ACCENT_PRIMARY}; color: {Colors.BG_DARKEST}; "
-            f"font-weight: bold; padding: 6px 20px; border-radius: 4px;"
-        )
+        close_btn = SecondaryButton("Close")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn, 0, Qt.AlignmentFlag.AlignRight)
 
@@ -80,11 +80,7 @@ class ModelDetailsDialog(QDialog):
         self.browser.setHtml(self._generate_html_content())
         layout.addWidget(self.browser)
 
-        close_btn = QPushButton("Close")
-        close_btn.setStyleSheet(
-            f"background: {Colors.ACCENT_PRIMARY}; color: {Colors.BG_DARKEST}; "
-            f"font-weight: bold; padding: 6px 20px; border-radius: 4px;"
-        )
+        close_btn = SecondaryButton("Close")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn, 0, Qt.AlignmentFlag.AlignRight)
 
@@ -229,9 +225,9 @@ class PartInspector(QWidget):
         self.props_tab = QWidget()
         self.props_layout = QFormLayout(self.props_tab)
 
-        self.id_edit = QLineEdit()
-        self.name_edit = QLineEdit()
-        self.type_combo = QComboBox()
+        self.id_edit = BioLineEdit()
+        self.name_edit = BioLineEdit()
+        self.type_combo = BioComboBox()
         self.type_combo.addItems(["Promoter", "CDS", "Terminator", "RBS"])
         self.type_combo.currentTextChanged.connect(self._on_type_changed)
 
@@ -241,13 +237,13 @@ class PartInspector(QWidget):
 
         # Promoter
         self.kd_lbl = QLabel("K_d:")
-        self.kd_edit = QLineEdit()
+        self.kd_edit = BioLineEdit()
         self.ymax_lbl = QLabel("y_max:")
-        self.ymax_edit = QLineEdit()
+        self.ymax_edit = BioLineEdit()
         self.ymin_lbl = QLabel("y_min:")
-        self.ymin_edit = QLineEdit()
+        self.ymin_edit = BioLineEdit()
         self.n_lbl = QLabel("n:")
-        self.n_edit = QLineEdit()
+        self.n_edit = BioLineEdit()
 
         self.props_layout.addRow(self.kd_lbl, self.kd_edit)
         self.props_layout.addRow(self.ymax_lbl, self.ymax_edit)
@@ -256,11 +252,11 @@ class PartInspector(QWidget):
 
         # CDS
         self.trans_rate_lbl = QLabel("Translation Rate:")
-        self.trans_rate_edit = QLineEdit()
+        self.trans_rate_edit = BioLineEdit()
         self.deg_rate_lbl = QLabel("Degradation Rate:")
-        self.deg_rate_edit = QLineEdit()
+        self.deg_rate_edit = BioLineEdit()
         self.product_lbl = QLabel("Product:")
-        self.product_edit = QLineEdit()
+        self.product_edit = BioLineEdit()
 
         self.props_layout.addRow(self.trans_rate_lbl, self.trans_rate_edit)
         self.props_layout.addRow(self.deg_rate_lbl, self.deg_rate_edit)
@@ -268,12 +264,12 @@ class PartInspector(QWidget):
 
         # Terminator
         self.term_eff_lbl = QLabel("Termination Eff.:")
-        self.term_eff_edit = QLineEdit()
+        self.term_eff_edit = BioLineEdit()
         self.props_layout.addRow(self.term_eff_lbl, self.term_eff_edit)
 
         # RBS
         self.rbs_init_rate_lbl = QLabel("Translation Init Rate:")
-        self.rbs_init_rate_edit = QLineEdit()
+        self.rbs_init_rate_edit = BioLineEdit()
         self.props_layout.addRow(self.rbs_init_rate_lbl, self.rbs_init_rate_edit)
 
         self.desc_lbl = QLabel()
@@ -315,9 +311,7 @@ class PartInspector(QWidget):
         self.props_layout.addRow(self.prediction_info_card)
 
         # "Graph WT vs Mutation" Button in Inspector Panel below Prediction Badge
-        self.graph_wt_btn = QPushButton("Graph WT vs Mutation")
-        self.graph_wt_btn.setProperty("variant", "primary")
-        self.graph_wt_btn.setObjectName("PrimaryButton")
+        self.graph_wt_btn = PrimaryButton("Graph WT vs Mutation")
         self.graph_wt_btn.clicked.connect(self._on_graph_wt_vs_mutation)
         self.props_layout.addRow(self.graph_wt_btn)
 
@@ -332,15 +326,11 @@ class PartInspector(QWidget):
         self.seq_edit.textChanged.connect(self._on_sequence_changed)
         self.seq_layout.addWidget(self.seq_edit)
 
-        self.predict_btn = QPushButton("⚡ Predict Parameters (k-NN)")
-        self.predict_btn.setProperty("variant", "secondary")
-        self.predict_btn.setObjectName("SecondaryButton")
+        self.predict_btn = SecondaryButton("⚡ Predict Parameters (k-NN)")
         self.predict_btn.clicked.connect(self._run_prediction)
         self.seq_layout.addWidget(self.predict_btn)
 
-        self.seq_graph_btn = QPushButton("📊 Graph WT vs Mutation")
-        self.seq_graph_btn.setProperty("variant", "primary")
-        self.seq_graph_btn.setObjectName("PrimaryButton")
+        self.seq_graph_btn = PrimaryButton("📊 Graph WT vs Mutation")
         self.seq_graph_btn.clicked.connect(self._on_graph_wt_vs_mutation)
         self.seq_layout.addWidget(self.seq_graph_btn)
 
@@ -358,87 +348,22 @@ class PartInspector(QWidget):
         # Action Buttons Layout (Save & Delete)
         self.btn_layout = QHBoxLayout()
 
-        self.save_btn = QPushButton("Save / Update Part")
-        self.save_btn.setProperty("variant", "primary")
-        self.save_btn.setObjectName("PrimaryButton")
+        self.save_btn = PrimaryButton("Save / Update Part")
         self.save_btn.clicked.connect(self._on_save)
         self.btn_layout.addWidget(self.save_btn)
 
-        self.delete_btn = QPushButton("Delete Part")
-        self.delete_btn.setProperty("variant", "danger")
-        self.delete_btn.setObjectName("DangerButton")
+        self.delete_btn = DangerButton("Delete Part")
         self.delete_btn.clicked.connect(self._on_delete)
         self.btn_layout.addWidget(self.delete_btn)
 
         self.layout.addLayout(self.btn_layout)
 
         self.refresh_styles()
-
-        from karcytics_sdk.plugin.theme_fallback import theme_manager
-
-        theme_manager.theme_changed.connect(self.refresh_styles)
-
         self.clear()
         self._on_type_changed(self.type_combo.currentText())
 
-    def _apply_theme_styles(self) -> None:
-        self.refresh_styles()
-
     def refresh_styles(self) -> None:
-        """Apply theme-based styles dynamically without hardcoded colors."""
-        from karcytics_sdk.plugin.theme_fallback import get_contrast_text_color
-
-        hover_primary = getattr(Colors, "ACCENT_PRIMARY_HOVER", "#0097a7")
-        danger_color = getattr(
-            Colors, "ACCENT_NEGATIVE", getattr(Colors, "ACCENT_DANGER", "#ef5350")
-        )
-        sec_hover_bg = getattr(Colors, "BG_LIGHT", getattr(Colors, "BG_DARK", "#161b22"))
-        bg_medium = getattr(Colors, "BG_MEDIUM", "#21262d")
-        fg_primary = getattr(Colors, "FG_PRIMARY", "#e6edf3")
-        border = getattr(Colors, "BORDER", "#30363d")
-        accent_primary = getattr(Colors, "ACCENT_PRIMARY", "#00bcd4")
-        contrast_text = get_contrast_text_color(accent_primary)
-
-        btn_qss = f"""
-            QPushButton#PrimaryButton, QPushButton[variant="primary"] {{
-                background-color: {accent_primary};
-                color: {contrast_text};
-                border: 1px solid {accent_primary};
-                border-radius: 4px;
-                padding: 6px 12px;
-                font-weight: bold;
-            }}
-            QPushButton#PrimaryButton:hover, QPushButton[variant="primary"]:hover {{
-                background-color: {hover_primary};
-                border-color: {hover_primary};
-                color: {contrast_text};
-            }}
-            QPushButton#SecondaryButton, QPushButton[variant="secondary"] {{
-                background-color: {bg_medium};
-                color: {fg_primary};
-                border: 1px solid {border};
-                border-radius: 4px;
-                padding: 6px 12px;
-                font-weight: bold;
-            }}
-            QPushButton#SecondaryButton:hover, QPushButton[variant="secondary"]:hover {{
-                background-color: {sec_hover_bg};
-                border-color: {accent_primary};
-            }}
-            QPushButton#DangerButton, QPushButton[variant="danger"] {{
-                background-color: {danger_color};
-                color: white;
-                border: 1px solid {danger_color};
-                border-radius: 4px;
-                padding: 6px 12px;
-                font-weight: bold;
-            }}
-            QPushButton#DangerButton:hover, QPushButton[variant="danger"]:hover {{
-                background-color: #d32f2f;
-                border-color: #d32f2f;
-            }}
-        """
-        self.setStyleSheet(btn_qss)
+        """Nothing to do: the buttons are SDK components and restyle themselves on a theme change."""
 
     def _on_type_changed(self, text):
         part_type = text.lower()

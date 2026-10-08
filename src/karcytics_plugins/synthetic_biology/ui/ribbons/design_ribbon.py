@@ -1,6 +1,6 @@
 """Design Ribbon — Fetch and select biological parts via dynamic dropdown."""
 
-from karcytics_sdk.plugin.components import PrimaryButton
+from karcytics_sdk.plugin.components import BioComboBox, PrimaryButton
 from karcytics_sdk.plugin.dialogs import show_warning
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QWidget
@@ -49,7 +49,7 @@ class DesignRibbon(QWidget):
         layout.setSpacing(8)
 
         layout.addWidget(QLabel("Role:"))
-        self.role_combo = QComboBox()
+        self.role_combo = BioComboBox()
         self.role_combo.addItems(
             [
                 "Promoter",
@@ -64,7 +64,7 @@ class DesignRibbon(QWidget):
 
         # Dynamic Part Selector QComboBox (replacing QLineEdit)
         layout.addWidget(QLabel("Part:"))
-        self.part_selector_combo = QComboBox()
+        self.part_selector_combo = BioComboBox()
         self.part_selector_combo.setMinimumWidth(280)
         self.part_selector_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
         layout.addWidget(self.part_selector_combo)
@@ -86,42 +86,6 @@ class DesignRibbon(QWidget):
 
     def _apply_theme(self):
         from karcytics_sdk.plugin.theme_fallback import Colors
-
-        combo_style = f"""
-            QComboBox {{
-                background: {Colors.BG_DARK};
-                color: {Colors.FG_PRIMARY};
-                border: 1px solid {Colors.BORDER};
-                border-radius: 4px;
-                padding: 4px 8px;
-            }}
-            QComboBox::drop-down {{
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-                border-left: none;
-            }}
-            QComboBox::down-arrow {{
-                width: 0;
-                height: 0;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 5px solid {Colors.FG_PRIMARY};
-                margin-right: 6px;
-            }}
-            QComboBox::down-arrow:on {{
-                border-top: none;
-                border-bottom: 5px solid {Colors.FG_PRIMARY};
-            }}
-            QComboBox QAbstractItemView {{
-                background: {Colors.BG_DARKEST};
-                color: {Colors.FG_PRIMARY};
-                selection-background-color: {Colors.ACCENT_PRIMARY};
-                border: 1px solid {Colors.BORDER};
-            }}
-        """
-        self.role_combo.setStyleSheet(combo_style)
-        self.part_selector_combo.setStyleSheet(combo_style)
 
         hover_color = getattr(Colors, "ACCENT_PRIMARY_HOVER", "#0097a7")
         fetch_btn_style = f"""

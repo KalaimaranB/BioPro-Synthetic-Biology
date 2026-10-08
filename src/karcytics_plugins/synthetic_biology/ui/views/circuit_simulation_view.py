@@ -9,19 +9,21 @@ CircuitSimulationController signals & slots.
 from __future__ import annotations
 
 import pyqtgraph as pg
+from karcytics_sdk.plugin.components import (
+    BioComboBox,
+    BioDoubleSpinBox,
+    BioSpinBox,
+    BioSplitter,
+    PrimaryButton,
+)
 from karcytics_sdk.plugin.dialogs import show_error
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import (
-    QComboBox,
-    QDoubleSpinBox,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
-    QPushButton,
-    QSpinBox,
-    QSplitter,
     QVBoxLayout,
     QWidget,
 )
@@ -74,7 +76,7 @@ class CircuitSimulationView(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter = BioSplitter(Qt.Orientation.Horizontal)
 
         # Left Control Panel: Preset selector & parameters
         left_widget = QGroupBox("Circuit Simulation Parameters")
@@ -82,7 +84,7 @@ class CircuitSimulationView(QWidget):
 
         form = QFormLayout()
 
-        self.preset_combo = QComboBox()
+        self.preset_combo = BioComboBox()
         self.preset_combo.addItems(
             [
                 "Repressilator (3-Gene Oscillator)",
@@ -93,30 +95,30 @@ class CircuitSimulationView(QWidget):
         self.preset_combo.currentTextChanged.connect(self._load_preset)
         form.addRow("Circuit Preset:", self.preset_combo)
 
-        self.t_end_spin = QDoubleSpinBox()
+        self.t_end_spin = BioDoubleSpinBox()
         self.t_end_spin.setRange(10.0, 1000.0)
         self.t_end_spin.setValue(100.0)
         self.t_end_spin.setSuffix(" min")
         form.addRow("Sim Time (t_end):", self.t_end_spin)
 
-        self.num_points_spin = QSpinBox()
+        self.num_points_spin = BioSpinBox()
         self.num_points_spin.setRange(100, 5000)
         self.num_points_spin.setValue(500)
         form.addRow("Time Points:", self.num_points_spin)
 
-        self.hill_n_spin = QDoubleSpinBox()
+        self.hill_n_spin = BioDoubleSpinBox()
         self.hill_n_spin.setRange(1.0, 5.0)
         self.hill_n_spin.setValue(2.1)
         self.hill_n_spin.setSingleStep(0.1)
         form.addRow("Hill Coeff (n):", self.hill_n_spin)
 
-        self.solver_combo = QComboBox()
+        self.solver_combo = BioComboBox()
         self.solver_combo.addItems(["RK45", "Radau", "BDF", "LSODA"])
         form.addRow("ODE Solver:", self.solver_combo)
 
         left_layout.addLayout(form)
 
-        self.btn_run_sim = QPushButton("▶ Run Predictive Simulation")
+        self.btn_run_sim = PrimaryButton("▶ Run Predictive Simulation")
         self.btn_run_sim.clicked.connect(self._on_run_sim_clicked)
         left_layout.addWidget(self.btn_run_sim)
 

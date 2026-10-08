@@ -12,6 +12,13 @@ STRICT CONSTRAINTS ENFORCED:
 from __future__ import annotations
 
 import pyqtgraph as pg
+from karcytics_sdk.plugin.components import (
+    BioLineEdit,
+    BioSplitter,
+    BioTableWidget,
+    PrimaryButton,
+    SecondaryButton,
+)
 from karcytics_sdk.plugin.dialogs import show_warning
 from karcytics_sdk.plugin.theme_fallback import Fonts
 from PySide6.QtCore import Qt, Slot
@@ -23,10 +30,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QLineEdit,
-    QPushButton,
-    QSplitter,
-    QTableWidget,
     QTableWidgetItem,
     QTabWidget,
     QVBoxLayout,
@@ -114,11 +117,11 @@ class EmpiricalAnalyticsView(QWidget):
         form = QFormLayout(group)
 
         file_h_layout = QHBoxLayout()
-        self.fcs_path_edit = QLineEdit(group)
+        self.fcs_path_edit = BioLineEdit(parent=group)
         self.fcs_path_edit.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.fcs_path_edit.setPlaceholderText("Select .fcs file path...")
 
-        self.fcs_browse_btn = QPushButton("Browse...", group)
+        self.fcs_browse_btn = SecondaryButton("Browse...", group)
         self.fcs_browse_btn.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.fcs_browse_btn.clicked.connect(self._on_browse_fcs)
 
@@ -126,7 +129,7 @@ class EmpiricalAnalyticsView(QWidget):
         file_h_layout.addWidget(self.fcs_browse_btn)
         form.addRow("FCS File:", file_h_layout)
 
-        self.fcs_ingest_btn = QPushButton("Ingest & Analyze FCS", group)
+        self.fcs_ingest_btn = PrimaryButton("Ingest & Analyze FCS", group)
         self.fcs_ingest_btn.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.fcs_ingest_btn.clicked.connect(self._on_ingest_fcs)
         form.addRow(self.fcs_ingest_btn)
@@ -141,7 +144,7 @@ class EmpiricalAnalyticsView(QWidget):
         layout.addWidget(group)
 
         # Channel Statistics Table
-        self.fcs_table = QTableWidget(container)
+        self.fcs_table = BioTableWidget(container)
         self.fcs_table.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.fcs_table.setColumnCount(6)
         self.fcs_table.setHorizontalHeaderLabels(
@@ -171,11 +174,11 @@ class EmpiricalAnalyticsView(QWidget):
         form = QFormLayout(group)
 
         ngs_file_layout = QHBoxLayout()
-        self.ngs_path_edit = QLineEdit(group)
+        self.ngs_path_edit = BioLineEdit(parent=group)
         self.ngs_path_edit.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.ngs_path_edit.setPlaceholderText("Select NGS file (FASTA/FASTQ/BAM)...")
 
-        self.ngs_browse_btn = QPushButton("Browse...", group)
+        self.ngs_browse_btn = SecondaryButton("Browse...", group)
         self.ngs_browse_btn.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.ngs_browse_btn.clicked.connect(self._on_browse_ngs)
 
@@ -183,7 +186,7 @@ class EmpiricalAnalyticsView(QWidget):
         ngs_file_layout.addWidget(self.ngs_browse_btn)
         form.addRow("NGS File:", ngs_file_layout)
 
-        self.ngs_align_btn = QPushButton("Run Sequence Alignment", group)
+        self.ngs_align_btn = PrimaryButton("Run Sequence Alignment", group)
         self.ngs_align_btn.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.ngs_align_btn.clicked.connect(self._on_align_ngs)
         form.addRow(self.ngs_align_btn)
@@ -191,7 +194,7 @@ class EmpiricalAnalyticsView(QWidget):
         layout.addWidget(group)
 
         # Variant Flags Table
-        self.ngs_table = QTableWidget(container)
+        self.ngs_table = BioTableWidget(container)
         self.ngs_table.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.ngs_table.setColumnCount(9)
         self.ngs_table.setHorizontalHeaderLabels(
@@ -223,7 +226,7 @@ class EmpiricalAnalyticsView(QWidget):
         group.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         h_layout = QHBoxLayout(group)
 
-        self.ml_fit_btn = QPushButton("Fit Parameters to Empirical Data", group)
+        self.ml_fit_btn = PrimaryButton("Fit Parameters to Empirical Data", group)
         self.ml_fit_btn.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.ml_fit_btn.clicked.connect(self._on_fit_ml)
 
@@ -235,11 +238,11 @@ class EmpiricalAnalyticsView(QWidget):
         layout.addWidget(group)
 
         # Splitter: Left Table Comparison, Right PyQtGraph Plot
-        splitter = QSplitter(Qt.Orientation.Horizontal, container)
+        splitter = BioSplitter(Qt.Orientation.Horizontal, container)
         splitter.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         # Left Widget: Side-by-side Table
-        self.ml_table = QTableWidget(splitter)
+        self.ml_table = BioTableWidget(splitter)
         self.ml_table.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.ml_table.setColumnCount(5)
         self.ml_table.setHorizontalHeaderLabels(

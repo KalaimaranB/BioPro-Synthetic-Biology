@@ -1,6 +1,6 @@
 """Simulate Ribbon — Kinetic simulation controls."""
 
-from karcytics_sdk.plugin.components import BioSpinBox, PrimaryButton
+from karcytics_sdk.plugin.components import BioComboBox, BioSpinBox, PrimaryButton
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QWidget
 
@@ -16,7 +16,6 @@ class SimulateRibbon(QWidget):
         self._setup_ui()
 
     def _setup_ui(self):
-        from PySide6.QtWidgets import QComboBox
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(16, 12, 16, 12)
@@ -29,7 +28,7 @@ class SimulateRibbon(QWidget):
         layout.addWidget(self.time_spin)
 
         layout.addWidget(QLabel("Method:"))
-        self.method_combo = QComboBox()
+        self.method_combo = BioComboBox()
         self.method_combo.addItems(
             [
                 "Deterministic (ODE)",

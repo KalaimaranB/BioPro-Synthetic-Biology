@@ -11,6 +11,15 @@ from __future__ import annotations
 
 import json
 
+from karcytics_sdk.plugin.components import (
+    BioDoubleSpinBox,
+    BioLineEdit,
+    BioListWidget,
+    BioSplitter,
+    BioTableWidget,
+    PrimaryButton,
+    SecondaryButton,
+)
 from karcytics_sdk.plugin.dialogs import show_error, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from PySide6.QtCore import QMimeData, Qt, Signal, Slot
@@ -18,18 +27,12 @@ from PySide6.QtGui import QDrag
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
-    QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QLineEdit,
-    QListWidget,
     QListWidgetItem,
-    QPushButton,
-    QSplitter,
-    QTableWidget,
     QTableWidgetItem,
     QTextEdit,
     QVBoxLayout,
@@ -43,7 +46,7 @@ from ...analysis.state import SynBioState
 from ...ui.controllers.plasmid_controller import PlasmidAssemblyController
 
 
-class PartPaletteWidget(QListWidget):
+class PartPaletteWidget(BioListWidget):
     """Drag-and-drop palette containing standard biological parts."""
 
     def __init__(self, parent=None):
@@ -74,7 +77,7 @@ def part_dict_serialize(part_data: dict) -> dict:
     return part_data
 
 
-class AssemblyCanvasWidget(QListWidget):
+class AssemblyCanvasWidget(BioListWidget):
     """Drop zone for assembly order placement."""
 
     parts_changed = Signal()
@@ -121,22 +124,22 @@ class PrimerDesignDialog(QDialog):
         layout = QVBoxLayout(self)
 
         form = QFormLayout()
-        self.tm_spin = QDoubleSpinBox()
+        self.tm_spin = BioDoubleSpinBox()
         self.tm_spin.setRange(45.0, 75.0)
         self.tm_spin.setValue(60.0)
         form.addRow("Target Tm (°C):", self.tm_spin)
 
-        self.fwd_overhang_edit = QLineEdit()
+        self.fwd_overhang_edit = BioLineEdit()
         self.fwd_overhang_edit.setPlaceholderText("e.g. GAATTC (Restriction / Gibson Overhang)")
         form.addRow("Forward Overhang 5':", self.fwd_overhang_edit)
 
-        self.rev_overhang_edit = QLineEdit()
+        self.rev_overhang_edit = BioLineEdit()
         self.rev_overhang_edit.setPlaceholderText("e.g. AAGCTT (Restriction / Gibson Overhang)")
         form.addRow("Reverse Overhang 5':", self.rev_overhang_edit)
 
         layout.addLayout(form)
 
-        self.btn_design = QPushButton("Design Primers")
+        self.btn_design = PrimaryButton("Design Primers")
         self.btn_design.clicked.connect(self._on_design_clicked)
         layout.addWidget(self.btn_design)
 
@@ -228,7 +231,7 @@ class PlasmidAssemblyView(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter = BioSplitter(Qt.Orientation.Horizontal)
 
         # Left Panel: Biological Parts Palette
         left_panel = QWidget()
@@ -251,19 +254,19 @@ class PlasmidAssemblyView(QWidget):
 
         # Toolbar
         toolbar = QHBoxLayout()
-        self.name_edit = QLineEdit("pKarcytics_v1")
+        self.name_edit = BioLineEdit("pKarcytics_v1")
         toolbar.addWidget(QLabel("Plasmid Name:"))
         toolbar.addWidget(self.name_edit)
 
-        self.btn_import = QPushButton("📁 Import File")
+        self.btn_import = SecondaryButton("📁 Import File")
         self.btn_import.clicked.connect(self._on_import_clicked)
         toolbar.addWidget(self.btn_import)
 
-        self.btn_assemble = QPushButton("⚡ Assemble Construct")
+        self.btn_assemble = PrimaryButton("⚡ Assemble Construct")
         self.btn_assemble.clicked.connect(self._on_assemble_clicked)
         toolbar.addWidget(self.btn_assemble)
 
-        self.btn_primer = QPushButton("🧬 Design Primers")
+        self.btn_primer = SecondaryButton("🧬 Design Primers")
         self.btn_primer.clicked.connect(self._on_primer_clicked)
         toolbar.addWidget(self.btn_primer)
 
@@ -286,7 +289,9 @@ class PlasmidAssemblyView(QWidget):
         lbl_map.setStyleSheet("font-size: 14px; font-weight: bold;")
         right_layout.addWidget(lbl_map)
 
-        self.feature_table = QTableWidget(0, 5)
+        self.feature_table = BioTableWidget()
+        self.feature_table.setRowCount(0)
+        self.feature_table.setColumnCount(5)
         self.feature_table.setHorizontalHeaderLabels(["Name", "Type", "Start", "End", "Strand"])
         if (hv := self.feature_table.horizontalHeader()) is not None:
             hv.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)

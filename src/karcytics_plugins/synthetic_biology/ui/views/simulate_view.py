@@ -10,14 +10,12 @@ import msgpack  # type: ignore[import-untyped]
 import numpy as np
 import pyqtgraph as pg
 from karcytics_sdk.plugin import OneShotWorkerThread, get_logger
+from karcytics_sdk.plugin.components import BioListWidget, BioSplitter, SecondaryButton
 from PySide6.QtCore import Qt, Signal, Slot  # noqa: TID251
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
-    QListWidget,
     QListWidgetItem,
-    QPushButton,
-    QSplitter,
     QVBoxLayout,
     QWidget,
 )
@@ -190,7 +188,7 @@ class SimulateView(QWidget):
         layout.addWidget(self.info_label)
 
         # Main Splitter: Canvas Container on left (80%), Control Panel on right (20%)
-        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter = BioSplitter(Qt.Orientation.Horizontal)
         layout.addWidget(self.splitter, 1)
 
         # Left Container: PyQtGraph GPU-Accelerated Plot Widget
@@ -221,7 +219,7 @@ class SimulateView(QWidget):
         self.species_header = QLabel("Species / Molecule Filter")
         self.species_header.setStyleSheet("font-weight: bold; font-size: 13px;")
 
-        self.species_list = QListWidget()
+        self.species_list = BioListWidget()
         self.species_list.itemChanged.connect(self._on_species_item_changed)
 
         control_layout.addWidget(self.species_header)
@@ -229,9 +227,9 @@ class SimulateView(QWidget):
 
         # Quick Selection Action Buttons
         btn_box = QHBoxLayout()
-        self.select_all_btn = QPushButton("Select All")
+        self.select_all_btn = SecondaryButton("Select All")
         self.select_all_btn.clicked.connect(self._select_all_species)
-        self.clear_all_btn = QPushButton("Clear All")
+        self.clear_all_btn = SecondaryButton("Clear All")
         self.clear_all_btn.clicked.connect(self._clear_all_species)
         btn_box.addWidget(self.select_all_btn)
         btn_box.addWidget(self.clear_all_btn)
@@ -271,11 +269,8 @@ class SimulateView(QWidget):
         from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
 
         dark_bg = getattr(Colors, "BG_DARKEST", "#0d1117")
-        dark_panel = getattr(Colors, "BG_DARK", "#161b22")
         fg_pri = getattr(Colors, "FG_PRIMARY", "#c9d1d9")
         fg_sec = getattr(Colors, "FG_SECONDARY", "#8b949e")
-        border = getattr(Colors, "BORDER", "#30363d")
-        accent = getattr(Colors, "ACCENT_PRIMARY", "#00bcd4")
 
         try:
             font_sz = int(str(getattr(Fonts, "SIZE_SMALL", 12)).replace("px", "")) + 2
@@ -285,28 +280,6 @@ class SimulateView(QWidget):
         self.plot_widget.setBackground(dark_bg)
         self.info_label.setStyleSheet(f"color: {fg_sec}; font-size: {font_sz}px;")
         self.species_header.setStyleSheet(f"color: {fg_pri}; font-weight: bold; font-size: 13px;")
-
-        self.species_list.setStyleSheet(
-            f"QListWidget {{ background: {dark_panel}; color: {fg_pri}; "
-            f"border: 1px solid {border}; border-radius: 4px; padding: 4px; }}"
-            f"QListWidget::item {{ padding: 6px; "
-            f"border-bottom: 1px solid {border}; }}"
-            f"QListWidget::item:hover {{ background: {dark_bg}; }}"
-        )
-        btn_style = (
-            f"background: {dark_panel}; color: {accent}; "
-            f"border: 1px solid {accent}; font-size: 11px; font-weight: bold; "
-            f"padding: 4px; border-radius: 3px;"
-        )
-        self.select_all_btn.setStyleSheet(btn_style)
-        self.clear_all_btn.setStyleSheet(btn_style)
-
-        if hasattr(self, "splitter"):
-            self.splitter.setStyleSheet(
-                f"QSplitter::handle {{ background-color: {border}; }}"
-                f"QSplitter::handle:horizontal {{ width: 2px; }}"
-                f"QSplitter::handle:hover {{ background-color: {accent}; }}"
-            )
 
     def set_parts(self, parts: list):
         """Update the active parts available for simulation."""

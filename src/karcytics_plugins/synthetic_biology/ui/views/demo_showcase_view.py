@@ -9,6 +9,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from karcytics_sdk.plugin.components import BioSplitter, BioTableWidget, PrimaryButton
 from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -16,8 +17,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QPushButton,
-    QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -59,7 +58,7 @@ class DemoShowcaseView(QWidget):
         header_card = self._build_header_card()
         layout.addWidget(header_card)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal, self)
+        splitter = BioSplitter(Qt.Orientation.Horizontal, self)
         splitter.addWidget(self._build_left_column())
         splitter.addWidget(self._build_right_column())
         splitter.setSizes([750, 750])
@@ -86,7 +85,7 @@ class DemoShowcaseView(QWidget):
         header_layout.addLayout(title_box)
         header_layout.addStretch()
 
-        self.btn_load_demo = QPushButton("✨ Load Demo State into Workspace", self)
+        self.btn_load_demo = PrimaryButton("✨ Load Demo State into Workspace", self)
         self.btn_load_demo.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_load_demo.clicked.connect(self._on_load_demo_clicked)
         header_layout.addWidget(self.btn_load_demo)
@@ -109,7 +108,9 @@ class DemoShowcaseView(QWidget):
         topo_lbl.setObjectName("SectionTitle")
         topo_layout.addWidget(topo_lbl)
 
-        self.topo_table = QTableWidget(5, 4, self)
+        self.topo_table = BioTableWidget(self)
+        self.topo_table.setRowCount(5)
+        self.topo_table.setColumnCount(4)
         self.topo_table.setHorizontalHeaderLabels(["ID", "Name", "Type", "Key Parameters"])
         topo_header = self.topo_table.horizontalHeader()
         if topo_header is not None:
@@ -142,7 +143,9 @@ class DemoShowcaseView(QWidget):
         plasmid_lbl.setObjectName("SectionTitle")
         plasmid_layout.addWidget(plasmid_lbl)
 
-        self.plasmid_table = QTableWidget(6, 4, self)
+        self.plasmid_table = BioTableWidget(self)
+        self.plasmid_table.setRowCount(6)
+        self.plasmid_table.setColumnCount(4)
         self.plasmid_table.setHorizontalHeaderLabels(["Feature", "Type", "Coordinates", "Strand"])
         plasmid_header = self.plasmid_table.horizontalHeader()
         if plasmid_header is not None:
@@ -184,7 +187,9 @@ class DemoShowcaseView(QWidget):
         crispr_lbl.setObjectName("SectionTitle")
         crispr_layout.addWidget(crispr_lbl)
 
-        self.crispr_table = QTableWidget(2, 5, self)
+        self.crispr_table = BioTableWidget(self)
+        self.crispr_table.setRowCount(2)
+        self.crispr_table.setColumnCount(5)
         self.crispr_table.setHorizontalHeaderLabels(
             ["Target Gene", "Protospacer (20bp)", "PAM", "Efficiency", "Off-Target Risk"]
         )

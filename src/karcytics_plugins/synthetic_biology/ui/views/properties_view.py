@@ -1,14 +1,12 @@
 """Properties view for quantitative data of biological parts (Inspector style)."""
 
+from karcytics_sdk.plugin.components import BioDoubleSpinBox, BioListWidget, BioScrollArea
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QDoubleSpinBox,
     QFormLayout,
     QHBoxLayout,
     QLabel,
-    QListWidget,
     QListWidgetItem,
-    QScrollArea,
     QWidget,
 )
 
@@ -30,13 +28,13 @@ class PropertiesView(QWidget):
         layout.setSpacing(1)  # small gap between split
 
         # Left panel: List of parts
-        self.part_list = QListWidget()
+        self.part_list = BioListWidget()
         self.part_list.setMaximumWidth(300)
         self.part_list.currentItemChanged.connect(self._on_part_selected)
         layout.addWidget(self.part_list)
 
         # Right panel: Form for properties
-        self.inspector_scroll = QScrollArea()
+        self.inspector_scroll = BioScrollArea()
         self.inspector_scroll.setWidgetResizable(True)
         self.inspector_widget = QWidget()
         self.form_layout = QFormLayout(self.inspector_widget)
@@ -60,17 +58,6 @@ class PropertiesView(QWidget):
         """Apply theme styling dynamically to list and inspector widgets."""
         from karcytics_sdk.plugin.theme_fallback import Colors
 
-        self.part_list.setStyleSheet(
-            f"QListWidget {{ background: {Colors.BG_DARKEST}; "
-            f"color: {Colors.FG_PRIMARY}; border: none; }}"
-            f"QListWidget::item {{ padding: 8px; "
-            f"border-bottom: 1px solid {Colors.BORDER}; }}"
-            f"QListWidget::item:selected {{ background: {Colors.BG_MEDIUM}; "
-            f"border-left: 3px solid {Colors.ACCENT_PRIMARY}; }}"
-        )
-        self.inspector_scroll.setStyleSheet(
-            f"QScrollArea {{ border: none; background: {Colors.BG_DARK}; }}"
-        )
         self.inspector_widget.setStyleSheet(
             f"background: {Colors.BG_DARK}; color: {Colors.FG_PRIMARY};"
         )
@@ -238,7 +225,7 @@ class PropertiesView(QWidget):
         step: float,
     ):
         """Helper to create and bind a QDoubleSpinBox to a part attribute."""
-        spin = QDoubleSpinBox()
+        spin = BioDoubleSpinBox()
         spin.setRange(min_val, max_val)
         spin.setSingleStep(step)
         spin.setDecimals(3)
@@ -251,13 +238,6 @@ class PropertiesView(QWidget):
 
         # Connect value change to update the model
         spin.valueChanged.connect(lambda val, attr=attr_name: self._on_param_changed(attr, val))
-
-        from karcytics_sdk.plugin.theme_fallback import Colors
-
-        spin.setStyleSheet(
-            f"background: {Colors.BG_DARKEST}; color: {Colors.FG_PRIMARY}; "
-            f"border: 1px solid {Colors.BORDER}; padding: 4px;"
-        )
 
         self.form_layout.addRow(label, spin)
 

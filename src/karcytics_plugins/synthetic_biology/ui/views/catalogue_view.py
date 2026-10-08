@@ -1,6 +1,6 @@
-from karcytics_sdk.plugin.theme_fallback import Colors
+from karcytics_sdk.plugin.components import BioScrollArea, BioSplitter
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QScrollArea, QSplitter, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from ...analysis.catalogue.service import PartsCatalogueService
 from ...ui.widgets.flow_layout import FlowLayout
@@ -32,15 +32,14 @@ class CatalogueView(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         # Main Splitter
-        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter = BioSplitter(Qt.Orientation.Horizontal)
         layout.addWidget(self.splitter)
 
         # Left Side: Scroll Area with FlowLayout for Cards
-        self.scroll_area = QScrollArea()
+        self.scroll_area = BioScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scroll_area.setMinimumWidth(500)
-        self.scroll_area.setStyleSheet("QScrollArea { background: transparent; border: none; }")
 
         self.cards_container = QWidget()
         self.cards_container.setStyleSheet("QWidget { background: transparent; }")
@@ -106,17 +105,5 @@ class CatalogueView(QWidget):
 
     def refresh_styles(self):
         """Apply theme styling dynamically to splitter and inspector."""
-        splitter_qss = f"""
-            QSplitter::handle {{
-                background-color: {Colors.BORDER};
-            }}
-            QSplitter::handle:horizontal {{
-                width: 2px;
-            }}
-            QSplitter::handle:hover {{
-                background-color: {Colors.ACCENT_PRIMARY};
-            }}
-        """
-        self.splitter.setStyleSheet(splitter_qss)
         if hasattr(self, "inspector") and hasattr(self.inspector, "refresh_styles"):
             self.inspector.refresh_styles()
