@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 if "sbol3" not in sys.modules:
     sys.modules["sbol3"] = MagicMock()
 
-from PyQt6.QtWidgets import QApplication, QComboBox
+from PySide6.QtWidgets import QApplication, QComboBox
 
 from karcytics_plugins.synthetic_biology.analysis.parts.components import CDS, Promoter
 from karcytics_plugins.synthetic_biology.ui.ribbons.design_ribbon import DesignRibbon

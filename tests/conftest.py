@@ -17,9 +17,7 @@ sys.path.insert(0, str(src_dir))
 sys.path.insert(0, str(root_dir))
 
 import pytest  # noqa: E402
-from PyQt6.QtWidgets import QApplication, QLabel, QPushButton, QSplitter, QWidget  # noqa: E402
-
-_qapp = QApplication.instance() or QApplication(["pytest", "-platform", "offscreen"])
+from PySide6.QtWidgets import QLabel, QPushButton, QSplitter, QWidget  # noqa: E402
 
 # Mock karcytics_sdk before it gets imported
 mock_karcytics_sdk_plugin = MagicMock()
@@ -30,11 +28,11 @@ class DummyTaskBase:
         pass
 
 
-from PyQt6.QtCore import pyqtSignal  # noqa: E402
+from PySide6.QtCore import Signal  # noqa: E402
 
 
 class DummyPluginBase(QWidget):
-    status_message = pyqtSignal(str)
+    status_message = Signal(str)
 
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -58,7 +56,7 @@ class DummyLabel(QLabel):
     pass
 
 
-from PyQt6.QtWidgets import QComboBox, QLineEdit, QListWidget, QSpinBox  # noqa: E402
+from PySide6.QtWidgets import QComboBox, QLineEdit, QListWidget, QSpinBox  # noqa: E402
 
 
 class DummyComboBox(QComboBox):
@@ -141,7 +139,6 @@ mock_theme_fallback = types.ModuleType("theme_fallback")
 mock_theme_fallback.Colors = DummyColors  # type: ignore
 mock_theme_fallback.Fonts = DummyColors  # type: ignore
 mock_theme_fallback.theme_manager = MagicMock()  # type: ignore
-mock_theme_fallback.get_contrast_text_color = lambda bg: "#ffffff"  # type: ignore
 sys.modules["karcytics_sdk.plugin.theme_fallback"] = mock_theme_fallback
 
 try:

@@ -106,7 +106,7 @@ def test_empirical_controller_teardown():
 def test_empirical_view_instantiation_and_teardown():
     import sys
 
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
 
     from karcytics_plugins.synthetic_biology.analysis.state import SynBioState
     from karcytics_plugins.synthetic_biology.ui.views.empirical_analytics_view import (

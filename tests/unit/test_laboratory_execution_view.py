@@ -3,7 +3,7 @@
 import unittest
 
 try:
-    import PyQt6.QtCore  # noqa: F401
+    import PySide6.QtCore  # noqa: F401
 
     from karcytics_plugins.synthetic_biology.analysis.assembly.protocol_engine import (
         BenchProtocol,
@@ -12,12 +12,12 @@ try:
         ProtocolWorker,
     )
 
-    HAS_PYQT6 = True
+    HAS_QT = True
 except ImportError:
-    HAS_PYQT6 = False
+    HAS_QT = False
 
 
-@unittest.skipUnless(HAS_PYQT6, "PyQt6 not installed in current environment")
+@unittest.skipUnless(HAS_QT, "PySide6 not installed in current environment")
 class TestLaboratoryExecutionWorker(unittest.TestCase):
     def test_protocol_worker_execution(self):
         inserts = [

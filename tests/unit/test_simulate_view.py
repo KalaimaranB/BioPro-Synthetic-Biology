@@ -10,8 +10,8 @@ if "sbol3" not in sys.modules:
     sys.modules["sbol3"] = MagicMock()
 
 import pyqtgraph as pg
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QApplication, QListWidget, QListWidgetItem, QSplitter
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QListWidget, QListWidgetItem, QSplitter
 
 from karcytics_plugins.synthetic_biology.ui.views.simulate_view import SimulateView
 

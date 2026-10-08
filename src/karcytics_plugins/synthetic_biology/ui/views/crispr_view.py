@@ -1,4 +1,4 @@
-"""PyQt6 CRISPR/Cas9 Guide RNA Design & Off-Target Inspection View.
+"""PySide6 CRISPR/Cas9 Guide RNA Design & Off-Target Inspection View.
 
 Provides target sequence editor, PAM selection, and scored results table with
 CFD off-target details. Decoupled from engines via CRISPRDesignController
@@ -8,8 +8,8 @@ signals & slots.
 from __future__ import annotations
 
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
-from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtWidgets import (
     QComboBox,
     QGroupBox,
     QHBoxLayout,
@@ -31,11 +31,11 @@ from ...ui.controllers.crispr_controller import CRISPRDesignController
 
 
 class CRISPRDesignView(QWidget):
-    """PyQt6 View for CRISPR/Cas9 target discovery and off-target CFD score
+    """PySide6 View for CRISPR/Cas9 target discovery and off-target CFD score
     inspection.
     """
 
-    scan_requested = pyqtSignal(str, str, int)
+    scan_requested = Signal(str, str, int)
 
     def __init__(self, state: SynBioState, controller: CRISPRDesignController, parent=None):
         super().__init__(parent)
@@ -183,7 +183,7 @@ class CRISPRDesignView(QWidget):
         pam_type = self.pam_combo.currentText()
         self.scan_requested.emit(seq, pam_type, 20)
 
-    @pyqtSlot(list)
+    @Slot(list)
     def render_grna_results(self, candidates: list[gRNACandidate]):
         """Populates candidates into table."""
         self.grna_table.setRowCount(0)
@@ -256,6 +256,6 @@ class CRISPRDesignView(QWidget):
 
         self.detail_display.setText(detail_text)
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _show_error(self, message: str):
         QMessageBox.critical(self, "CRISPR Engine Error", message)

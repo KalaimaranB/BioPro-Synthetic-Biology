@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QThread, pyqtSignal  # noqa: TID251
+from PySide6.QtCore import QThread, Signal  # noqa: TID251
 
 from ..models.domain import PlasmidVector, Primer
 from ..parts.base import BiologicalPart
@@ -14,9 +14,9 @@ class AssemblyWorker(QThread):
     and Primer Design tasks.
     """
 
-    assembly_finished = pyqtSignal(PlasmidVector)
-    primer_finished = pyqtSignal(Primer, Primer)
-    error_occurred = pyqtSignal(str)
+    assembly_finished = Signal(PlasmidVector)
+    primer_finished = Signal(Primer, Primer)
+    error_occurred = Signal(str)
 
     def __init__(  # noqa: PLR0913, PLR0917
         self,

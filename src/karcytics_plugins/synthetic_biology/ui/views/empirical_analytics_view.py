@@ -12,10 +12,10 @@ STRICT CONSTRAINTS ENFORCED:
 from __future__ import annotations
 
 import pyqtgraph as pg
-from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-from PyQt6.QtCore import Qt, pyqtSlot
-from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import (
+from karcytics_sdk.plugin.theme_fallback import Fonts
+from PySide6.QtCore import Qt, Slot
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
     QFileDialog,
     QFormLayout,
     QGroupBox,
@@ -63,34 +63,6 @@ class EmpiricalAnalyticsView(QWidget):
 
         self._init_ui()
         self._connect_signals()
-
-        self.refresh_styles()
-        theme_manager.theme_changed.connect(self.refresh_styles)
-
-    def refresh_styles(self) -> None:
-        """Dynamically update PyQtGraph background and UI styling on theme change."""
-        bg_color = getattr(Colors, "BG_DARKEST", "#0d1117")
-        fg_color = getattr(Colors, "FG_PRIMARY", "#e6edf3")
-        fg_sec = getattr(Colors, "FG_SECONDARY", "#8b949e")
-
-        if hasattr(self, "plot_widget") and self.plot_widget is not None:
-            self.plot_widget.setBackground(bg_color)
-            axis_pen = pg.mkPen(color=fg_sec, width=1)
-            for axis_name in ("left", "bottom", "top", "right"):
-                axis = self.plot_widget.getPlotItem().getAxis(axis_name)
-                axis.setPen(axis_pen)
-                axis.setTextPen(axis_pen)
-            self.plot_widget.setLabel("bottom", "Time (min)", color=fg_sec)
-            self.plot_widget.setLabel("left", "Expression / Fluorescence", color=fg_sec)
-            title_color = getattr(Colors, "ACCENT_PRIMARY", fg_color)
-            self.plot_widget.setTitle(
-                "Original vs Empirically Fitted Kinetic Curves",
-                color=title_color,
-                size="11pt",
-            )
-
-    def _apply_theme_styles(self) -> None:
-        self.refresh_styles()
 
     # ── UI Initialization ─────────────────────────────────────────────
 
@@ -345,7 +317,7 @@ class EmpiricalAnalyticsView(QWidget):
             comps, edgs = CircuitSimulationEngine.create_preset_repressilator()
         self.controller.run_ml_optimization(comps, edgs, self._active_fcs_data)
 
-    @pyqtSlot(object)
+    @Slot(object)
     def _on_fcs_loaded(self, data: FCSEventData) -> None:
         self._active_fcs_data = data
         self.fcs_table.setRowCount(0)
@@ -359,7 +331,7 @@ class EmpiricalAnalyticsView(QWidget):
             self.fcs_table.setItem(row, 4, QTableWidgetItem(f"{stats.std_intensity:.2f}"))
             self.fcs_table.setItem(row, 5, QTableWidgetItem(f"{stats.gated_percentage:.1f}%"))
 
-    @pyqtSlot(object)
+    @Slot(object)
     def _on_ngs_aligned(self, result: NGSAlignmentResult) -> None:
         self._active_ngs_result = result
         self.ngs_table.setRowCount(0)
@@ -377,7 +349,7 @@ class EmpiricalAnalyticsView(QWidget):
             self.ngs_table.setItem(row, 7, QTableWidgetItem(ot_str))
             self.ngs_table.setItem(row, 8, QTableWidgetItem(flag.severity))
 
-    @pyqtSlot(object)
+    @Slot(object)
     def _on_optimization_finished(self, result: HillOptimizationResult) -> None:
         self._active_opt_result = result
         msg = f"Optimization Complete | MSE: {result.initial_mse:.3f} -> {result.final_mse:.3f}"
@@ -420,7 +392,7 @@ class EmpiricalAnalyticsView(QWidget):
                 name=f"{species} (Empirical Target)",
             )
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _on_error(self, err_msg: str) -> None:
         QMessageBox.warning(self, "Empirical Analytics Error", err_msg)
 

@@ -1,7 +1,7 @@
 """Biological View Ribbon — Diagram styling and display options."""
 
 from karcytics_sdk.plugin.components import BioToggleButton
-from PyQt6.QtWidgets import QHBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QWidget
 
 
 class BiologicalViewRibbon(QWidget):

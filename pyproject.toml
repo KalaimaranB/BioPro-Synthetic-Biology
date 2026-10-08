@@ -8,8 +8,8 @@ authors = [
     { name = "Kalaimaran Balasothy" },
 ]
 dependencies = [
-    "karcytics-sdk>=2.0.1",
-    "PyQt6>=6.5",
+    "karcytics-sdk>=3.0.0",
+    "PySide6-Essentials>=6.6",
     "numpy>=1.26",
     "scipy>=1.11",
     "networkx>=3.1",
@@ -91,7 +91,7 @@ mypy_path = "src"
 
 [[tool.mypy.overrides]]
 module = [
-    "PyQt6.*",
+    "PySide6.*",
     "numpy.*",
     "scipy.*",
     "pandas.*",

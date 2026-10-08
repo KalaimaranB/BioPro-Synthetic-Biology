@@ -1,4 +1,4 @@
-"""PyQt6 Predictive Circuit Simulation View with PyQtGraph Time-Series Plotter.
+"""PySide6 Predictive Circuit Simulation View with PyQtGraph Time-Series Plotter.
 
 Provides preset selection (Repressilator, Toggle Switch, NOR gate),
 numerical parameter controls, and PyQtGraph dynamic GPU-accelerated
@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import pyqtgraph as pg
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
-from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot
-from PyQt6.QtGui import QPalette
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtGui import QPalette
+from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
@@ -38,11 +38,11 @@ from ...ui.controllers.circuit_controller import CircuitSimulationController
 
 
 class CircuitSimulationView(QWidget):
-    """PyQt6 View for predictive genetic circuit kinetic simulation
+    """PySide6 View for predictive genetic circuit kinetic simulation
     and PyQtGraph plotting with dynamic theme support.
     """
 
-    simulation_requested = pyqtSignal(list, list, object)
+    simulation_requested = Signal(list, list, object)
 
     def __init__(
         self,
@@ -292,7 +292,7 @@ class CircuitSimulationView(QWidget):
 
         self.simulation_requested.emit(self._active_components, self._active_edges, params)
 
-    @pyqtSlot(SimulationResult)
+    @Slot(SimulationResult)
     def render_simulation_results(self, result: SimulationResult):
         """Plots time-series curves on PyQtGraph PlotWidget."""
         self.plot_widget.clear()
@@ -335,6 +335,6 @@ class CircuitSimulationView(QWidget):
             pen = pg.mkPen(color=color, width=2.5)
             self.plot_widget.plot(t_points, conc_values, name=species_name, pen=pen)
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _show_error(self, message: str):
         QMessageBox.critical(self, "Simulation Engine Error", message)

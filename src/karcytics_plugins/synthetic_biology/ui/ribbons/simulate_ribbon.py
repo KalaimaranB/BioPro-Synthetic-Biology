@@ -1,14 +1,14 @@
 """Simulate Ribbon — Kinetic simulation controls."""
 
 from karcytics_sdk.plugin.components import BioSpinBox, PrimaryButton
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget
+from PySide6.QtCore import Signal
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QWidget
 
 
 class SimulateRibbon(QWidget):
     """Ribbon for setting simulation parameters and running simulations."""
 
-    run_simulation = pyqtSignal(int, str)
+    run_simulation = Signal(int, str)
 
     def __init__(self, service_factory, parent=None):
         super().__init__(parent)
@@ -16,7 +16,7 @@ class SimulateRibbon(QWidget):
         self._setup_ui()
 
     def _setup_ui(self):
-        from PyQt6.QtWidgets import QComboBox
+        from PySide6.QtWidgets import QComboBox
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(16, 12, 16, 12)

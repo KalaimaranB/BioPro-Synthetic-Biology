@@ -3,7 +3,7 @@
 Automates bench calculations for Gibson Assembly and Golden Gate Assembly,
 including master mix preparation tables, insert-to-vector molar ratios,
 pipetting volume validation against physical thresholds (>= 0.5 uL), and
-thermal cycler programs formatted for PyQt6 GUI display.
+thermal cycler programs formatted for PySide6 GUI display.
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ MIN_PIPETTING_VOLUME_UL: float = 0.5
 
 @dataclass
 class MasterMixResult:
-    """Structured master mix calculation result formatted for PyQt6 tables."""
+    """Structured master mix calculation result formatted for PySide6 tables."""
 
     assembly_type: str
     num_reactions: int
@@ -56,7 +56,7 @@ class MasterMixResult:
     pipetting_warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        """Serializes the MasterMixResult into a dictionary for PyQt6 UI models."""
+        """Serializes the MasterMixResult into a dictionary for PySide6 UI models."""
         return {
             "assembly_type": self.assembly_type,
             "num_reactions": self.num_reactions,
@@ -112,7 +112,7 @@ class ReactionRatioResult:
     pipetting_warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        """Serializes the ReactionRatioResult into a dictionary payload for PyQt6."""
+        """Serializes the ReactionRatioResult into a dictionary payload for PySide6."""
         return {
             "assembly_type": self.assembly_type,
             "vector_spec": self.vector_spec.to_dict(),
@@ -150,7 +150,7 @@ class ThermalCyclerStep:
 
 @dataclass
 class BenchProtocol:
-    """Complete bench protocol data payload ready for PyQt6 visual rendering."""
+    """Complete bench protocol data payload ready for PySide6 visual rendering."""
 
     protocol_name: str
     assembly_type: str
@@ -469,7 +469,7 @@ class ProtocolEngine:
             reaction_volume_ul: Reaction volume in uL.
 
         Returns:
-            BenchProtocol object serialized and ready for PyQt6 GUI layout rendering.
+            BenchProtocol object serialized and ready for PySide6 GUI layout rendering.
         """
         is_golden = "golden" in assembly_type.lower() or "gate" in assembly_type.lower()
         disp_type = "Golden Gate Assembly" if is_golden else "Gibson Assembly"

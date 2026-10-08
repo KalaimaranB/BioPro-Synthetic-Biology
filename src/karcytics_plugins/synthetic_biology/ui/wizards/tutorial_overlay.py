@@ -2,8 +2,8 @@
 Synthetic Biology workspace.
 """
 
-from PyQt6.QtCore import QRectF, Qt
-from PyQt6.QtGui import (
+from PySide6.QtCore import QRectF, Qt
+from PySide6.QtGui import (
     QBrush,
     QColor,
     QFont,
@@ -13,7 +13,7 @@ from PyQt6.QtGui import (
     QPen,
     QPixmap,
 )
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog,
     QFrame,
     QGraphicsDropShadowEffect,

@@ -78,7 +78,7 @@ jobs:
           enable-cache: true
 
       # Windows Defender's real-time scanner inspects every .pyd/.dll
-      # individually as it's touched — numpy/scipy/pandas/PyQt6 collectively
+      # individually as it's touched — numpy/scipy/pandas/PySide6 collectively
       # touch hundreds of them on import, a well-documented 2-3x slowdown
       # multiplier for Python scientific-stack CI on windows-latest.
       - name: Exclude workspace from Windows Defender

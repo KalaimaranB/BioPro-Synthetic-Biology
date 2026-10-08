@@ -3,8 +3,8 @@
 from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
 
 # pyrefly: ignore [missing-import]
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QFrame, QLabel, QVBoxLayout
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout
 
 from ...analysis.parts.base import BiologicalPart
 
@@ -12,7 +12,7 @@ from ...analysis.parts.base import BiologicalPart
 class PartCard(QFrame):
     """A card representing a single biological part in the catalogue."""
 
-    clicked = pyqtSignal(str)
+    clicked = Signal(str)
 
     def __init__(self, part: BiologicalPart | None = None, parent=None):
         super().__init__(parent)

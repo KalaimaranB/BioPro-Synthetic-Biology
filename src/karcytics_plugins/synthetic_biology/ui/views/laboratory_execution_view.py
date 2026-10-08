@@ -1,4 +1,4 @@
-"""PyQt6 Graphical View & QThread Worker for Laboratory Execution & Phase 2 Build Cycle.
+"""PySide6 Graphical View & QThread Worker for Laboratory Execution & Phase 2 Build Cycle.
 
 Provides Master Mix & Molar Ratio Calculation UI, Liquid Handler Worklist
 Exporter (Tecan CSV), and LIMS Inventory & Oligo Tracker tabs. Implements
@@ -11,8 +11,8 @@ from __future__ import annotations
 from typing import Any
 
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, QThread, Signal, Slot
+from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
     QFileDialog,
@@ -53,8 +53,8 @@ class ProtocolWorker(QThread):
     off the main GUI thread.
     """
 
-    finished = pyqtSignal(object)  # Emits BenchProtocol instance on success
-    error = pyqtSignal(str)  # Emits error description string on failure
+    finished = Signal(object)  # Emits BenchProtocol instance on success
+    error = Signal(str)  # Emits error description string on failure
 
     def __init__(  # noqa: PLR0913
         self,
@@ -101,7 +101,7 @@ class ProtocolWorker(QThread):
 
 
 class LaboratoryExecutionView(QWidget):
-    """PyQt6 View for Laboratory Execution, Master Mix Calculation, Liquid
+    """PySide6 View for Laboratory Execution, Master Mix Calculation, Liquid
     Handling Export, and LIMS Inventory Tracking. Theme-aware design inheriting
     global application stylesheets.
     """
@@ -444,7 +444,7 @@ class LaboratoryExecutionView(QWidget):
     # -------------------------------------------------------------------------
     # CONTROLLER SIGNALS & MVC SLOTS
     # -------------------------------------------------------------------------
-    @pyqtSlot()
+    @Slot()
     def _on_generate_protocol_clicked(self) -> None:
         """Collects inputs from UI and launches background QThread calculation."""
         inserts = [
@@ -481,7 +481,7 @@ class LaboratoryExecutionView(QWidget):
         self.worker.error.connect(self._on_protocol_error)
         self.worker.start()
 
-    @pyqtSlot(object)
+    @Slot(object)
     def _on_protocol_finished(self, protocol: BenchProtocol) -> None:
         """Callback slot handling successful ProtocolEngine calculation from QThread."""
         self.current_protocol = protocol
@@ -496,7 +496,7 @@ class LaboratoryExecutionView(QWidget):
         self._populate_results_tables(protocol)
         self._populate_worklist_table(protocol)
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _on_protocol_error(self, error_message: str) -> None:
         """Callback slot handling calculation errors from QThread worker."""
         self.btn_generate.setEnabled(True)
@@ -647,12 +647,12 @@ class LaboratoryExecutionView(QWidget):
                 row = self.table_worklist.rowCount()
                 self.table_worklist.insertRow(row)
                 for col, val in enumerate(tr):
-                    self.table_worklist.setItem(row, col, QTableWidgetItem(val))
+                    self.table_worklist.setItem(row, col, QTableWidgetItem(val or ""))
 
         except Exception:
             pass
 
-    @pyqtSlot()
+    @Slot()
     def _on_export_csv_clicked(self) -> None:
         """Export handler opening QFileDialog and executing WorklistGenerator export."""
         if not self.current_protocol:
@@ -769,7 +769,7 @@ class LaboratoryExecutionView(QWidget):
             row = self.table_inventory.rowCount()
             self.table_inventory.insertRow(row)
             for col, val in enumerate(item):
-                self.table_inventory.setItem(row, col, QTableWidgetItem(val))
+                self.table_inventory.setItem(row, col, QTableWidgetItem(val or ""))
 
     def teardown(self) -> None:
         """Stops active background ProtocolWorker thread if running."""

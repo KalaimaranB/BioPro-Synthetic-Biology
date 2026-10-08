@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import msgpack  # type: ignore[import-untyped]
 import numpy as np
-from PyQt6.QtCore import QThread, pyqtSignal  # noqa: TID251
+from PySide6.QtCore import QThread, Signal  # noqa: TID251
 
 from ..models.domain import (
     CircuitComponent,
@@ -21,8 +21,8 @@ class CircuitSimWorker(QThread):
     circuit simulations. Emits binary msgpack payload or SimulationResult object.
     """
 
-    simulation_finished = pyqtSignal(object)
-    error_occurred = pyqtSignal(str)
+    simulation_finished = Signal(object)
+    error_occurred = Signal(str)
 
     def __init__(
         self,

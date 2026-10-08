@@ -14,12 +14,12 @@ This module bridges the gap between computer science and biology by providing to
 ## Architecture
 
 The plugin follows Karcytics's standard plugin architecture, running as an isolated
-process (`process_model = "isolated"`) with its own PyQt6 UI daemon:
+process (`process_model = "isolated"`) with its own PySide6 UI daemon:
 
 | Layer | Directory | Purpose |
 |-------|-----------|---------|
-| **Analysis** | `src/karcytics_plugins/synthetic_biology/analysis/` | Domain model, state, circuit engine, simulation (no PyQt6 imports) |
-| **UI** | `src/karcytics_plugins/synthetic_biology/ui/` | PyQt6 widgets, panels, canvas |
+| **Analysis** | `src/karcytics_plugins/synthetic_biology/analysis/` | Domain model, state, circuit engine, simulation (no PySide6 imports) |
+| **UI** | `src/karcytics_plugins/synthetic_biology/ui/` | PySide6 widgets, panels, canvas |
 | **Tests** | `tests/` | Unit tests |
 
 ## Getting Started

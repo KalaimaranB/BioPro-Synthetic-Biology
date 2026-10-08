@@ -14,8 +14,8 @@ from typing import Any
 
 from karcytics_sdk.plugin import PluginBase, get_logger
 from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Signal
+from PySide6.QtWidgets import (
     QLabel,
     QSizePolicy,
     QVBoxLayout,
@@ -60,7 +60,7 @@ class SynBioPanel(PluginBase):
 
     # ── Karcytics-required signals ────────────────────────────────────
     # state_changed and status_message are provided by PluginBase
-    results_ready = pyqtSignal(object)
+    results_ready = Signal(object)
 
     def __init__(
         self,
@@ -119,7 +119,7 @@ class SynBioPanel(PluginBase):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        from PyQt6.QtWidgets import QStackedWidget, QTabBar, QWidget
+        from PySide6.QtWidgets import QStackedWidget, QTabBar, QWidget
 
         from .canvas import CircuitCanvas
         from .controllers import (

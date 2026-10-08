@@ -29,7 +29,7 @@ def test_service_factory_anchors_to_plugin_dir():
 
 
 def test_synbio_panel_handles_plugin_context_parent():
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
 
     _app = QApplication.instance() or QApplication([])
     from karcytics_plugins.synthetic_biology.ui.main_panel import SynBioPanel

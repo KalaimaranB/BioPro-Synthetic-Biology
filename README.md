@@ -33,11 +33,11 @@ Karcytics-SyntheticBiology/
 ├── src/karcytics_plugins/synthetic_biology/
 │   ├── __init__.py                # SyntheticBiologyPlugin entry point (initialize())
 │   ├── ui_daemon.py                # Isolated-process UI daemon entry
-│   ├── analysis/                  # Domain model & computation (no PyQt6 imports)
+│   ├── analysis/                  # Domain model & computation (no PySide6 imports)
 │   │   ├── state.py               # SynBioState (circuit + view layers)
 │   │   ├── config.py              # Simulation & workspace config
 │   │   └── events.py              # CentralEventBus topic constants
-│   └── ui/                        # PyQt6 user interface
+│   └── ui/                        # PySide6 user interface
 │       ├── main_panel.py          # SynBioPanel (root widget)
 │       └── composition_root.py    # ServiceFactory (DI container)
 ├── tests/

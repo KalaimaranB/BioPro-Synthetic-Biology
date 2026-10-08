@@ -10,8 +10,8 @@ import math
 from typing import Any
 
 from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -39,7 +39,7 @@ from ...analysis.state import SynBioState
 class DemoShowcaseView(QWidget):
     """Product Showcase Tab View — presents a interactive demo overview of SynBio features."""
 
-    demo_loaded = pyqtSignal()
+    demo_loaded = Signal()
 
     def __init__(
         self, state: SynBioState, main_panel: Any = None, parent: QWidget | None = None

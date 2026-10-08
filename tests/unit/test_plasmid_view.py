@@ -1,7 +1,7 @@
-"""Unit tests for PyQt6 Views and Controllers (Plasmid, CRISPR, Circuit Simulation)."""
+"""Unit tests for PySide6 Views and Controllers (Plasmid, CRISPR, Circuit Simulation)."""
 
 import pytest
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 
 from karcytics_plugins.synthetic_biology.analysis.state import SynBioState
 from karcytics_plugins.synthetic_biology.ui.controllers.circuit_controller import (
@@ -24,7 +24,7 @@ from karcytics_plugins.synthetic_biology.ui.views.plasmid_assembly_view import (
 
 @pytest.fixture(scope="module")
 def qapp():
-    """Ensure QApplication instance exists for PyQt6 UI tests."""
+    """Ensure QApplication instance exists for PySide6 UI tests."""
     app = QApplication.instance()
     if app is None:
         app = QApplication([])

@@ -1,8 +1,8 @@
 """Design Ribbon — Fetch and select biological parts via dynamic dropdown."""
 
 from karcytics_sdk.plugin.components import PrimaryButton
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QMessageBox, QWidget
+from PySide6.QtCore import Signal
+from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QMessageBox, QWidget
 
 from ...analysis.parts.components import BiologicalPart
 
@@ -10,7 +10,7 @@ from ...analysis.parts.components import BiologicalPart
 class DesignRibbon(QWidget):
     """Ribbon for selecting and fetching biological parts from registries."""
 
-    part_fetched = pyqtSignal(object)  # Emits the BiologicalPart
+    part_fetched = Signal(object)  # Emits the BiologicalPart
 
     # Predefined popular iGEM parts fallback when database is empty
     COMMON_PARTS = {

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QObject, QThread, pyqtSignal
+from PySide6.QtCore import QObject, QThread, Signal
 
 from ...analysis.empirical.fcs_ingestion import (
     FCSDataIngestionService,
@@ -27,10 +27,10 @@ from ...analysis.state import SynBioState
 class EmpiricalWorker(QThread):
     """Background worker for NGS alignment and ML parameter fitting."""
 
-    fcs_done = pyqtSignal(FCSEventData)
-    ngs_done = pyqtSignal(NGSAlignmentResult)
-    opt_done = pyqtSignal(HillOptimizationResult)
-    error_occurred = pyqtSignal(str)
+    fcs_done = Signal(FCSEventData)
+    ngs_done = Signal(NGSAlignmentResult)
+    opt_done = Signal(HillOptimizationResult)
+    error_occurred = Signal(str)
 
     def __init__(  # noqa: PLR0913
         self,
@@ -80,10 +80,10 @@ class EmpiricalWorker(QThread):
 class EmpiricalAnalyticsController(QObject):
     """Controller for FCS ingestion, NGS alignment, and ML parameter fitting."""
 
-    fcs_loaded = pyqtSignal(FCSEventData)
-    ngs_aligned = pyqtSignal(NGSAlignmentResult)
-    optimization_finished = pyqtSignal(HillOptimizationResult)
-    error_raised = pyqtSignal(str)
+    fcs_loaded = Signal(FCSEventData)
+    ngs_aligned = Signal(NGSAlignmentResult)
+    optimization_finished = Signal(HillOptimizationResult)
+    error_raised = Signal(str)
 
     def __init__(self, state: SynBioState, parent=None):
         super().__init__(parent)

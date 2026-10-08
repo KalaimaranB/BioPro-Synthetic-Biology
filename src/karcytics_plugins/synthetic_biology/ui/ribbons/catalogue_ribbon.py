@@ -1,5 +1,5 @@
 from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QWidget
 
 
 class CatalogueRibbon(QWidget):

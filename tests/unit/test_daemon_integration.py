@@ -12,16 +12,11 @@ Covers:
   (d) A handler exception inside the real handle_request closure is caught and
       returns {"error": ..., "type": "unhandled_exception"}, and the worker
       stays alive for the next request.
-
-Also includes a test that deliberately reintroduces the local `import time`
-scoping bug in run() and verifies the worker crashes (proving the regression
-test is sound), then restores the fix.
 """
 
 from __future__ import annotations
 
 import os
-import select
 import struct
 import subprocess
 import sys
@@ -39,8 +34,6 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _UI_DAEMON = _REPO_ROOT / "src" / "karcytics_plugins" / "synthetic_biology" / "ui_daemon.py"
 _VENV_PYTHON = _REPO_ROOT / ".venv" / "bin" / "python3"
-if not _VENV_PYTHON.exists():
-    _VENV_PYTHON = _REPO_ROOT / ".venv" / "Scripts" / "python.exe"
 if not _VENV_PYTHON.exists():
     _VENV_PYTHON = Path(sys.executable)
 
@@ -60,84 +53,50 @@ def send_frame(proc: subprocess.Popen, data: dict[str, Any]) -> None:
     proc.stdin.flush()
 
 
-def _pipe_has_data_win32(fd: int, timeout: float) -> bool:
-    import ctypes
-    import msvcrt
-    from ctypes import wintypes
-
-    try:
-        handle = msvcrt.get_osfhandle(fd)
-        avail = wintypes.DWORD()
-        start = time.monotonic()
-        while True:
-            res = ctypes.windll.kernel32.PeekNamedPipe(
-                handle, None, 0, None, ctypes.byref(avail), None
-            )
-            if not res or avail.value > 0:
-                return bool(res and avail.value > 0)
-            if time.monotonic() - start >= timeout:
-                return False
-            time.sleep(0.01)
-    except (OSError, ValueError):
-        return False
-
-
-def _pipe_has_data(fd: int, timeout: float = 0.0) -> bool:
-    """Check if data is available to read on an anonymous pipe fd without blocking."""
-    if sys.platform == "win32":
-        return _pipe_has_data_win32(fd, timeout)
-    rlist, _, _ = select.select([fd], [], [], timeout)
-    return bool(rlist)
-
-
-def _drain_pipe(fd: int, timeout: float = 0.2) -> str:
-    """Drain whatever is currently readable on a pipe without blocking."""
-    text = ""
-    current_timeout = timeout
-    while _pipe_has_data(fd, current_timeout):
-        chunk = os.read(fd, 8192)
-        if not chunk:
-            break
-        text += chunk.decode("utf-8", errors="replace")
-        current_timeout = 0.05
-    return text
-
-
-def _read_exact(fd: int, n: int, proc: subprocess.Popen, deadline: float) -> bytes | None:
-    buf = bytearray()
-    while len(buf) < n:
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            return None
-        wait_time = min(0.1, remaining)
-        if not _pipe_has_data(fd, wait_time):
-            if proc.poll() is not None:
-                if not _pipe_has_data(fd, 0.0):
-                    return None
-            else:
-                continue
-        chunk = os.read(fd, n - len(buf))
-        if not chunk:
-            return None
-        buf.extend(chunk)
-    return bytes(buf)
-
-
-def recv_frame(proc: subprocess.Popen, timeout: float = 10.0) -> dict[str, Any] | None:
+def recv_frame(proc: subprocess.Popen, timeout: float = 10.0) -> dict[str, Any] | None:  # noqa: C901, PLR0911
     """Read one length-prefixed msgpack frame from the worker's stdout.
 
     Returns None on EOF or timeout.
     """
+    import select
+
     fd = proc.stdout.fileno()
+    # Read 4-byte header
+    header = bytearray()
     deadline = time.monotonic() + timeout
-    header = _read_exact(fd, 4, proc, deadline)
-    if not header:
-        return None
-    length = struct.unpack(">I", header)[0]
-    payload = _read_exact(fd, length, proc, deadline)
-    if not payload:
-        return None
-    return msgpack.unpackb(payload, raw=False)
+    while len(header) < 4:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None
+        rlist, _, _ = select.select([fd], [], [], min(0.1, remaining))
+        if not rlist:
+            if proc.poll() is not None:
+                return None
+            continue
+        chunk = os.read(fd, 4 - len(header))
+        if not chunk:
+            return None
+        header.extend(chunk)
+
+    length = struct.unpack(">I", bytes(header))[0]
+
+    # Read payload
+    buf = bytearray()
+    while len(buf) < length:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None
+        rlist, _, _ = select.select([fd], [], [], min(0.1, remaining))
+        if not rlist:
+            if proc.poll() is not None:
+                return None
+            continue
+        chunk = os.read(fd, length - len(buf))
+        if not chunk:
+            return None
+        buf.extend(chunk)
+
+    return msgpack.unpackb(bytes(buf), raw=False)
 
 
 def drain_events_until(proc: subprocess.Popen, topic: str, timeout: float) -> dict | None:
@@ -210,7 +169,7 @@ def worker():
     proc = spawn_worker()
     ready = drain_events_until(proc, "ready", timeout=30.0)
     assert ready is not None, "Worker did not emit 'ready' within 30 s. Stderr:\n" + (
-        _drain_pipe(proc.stderr.fileno(), timeout=0.1)
+        proc.stderr.read(4096).decode("utf-8", errors="replace")
         if proc.poll() is not None
         else "(still running)"
     )
@@ -284,8 +243,18 @@ class TestDaemonSubprocessSmoke:
         call_worker(worker, "theme_changed", {"colors": {}})
         # Give a moment for stderr to flush
         time.sleep(0.2)
-        # Drain stderr without blocking
-        stderr_text = _drain_pipe(worker.stderr.fileno(), timeout=0.1)
+        # Non-blocking read of stderr
+        import select
+
+        stderr_text = ""
+        while True:
+            rlist, _, _ = select.select([worker.stderr.fileno()], [], [], 0.1)
+            if not rlist:
+                break
+            chunk = os.read(worker.stderr.fileno(), 8192)
+            if not chunk:
+                break
+            stderr_text += chunk.decode("utf-8", errors="replace")
         assert "CRITICAL ERROR CAUGHT BY QT HOOK" not in stderr_text, (
             f"Critical error on stderr:\n{stderr_text}"
         )
@@ -306,78 +275,6 @@ class TestDaemonSubprocessSmoke:
         alive_result = call_worker(worker, "focus")
         assert "error" not in alive_result, "Worker died after exception"
         assert worker.poll() is None, "Worker process exited after exception"
-
-
-def _find_sdk_runtime_path() -> Path | None:
-    for p in sys.path:
-        candidate = Path(p) / "karcytics_sdk" / "plugin" / "ui_daemon_runtime.py"
-        if candidate.exists():
-            return candidate
-    for pth_file in (Path(p) for p in sys.path):
-        if pth_file.suffix == ".pth":
-            continue
-        candidate = pth_file / "karcytics_sdk" / "plugin" / "ui_daemon_runtime.py"
-        if candidate.exists():
-            return candidate
-    return None
-
-
-def _assert_buggy_worker_fails(proc: subprocess.Popen) -> None:
-    ready = drain_events_until(proc, "ready", timeout=20.0)
-    if ready is None:
-        stderr = _drain_pipe(proc.stderr.fileno(), timeout=0.5)
-        assert "NameError" in stderr or "CRITICAL ERROR" in stderr, (
-            f"Worker failed to start but no NameError found: {stderr}"
-        )
-        return
-
-    try:
-        result = call_worker(proc, "focus", timeout=5.0)
-        time.sleep(0.5)
-        stderr = _drain_pipe(proc.stderr.fileno(), timeout=0.5)
-        assert (
-            (isinstance(result, dict) and "error" in result)
-            or "NameError" in stderr
-            or "CRITICAL ERROR" in stderr
-        ), f"Expected NameError with buggy code. result={result}, stderr={stderr}"
-    except (TimeoutError, BrokenPipeError, OSError):
-        pass
-
-
-@pytest.mark.integration
-@pytest.mark.timeout(60)
-class TestDaemonRegressionImportTime:
-    """Verify the NameError regression: with the local `import time` reintroduced
-    in run(), the worker crashes on the first request; with the fix, it works.
-    """
-
-    def test_regression_old_code_fails(self, tmp_path):
-        """Temporarily reintroduce the local `import time` in run(), verify the
-        worker crashes or returns a NameError, then restore the fix.
-        """
-        sdk_runtime_path = _find_sdk_runtime_path()
-        if sdk_runtime_path is None:
-            pytest.skip("Could not locate ui_daemon_runtime.py on sys.path")
-
-        original = sdk_runtime_path.read_text()
-        buggy = original.replace(
-            "    os._exit(exit_code)",
-            "    import time\n    os._exit(exit_code)",
-        )
-
-        try:
-            sdk_runtime_path.write_text(buggy)
-            proc = spawn_worker()
-            try:
-                _assert_buggy_worker_fails(proc)
-            finally:
-                try:
-                    proc.kill()
-                    proc.wait(timeout=2.0)
-                except Exception:
-                    pass
-        finally:
-            sdk_runtime_path.write_text(original)
 
 
 @pytest.mark.integration

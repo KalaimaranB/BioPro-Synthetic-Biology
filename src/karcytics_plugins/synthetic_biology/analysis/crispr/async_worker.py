@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QThread, pyqtSignal  # noqa: TID251
+from PySide6.QtCore import QThread, Signal  # noqa: TID251
 
 from ..models.domain import gRNACandidate
 from .grna_designer import CRISPRDesignEngine
@@ -13,8 +13,8 @@ class CRISPRWorker(QThread):
     discovery and CFD scoring.
     """
 
-    scan_finished = pyqtSignal(list)  # Emits List[gRNACandidate]
-    error_occurred = pyqtSignal(str)
+    scan_finished = Signal(list)  # Emits List[gRNACandidate]
+    error_occurred = Signal(str)
 
     def __init__(
         self,

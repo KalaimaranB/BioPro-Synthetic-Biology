@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
+from PySide6.QtCore import QObject, Signal, Slot
 
 from ...analysis.assembly.async_worker import AssemblyWorker
 from ...analysis.assembly.vector_builder import VectorAssemblyEngine
@@ -16,9 +16,9 @@ class PlasmidAssemblyController(QObject):
     and primer design.
     """
 
-    assembly_ready = pyqtSignal(PlasmidVector)
-    primers_ready = pyqtSignal(Primer, Primer)
-    error_raised = pyqtSignal(str)
+    assembly_ready = Signal(PlasmidVector)
+    primers_ready = Signal(Primer, Primer)
+    error_raised = Signal(str)
 
     def __init__(self, state: SynBioState, parent=None):
         super().__init__(parent)
@@ -50,7 +50,7 @@ class PlasmidAssemblyController(QObject):
         self.primers_ready.emit(fwd, rev)
         return [fwd, rev]
 
-    @pyqtSlot(str, list)
+    @Slot(str, list)
     def handle_assemble_request(self, vector_name: str, parts: list[BiologicalPart]) -> None:
         """Launches background vector assembly worker."""
         self._active_worker = AssemblyWorker(
@@ -62,7 +62,7 @@ class PlasmidAssemblyController(QObject):
         self._active_worker.error_occurred.connect(self.error_raised.emit)
         self._active_worker.start()
 
-    @pyqtSlot(str, str)
+    @Slot(str, str)
     def handle_file_parse_request(self, file_content: str, file_format: str) -> None:
         """Launches background Biopython sequence parsing worker."""
         self._active_worker = AssemblyWorker(
@@ -74,7 +74,7 @@ class PlasmidAssemblyController(QObject):
         self._active_worker.error_occurred.connect(self.error_raised.emit)
         self._active_worker.start()
 
-    @pyqtSlot(str, float, str, str)
+    @Slot(str, float, str, str)
     def handle_primer_design_request(
         self,
         target_seq: str,

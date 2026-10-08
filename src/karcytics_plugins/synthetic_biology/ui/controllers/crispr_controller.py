@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
+from PySide6.QtCore import QObject, Signal, Slot
 
 from ...analysis.crispr.async_worker import CRISPRWorker
 from ...analysis.models.domain import gRNACandidate
@@ -14,15 +14,15 @@ class CRISPRDesignController(QObject):
     calculations.
     """
 
-    grna_results_ready = pyqtSignal(list)  # Emits List[gRNACandidate]
-    error_raised = pyqtSignal(str)
+    grna_results_ready = Signal(list)  # Emits List[gRNACandidate]
+    error_raised = Signal(str)
 
     def __init__(self, state: SynBioState, parent=None):
         super().__init__(parent)
         self.state = state
         self._active_worker: CRISPRWorker | None = None
 
-    @pyqtSlot(str, str, int)
+    @Slot(str, str, int)
     def handle_scan_request(
         self,
         target_sequence: str,

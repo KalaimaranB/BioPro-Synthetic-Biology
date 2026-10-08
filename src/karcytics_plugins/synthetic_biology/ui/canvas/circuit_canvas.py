@@ -2,9 +2,9 @@
 
 import hashlib
 
-from PyQt6.QtCore import QPointF, Qt
-from PyQt6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen, QPolygonF
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QPointF, Qt
+from PySide6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen, QPolygonF
+from PySide6.QtWidgets import (
     QGraphicsPathItem,
     QGraphicsPolygonItem,
     QGraphicsScene,

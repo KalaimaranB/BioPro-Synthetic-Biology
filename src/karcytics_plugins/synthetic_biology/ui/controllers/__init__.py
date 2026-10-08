@@ -1,4 +1,4 @@
-"""PyQt6 Controllers linking Views with domain engines and SynBioState."""
+"""PySide6 Controllers linking Views with domain engines and SynBioState."""
 
 from .circuit_controller import CircuitSimulationController
 from .crispr_controller import CRISPRDesignController

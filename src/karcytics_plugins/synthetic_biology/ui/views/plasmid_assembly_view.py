@@ -1,4 +1,4 @@
-"""Primary PyQt6 Plasmid & Vector Assembly View (Benchling-grade visual design
+"""Primary PySide6 Plasmid & Vector Assembly View (Benchling-grade visual design
 view).
 
 Includes a drag-and-drop Part Palette, Assembly Canvas / Vector drop-zone,
@@ -12,9 +12,9 @@ from __future__ import annotations
 import json
 
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
-from PyQt6.QtCore import QMimeData, Qt, pyqtSignal, pyqtSlot
-from PyQt6.QtGui import QDrag
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QMimeData, Qt, Signal, Slot
+from PySide6.QtGui import QDrag
+from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
     QDoubleSpinBox,
@@ -77,7 +77,7 @@ def part_dict_serialize(part_data: dict) -> dict:
 class AssemblyCanvasWidget(QListWidget):
     """Drop zone for assembly order placement."""
 
-    parts_changed = pyqtSignal()
+    parts_changed = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -167,13 +167,13 @@ class PrimerDesignDialog(QDialog):
 
 
 class PlasmidAssemblyView(QWidget):
-    """PyQt6 View for plasmid assembly, Drag-and-Drop part ordering, and Sequence
+    """PySide6 View for plasmid assembly, Drag-and-Drop part ordering, and Sequence
     viewer.
     """
 
-    assembly_requested = pyqtSignal(str, list)
-    file_parse_requested = pyqtSignal(str, str)
-    primer_requested = pyqtSignal(str, float, str, str)
+    assembly_requested = Signal(str, list)
+    file_parse_requested = Signal(str, str)
+    primer_requested = Signal(str, float, str, str)
 
     def __init__(self, state: SynBioState, controller: PlasmidAssemblyController, parent=None):
         super().__init__(parent)
@@ -429,7 +429,7 @@ class PlasmidAssemblyView(QWidget):
         )
         dlg.exec()
 
-    @pyqtSlot(PlasmidVector)
+    @Slot(PlasmidVector)
     def render_plasmid(self, vector: PlasmidVector):
         """Renders assembled or imported plasmid into feature map and sequence
         display.
@@ -456,6 +456,6 @@ class PlasmidAssemblyView(QWidget):
         )
         self.seq_display.setText(header + formatted_seq)
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _show_error(self, message: str):
         QMessageBox.critical(self, "Assembly Error", message)

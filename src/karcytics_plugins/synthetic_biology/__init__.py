@@ -11,7 +11,7 @@ __plugin_id__ = "synthetic_biology"
 
 
 from karcytics_sdk.plugin import PluginBase
-from PyQt6.QtWidgets import QWidget
+from PySide6.QtWidgets import QWidget
 
 
 def initialize(context=None):
@@ -59,7 +59,7 @@ class SyntheticBiologyPlugin(PluginBase):
 
     @classmethod
     def get_panel_class(cls):
-        """Return the main PyQt6 SynBioPanel class to be mounted into host UI."""
+        """Return the main PySide6 SynBioPanel class to be mounted into host UI."""
         from .ui.main_panel import SynBioPanel
 
         return SynBioPanel

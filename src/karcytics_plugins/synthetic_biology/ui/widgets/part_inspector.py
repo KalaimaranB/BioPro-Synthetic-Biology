@@ -1,9 +1,9 @@
 import os
 
 from karcytics_sdk.plugin.theme_fallback import Colors
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QFormLayout,
@@ -201,8 +201,8 @@ class ModelDetailsDialog(QDialog):
 class PartInspector(QWidget):
     """Details pane for viewing and editing a biological part."""
 
-    part_saved = pyqtSignal(BiologicalPart)
-    part_deleted = pyqtSignal(str)
+    part_saved = Signal(BiologicalPart)
+    part_deleted = Signal(str)
 
     def __init__(self, parent=None, catalogue_service=None):
         super().__init__(parent)

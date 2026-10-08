@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 import time
 from typing import Any
 
@@ -10,8 +9,9 @@ import matplotlib
 import msgpack  # type: ignore[import-untyped]
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot  # noqa: TID251
-from PyQt6.QtWidgets import (
+from karcytics_sdk.plugin import get_logger
+from PySide6.QtCore import Qt, QThread, Signal, Slot  # noqa: TID251
+from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -34,6 +34,10 @@ except ImportError:
 from ...analysis.parts.components import CDS, Promoter, sgRNA
 from ...analysis.prediction.graphing_utils import apply_standard_axes  # noqa: F401
 
+# stdout carries the Hub wire protocol in an isolated plugin, so timing
+# output goes through the logger, never print().
+logger = get_logger(__name__)
+
 MAX_DOWNSAMPLE_POINTS = 1000
 
 
@@ -43,8 +47,8 @@ class SimulateWorker(QThread):
     Serializes array payloads using msgpack binary format.
     """
 
-    simulation_finished = pyqtSignal(object)  # Emits bytes (msgpack) or dict
-    simulation_error = pyqtSignal(str)
+    simulation_finished = Signal(object)  # Emits bytes (msgpack) or dict
+    simulation_error = Signal(str)
 
     def __init__(
         self,
@@ -103,11 +107,10 @@ class SimulateWorker(QThread):
             t_ser_end = time.perf_counter()
             ser_ms = (t_ser_end - t_ser_start) * 1000
 
-            print(  # noqa: T201
+            logger.debug(
                 f"[PROFILING] Worker Sim Time: {sim_ms:.2f} ms | "
                 f"Msgpack Serialization: {ser_ms:.2f} ms | "
-                f"Payload Size: {len(packed_payload)} bytes",
-                file=sys.stderr,
+                f"Payload Size: {len(packed_payload)} bytes"
             )
             self.simulation_finished.emit(packed_payload)
         except Exception as e:
@@ -257,13 +260,8 @@ class SimulateView(QWidget):
 
         # Apply dark theme
         self._apply_theme()
-
-        from karcytics_sdk.plugin.theme_fallback import theme_manager
-
-        theme_manager.theme_changed.connect(self.refresh_styles)
-
         t1 = time.perf_counter()
-        print(f"[PROFILING] SimulateView UI Setup Time: {(t1 - t0) * 1000:.2f} ms", file=sys.stderr)  # noqa: T201
+        logger.debug(f"[PROFILING] SimulateView UI Setup Time: {(t1 - t0) * 1000:.2f} ms")
 
     def refresh_styles(self) -> None:
         """Alias for _apply_theme for theme update signals."""
@@ -285,14 +283,6 @@ class SimulateView(QWidget):
             font_sz = 14
 
         self.plot_widget.setBackground(dark_bg)
-        axis_pen = pg.mkPen(color=fg_sec, width=1)
-        for axis_name in ("left", "bottom", "top", "right"):
-            axis = self.plot_widget.getPlotItem().getAxis(axis_name)
-            axis.setPen(axis_pen)
-            axis.setTextPen(axis_pen)
-        self.plot_widget.setLabel("bottom", "Time (seconds)", color=fg_sec)
-        self.plot_widget.setLabel("left", "Concentration", color=fg_sec)
-
         self.info_label.setStyleSheet(f"color: {fg_sec}; font-size: {font_sz}px;")
         self.species_header.setStyleSheet(f"color: {fg_pri}; font-weight: bold; font-size: 13px;")
 
@@ -383,10 +373,9 @@ class SimulateView(QWidget):
                 "No species selected.<br/>Check items in the right-hand panel to view traces.</span>"
             )
             t_render_end = time.perf_counter()
-            print(  # noqa: T201
+            logger.debug(
                 f"[PROFILING] PyQtGraph Render Step (Empty Selection): "
-                f"{(t_render_end - t_render_start) * 1000:.2f} ms",
-                file=sys.stderr,
+                f"{(t_render_end - t_render_start) * 1000:.2f} ms"
             )
             return
 
@@ -438,10 +427,9 @@ class SimulateView(QWidget):
                 "No valid species data found to plot.</span>"
             )
             t_render_end = time.perf_counter()
-            print(  # noqa: T201
+            logger.debug(
                 f"[PROFILING] PyQtGraph Render Step (No Valid Traces): "
-                f"{(t_render_end - t_render_start) * 1000:.2f} ms",
-                file=sys.stderr,
+                f"{(t_render_end - t_render_start) * 1000:.2f} ms"
             )
             return
 
@@ -475,13 +463,12 @@ class SimulateView(QWidget):
         self.plot_widget.setLabel("left", y_label, color="#8b949e")
 
         t_render_end = time.perf_counter()
-        print(  # noqa: T201
+        logger.debug(
             f"[PROFILING] PyQtGraph Render Step: "
-            f"{(t_render_end - t_render_start) * 1000:.2f} ms ({len(valid_traces)} traces plotted)",
-            file=sys.stderr,
+            f"{(t_render_end - t_render_start) * 1000:.2f} ms ({len(valid_traces)} traces plotted)"
         )
 
-    @pyqtSlot(object)
+    @Slot(object)
     def _on_simulation_finished(self, payload: object) -> None:  # noqa: PLR0915
         """Callback slot handling calculation result from QThread worker.
         Executes strictly on the Main Qt GUI thread.
@@ -517,10 +504,9 @@ class SimulateView(QWidget):
             result_data = dict_res
             t_deser_end = time.perf_counter()
             deser_ms = (t_deser_end - t_deser_start) * 1000
-            print(  # noqa: T201
+            logger.debug(
                 f"[PROFILING] IPC Msgpack Deserialization: {deser_ms:.2f} ms | "
-                f"Worker Simulation: {sim_ms:.2f} ms",
-                file=sys.stderr,
+                f"Worker Simulation: {sim_ms:.2f} ms"
             )
         else:
             result_data = payload.get("result") if isinstance(payload, dict) else payload
@@ -560,7 +546,7 @@ class SimulateView(QWidget):
         # Render selected traces on pyqtgraph plot widget
         self.update_plot()
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _on_simulation_error(self, err_msg: str) -> None:
         """Callback slot handling calculation errors from background QThread worker.
         Executes strictly on the Main Qt GUI thread.
@@ -666,10 +652,9 @@ class SimulateView(QWidget):
         )
 
         t_prep_end = time.perf_counter()
-        print(  # noqa: T201
+        logger.debug(
             f"[PROFILING] Simulate Tab Click -> Antimony Model Generation: "
-            f"{(t_prep_end - t_click_start) * 1000:.2f} ms",
-            file=sys.stderr,
+            f"{(t_prep_end - t_click_start) * 1000:.2f} ms"
         )
 
         # Launch background calculation worker

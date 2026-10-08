@@ -2,7 +2,7 @@
 
 Run by `karcytics_sdk.plugin.PluginUIDaemon` from this plugin's own `.venv`
 interpreter (never imported into the Hub's process). Owns its own
-`QApplication` and its own copies of numpy/scipy/PyQt6, so switching to or
+`QApplication` and its own copies of numpy/scipy/PySide6, so switching to or
 from this module never touches the Hub's `sys.modules`.
 
 Everything protocol-related (frame transport, the ready handshake, request
@@ -18,15 +18,14 @@ from __future__ import annotations
 
 import faulthandler
 import sys
-import traceback
-from pathlib import Path
-from typing import Any
 
 faulthandler.enable(file=sys.stderr, all_threads=True)
 
+import traceback  # noqa: E402
+
 
 def global_exception_handler(exctype, value, tb):
-    sys.stderr.write("CRITICAL ERROR CAUGHT BY QT HOOK:\n")
+    print("CRITICAL ERROR CAUGHT BY QT HOOK:", file=sys.stderr)  # noqa: T201
     traceback.print_exception(exctype, value, tb)
     sys.exit(1)
 
@@ -35,6 +34,10 @@ sys.excepthook = global_exception_handler
 
 
 _GLOBAL_PANEL_ANCHOR = None
+
+
+from pathlib import Path  # noqa: E402
+from typing import Any  # noqa: E402
 
 # Run directly as `python ui_daemon.py` by PluginUIDaemon rather than
 # imported as part of the `karcytics_plugins` package — nothing else puts
@@ -135,7 +138,7 @@ def main() -> int | None:
     def _build_panel() -> Any:
         global _ACTIVE_PLUGIN, _ACTIVE_PANEL, _GLOBAL_PANEL_ANCHOR
         from karcytics_sdk.plugin import get_logger
-        from PyQt6.QtGui import QFont
+        from PySide6.QtGui import QFont
 
         # Pre-register standard font family substitutions using valid CSS generic / cross-platform names
         QFont.insertSubstitutions("sans-serif", ["Segoe UI", "Helvetica Neue", "Arial"])
@@ -162,23 +165,10 @@ def main() -> int | None:
 
         return panel
 
-    def _on_panel_ready(window: Any, panel: Any) -> None:
-        from karcytics_sdk.plugin.components import apply_global_sdk_styles
-        from karcytics_sdk.plugin.theme_fallback import theme_manager
-
-        def _on_theme_update():
-            apply_global_sdk_styles()
-            if hasattr(panel, "_apply_theme_styles"):
-                panel._apply_theme_styles()
-
-        theme_manager.theme_changed.connect(_on_theme_update)
-        _on_theme_update()
-
     run_ui_daemon(
         _build_panel,
         window_title="Synthetic Biology",
         window_size=(1400, 900),
-        on_panel_ready=_on_panel_ready,
         plugin_id="synthetic_biology",
     )
     return 0
