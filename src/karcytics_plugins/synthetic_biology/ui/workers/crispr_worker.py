@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QThread, Signal
+from karcytics_sdk.plugin import OneShotWorkerThread
+from PySide6.QtCore import Signal
 
 from ...analysis.crispr.grna_designer import CRISPRDesignEngine
 from ...analysis.models.domain import gRNACandidate
 
 
-class CRISPRWorker(QThread):
+class CRISPRWorker(OneShotWorkerThread):
     """Granular QThread worker dedicated strictly to CRISPR gRNA candidate
     discovery and CFD scoring.
     """
@@ -23,19 +24,19 @@ class CRISPRWorker(QThread):
         spacer_length: int = 20,
         parent=None,
     ):
-        super().__init__(parent)
+        # Production callers always pass a parent (it anchors the thread's
+        # lifetime); None is only for tests that call run() synchronously.
+        super().__init__(parent)  # type: ignore[arg-type]
+        self.finished_err.connect(self.error_occurred)
         self.target_sequence = target_sequence
         self.pam_type = pam_type
         self.spacer_length = spacer_length
 
-    def run(self) -> None:
+    def _execute(self) -> None:
         """Executes non-blocking PAM scan and CFD off-target calculation."""
-        try:
-            candidates: list[gRNACandidate] = CRISPRDesignEngine.find_grna_candidates(
-                target_sequence=self.target_sequence,
-                pam_type=self.pam_type,
-                spacer_length=self.spacer_length,
-            )
-            self.scan_finished.emit(candidates)
-        except Exception as e:
-            self.error_occurred.emit(str(e))
+        candidates: list[gRNACandidate] = CRISPRDesignEngine.find_grna_candidates(
+            target_sequence=self.target_sequence,
+            pam_type=self.pam_type,
+            spacer_length=self.spacer_length,
+        )
+        self.scan_finished.emit(candidates)

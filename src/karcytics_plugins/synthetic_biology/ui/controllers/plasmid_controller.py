@@ -57,6 +57,7 @@ class PlasmidAssemblyController(QObject):
             task_type="assemble",
             vector_name=vector_name,
             parts=parts,
+            parent=self,
         )
         self._active_worker.assembly_finished.connect(self._on_assembly_finished)
         self._active_worker.error_occurred.connect(self.error_raised.emit)
@@ -69,6 +70,7 @@ class PlasmidAssemblyController(QObject):
             task_type="parse",
             file_content=file_content,
             file_format=file_format,
+            parent=self,
         )
         self._active_worker.assembly_finished.connect(self._on_assembly_finished)
         self._active_worker.error_occurred.connect(self.error_raised.emit)
@@ -89,6 +91,7 @@ class PlasmidAssemblyController(QObject):
             target_tm=target_tm,
             fwd_overhang=fwd_overhang,
             rev_overhang=rev_overhang,
+            parent=self,
         )
         self._active_worker.primer_finished.connect(self._on_primer_finished)
         self._active_worker.error_occurred.connect(self.error_raised.emit)
@@ -109,8 +112,6 @@ class PlasmidAssemblyController(QObject):
 
     def teardown(self) -> None:
         """Stops active background worker thread if running."""
-        if self._active_worker is not None and self._active_worker.isRunning():
-            self._active_worker.requestInterruption()
-            self._active_worker.quit()
-            self._active_worker.wait(1000)
+        if self._active_worker is not None:
+            self._active_worker.stop_and_wait(1000)
             self._active_worker = None

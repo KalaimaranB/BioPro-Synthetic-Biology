@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, QThread, Signal
+from karcytics_sdk.plugin import OneShotWorkerThread
+from PySide6.QtCore import QObject, Signal
 
 from ...analysis.empirical.fcs_ingestion import (
     FCSDataIngestionService,
@@ -24,7 +25,7 @@ from ...analysis.models.domain import (
 from ...analysis.state import SynBioState
 
 
-class EmpiricalWorker(QThread):
+class EmpiricalWorker(OneShotWorkerThread):
     """Background worker for NGS alignment and ML parameter fitting."""
 
     fcs_done = Signal(FCSEventData)
@@ -44,7 +45,10 @@ class EmpiricalWorker(QThread):
         fcs_data: FCSEventData | None = None,
         parent=None,
     ):
-        super().__init__(parent)
+        # Production callers always pass a parent (it anchors the thread's
+        # lifetime); None is only for tests that call run() synchronously.
+        super().__init__(parent)  # type: ignore[arg-type]
+        self.finished_err.connect(self.error_occurred)
         self.task_type = task_type
         self.fcs_service = fcs_service or FCSDataIngestionService()
         self.fcs_path = fcs_path
@@ -54,27 +58,24 @@ class EmpiricalWorker(QThread):
         self.edges = edges or []
         self.fcs_data = fcs_data
 
-    def run(self):
-        try:
-            if self.task_type == "fcs":
-                res = self.fcs_service.ingest_fcs_file(self.fcs_path)
-                self.fcs_done.emit(res)
-            elif self.task_type == "ngs":
-                ref = self.plasmid or PlasmidVector(
-                    id="pDEFAULT", name="Reference Construct", sequence="ATGC" * 50
-                )
-                res = NGSAlignmentService.align_ngs_reads(self.ngs_path, ref)
-                self.ngs_done.emit(res)
-            elif self.task_type == "opt":
-                fcs = self.fcs_data or self.fcs_service.ingest_fcs_file("dummy.fcs")
-                res = CircuitMLOptimizationEngine.fit_kinetic_parameters(
-                    components=self.components,
-                    edges=self.edges,
-                    fcs_data=fcs,
-                )
-                self.opt_done.emit(res)
-        except Exception as ex:
-            self.error_occurred.emit(str(ex))
+    def _execute(self) -> None:
+        if self.task_type == "fcs":
+            fcs_result = self.fcs_service.ingest_fcs_file(self.fcs_path)
+            self.fcs_done.emit(fcs_result)
+        elif self.task_type == "ngs":
+            ref = self.plasmid or PlasmidVector(
+                id="pDEFAULT", name="Reference Construct", sequence="ATGC" * 50
+            )
+            ngs_result = NGSAlignmentService.align_ngs_reads(self.ngs_path, ref)
+            self.ngs_done.emit(ngs_result)
+        elif self.task_type == "opt":
+            fcs = self.fcs_data or self.fcs_service.ingest_fcs_file("dummy.fcs")
+            opt_result = CircuitMLOptimizationEngine.fit_kinetic_parameters(
+                components=self.components,
+                edges=self.edges,
+                fcs_data=fcs,
+            )
+            self.opt_done.emit(opt_result)
 
 
 class EmpiricalAnalyticsController(QObject):
@@ -162,9 +163,6 @@ class EmpiricalAnalyticsController(QObject):
             except Exception:
                 pass
 
-            if worker.isRunning():
-                worker.requestInterruption()
-                worker.quit()
-                worker.wait(1000)
+            worker.stop_and_wait(1000)
             worker.deleteLater()
         self._active_workers.clear()

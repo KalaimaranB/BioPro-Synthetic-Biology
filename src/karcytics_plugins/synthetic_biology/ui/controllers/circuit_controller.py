@@ -41,6 +41,7 @@ class CircuitSimulationController(QObject):
             components=components,
             edges=edges,
             params=params,
+            parent=self,
         )
         self._active_worker.simulation_finished.connect(self._on_simulation_finished)
         self._active_worker.error_occurred.connect(self.error_raised.emit)
@@ -70,8 +71,6 @@ class CircuitSimulationController(QObject):
 
     def teardown(self) -> None:
         """Stops active background worker thread if running."""
-        if self._active_worker is not None and self._active_worker.isRunning():
-            self._active_worker.requestInterruption()
-            self._active_worker.quit()
-            self._active_worker.wait(1000)
+        if self._active_worker is not None:
+            self._active_worker.stop_and_wait(1000)
             self._active_worker = None

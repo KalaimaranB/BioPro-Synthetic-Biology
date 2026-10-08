@@ -10,8 +10,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from karcytics_sdk.plugin import OneShotWorkerThread
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
-from PySide6.QtCore import Qt, QThread, Signal, Slot
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -48,13 +49,13 @@ from ...models.inventory_models import (
 from ...utils.robot_exporter import RobotExportError, WorklistGenerator
 
 
-class ProtocolWorker(QThread):
+class ProtocolWorker(OneShotWorkerThread):
     """Background QThread worker executing ProtocolEngine computational routines
     off the main GUI thread.
     """
 
-    finished = Signal(object)  # Emits BenchProtocol instance on success
-    error = Signal(str)  # Emits error description string on failure
+    # Results arrive on the inherited `finished_ok` (a BenchProtocol) and
+    # `finished_err` (an error string) signals.
 
     def __init__(  # noqa: PLR0913
         self,
@@ -69,7 +70,9 @@ class ProtocolWorker(QThread):
         reaction_volume_ul: float = 20.0,
         parent: QWidget | None = None,
     ) -> None:
-        super().__init__(parent)
+        # Production callers always pass a parent (it anchors the thread's
+        # lifetime); None is only for tests that call run() synchronously.
+        super().__init__(parent)  # type: ignore[arg-type]
         self.num_reactions = num_reactions
         self.vector_bp = vector_bp
         self.vector_conc_ng_ul = vector_conc_ng_ul
@@ -81,23 +84,20 @@ class ProtocolWorker(QThread):
         self.reaction_volume_ul = reaction_volume_ul
         self.engine = ProtocolEngine()
 
-    def run(self) -> None:
+    def _execute(self) -> Any:
         """Executes ProtocolEngine routines asynchronously."""
-        try:
-            protocol = self.engine.generate_bench_protocol(
-                num_reactions=self.num_reactions,
-                vector_bp=self.vector_bp,
-                vector_conc_ng_ul=self.vector_conc_ng_ul,
-                inserts=self.inserts,
-                assembly_type=self.assembly_type,
-                overage_pct=self.overage_pct,
-                vector_mass_ng=self.vector_mass_ng,
-                default_molar_ratio=self.default_molar_ratio,
-                reaction_volume_ul=self.reaction_volume_ul,
-            )
-            self.finished.emit(protocol)
-        except Exception as exc:
-            self.error.emit(str(exc))
+        protocol = self.engine.generate_bench_protocol(
+            num_reactions=self.num_reactions,
+            vector_bp=self.vector_bp,
+            vector_conc_ng_ul=self.vector_conc_ng_ul,
+            inserts=self.inserts,
+            assembly_type=self.assembly_type,
+            overage_pct=self.overage_pct,
+            vector_mass_ng=self.vector_mass_ng,
+            default_molar_ratio=self.default_molar_ratio,
+            reaction_volume_ul=self.reaction_volume_ul,
+        )
+        return protocol
 
 
 class LaboratoryExecutionView(QWidget):
@@ -477,8 +477,8 @@ class LaboratoryExecutionView(QWidget):
             reaction_volume_ul=self.spin_total_vol.value(),
             parent=self,
         )
-        self.worker.finished.connect(self._on_protocol_finished)
-        self.worker.error.connect(self._on_protocol_error)
+        self.worker.finished_ok.connect(self._on_protocol_finished)
+        self.worker.finished_err.connect(self._on_protocol_error)
         self.worker.start()
 
     @Slot(object)
@@ -773,8 +773,6 @@ class LaboratoryExecutionView(QWidget):
 
     def teardown(self) -> None:
         """Stops active background ProtocolWorker thread if running."""
-        if self.worker is not None and self.worker.isRunning():
-            self.worker.requestInterruption()
-            self.worker.quit()
-            self.worker.wait(1000)
+        if self.worker is not None:
+            self.worker.stop_and_wait(1000)
             self.worker = None

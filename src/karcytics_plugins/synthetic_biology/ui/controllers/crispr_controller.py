@@ -34,6 +34,7 @@ class CRISPRDesignController(QObject):
             target_sequence=target_sequence,
             pam_type=pam_type,
             spacer_length=spacer_length,
+            parent=self,
         )
         self._active_worker.scan_finished.connect(self._on_scan_finished)
         self._active_worker.error_occurred.connect(self.error_raised.emit)
@@ -46,8 +47,6 @@ class CRISPRDesignController(QObject):
 
     def teardown(self) -> None:
         """Stops active background worker thread if running."""
-        if self._active_worker is not None and self._active_worker.isRunning():
-            self._active_worker.requestInterruption()
-            self._active_worker.quit()
-            self._active_worker.wait(1000)
+        if self._active_worker is not None:
+            self._active_worker.stop_and_wait(1000)
             self._active_worker = None

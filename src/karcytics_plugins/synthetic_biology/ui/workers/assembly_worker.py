@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QThread, Signal
+from karcytics_sdk.plugin import OneShotWorkerThread
+from PySide6.QtCore import Signal
 
 from ...analysis.assembly.vector_builder import VectorAssemblyEngine
 from ...analysis.models.domain import PlasmidVector, Primer
 from ...analysis.parts.base import BiologicalPart
 
 
-class AssemblyWorker(QThread):
+class AssemblyWorker(OneShotWorkerThread):
     """Granular QThread worker dedicated strictly to Vector Assembly
     and Primer Design tasks.
     """
@@ -31,7 +32,10 @@ class AssemblyWorker(QThread):
         rev_overhang: str = "",
         parent=None,
     ):
-        super().__init__(parent)
+        # Production callers always pass a parent (it anchors the thread's
+        # lifetime); None is only for tests that call run() synchronously.
+        super().__init__(parent)  # type: ignore[arg-type]
+        self.finished_err.connect(self.error_occurred)
         self.task_type = task_type
         self.vector_name = vector_name
         self.parts = parts or []
@@ -42,30 +46,27 @@ class AssemblyWorker(QThread):
         self.fwd_overhang = fwd_overhang
         self.rev_overhang = rev_overhang
 
-    def run(self) -> None:
+    def _execute(self) -> None:
         """Executes non-blocking background computation."""
-        try:
-            if self.task_type == "assemble":
-                vector = VectorAssemblyEngine.assemble_vector(
-                    vector_name=self.vector_name,
-                    parts=self.parts,
-                )
-                self.assembly_finished.emit(vector)
-            elif self.task_type == "parse":
-                vector = VectorAssemblyEngine.parse_sequence_file(
-                    file_content=self.file_content,
-                    file_format=self.file_format,
-                )
-                self.assembly_finished.emit(vector)
-            elif self.task_type == "primer":
-                fwd, rev = VectorAssemblyEngine.design_primers(
-                    target_sequence=self.target_seq,
-                    target_tm=self.target_tm,
-                    fwd_overhang=self.fwd_overhang,
-                    rev_overhang=self.rev_overhang,
-                )
-                self.primer_finished.emit(fwd, rev)
-            else:
-                self.error_occurred.emit(f"Unknown task type: {self.task_type}")
-        except Exception as e:
-            self.error_occurred.emit(str(e))
+        if self.task_type == "assemble":
+            vector = VectorAssemblyEngine.assemble_vector(
+                vector_name=self.vector_name,
+                parts=self.parts,
+            )
+            self.assembly_finished.emit(vector)
+        elif self.task_type == "parse":
+            vector = VectorAssemblyEngine.parse_sequence_file(
+                file_content=self.file_content,
+                file_format=self.file_format,
+            )
+            self.assembly_finished.emit(vector)
+        elif self.task_type == "primer":
+            fwd, rev = VectorAssemblyEngine.design_primers(
+                target_sequence=self.target_seq,
+                target_tm=self.target_tm,
+                fwd_overhang=self.fwd_overhang,
+                rev_overhang=self.rev_overhang,
+            )
+            self.primer_finished.emit(fwd, rev)
+        else:
+            raise ValueError(f"Unknown task type: {self.task_type}")

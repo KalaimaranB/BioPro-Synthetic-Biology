@@ -50,8 +50,8 @@ class TestLaboratoryExecutionWorker(unittest.TestCase):
         def on_error(err_str):
             received_error.append(err_str)
 
-        worker.finished.connect(on_finished)
-        worker.error.connect(on_error)
+        worker.finished_ok.connect(on_finished)
+        worker.finished_err.connect(on_error)
 
         # Execute worker run directly in test
         worker.run()
@@ -84,8 +84,8 @@ class TestLaboratoryExecutionWorker(unittest.TestCase):
         received_protocol = []
         received_error = []
 
-        worker.finished.connect(lambda p: received_protocol.append(p))
-        worker.error.connect(lambda e: received_error.append(e))
+        worker.finished_ok.connect(lambda p: received_protocol.append(p))
+        worker.finished_err.connect(lambda e: received_error.append(e))
 
         worker.run()
 

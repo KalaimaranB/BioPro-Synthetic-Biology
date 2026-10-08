@@ -9,8 +9,8 @@ import matplotlib
 import msgpack  # type: ignore[import-untyped]
 import numpy as np
 import pyqtgraph as pg
-from karcytics_sdk.plugin import get_logger
-from PySide6.QtCore import Qt, QThread, Signal, Slot  # noqa: TID251
+from karcytics_sdk.plugin import OneShotWorkerThread, get_logger
+from PySide6.QtCore import Qt, Signal, Slot  # noqa: TID251
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -41,7 +41,7 @@ logger = get_logger(__name__)
 MAX_DOWNSAMPLE_POINTS = 1000
 
 
-class SimulateWorker(QThread):
+class SimulateWorker(OneShotWorkerThread):
     """Background worker QThread executing Tellurium ODE / Gillespie numerical
     simulation routines completely off the main GUI thread.
     Serializes array payloads using msgpack binary format.
@@ -58,63 +58,63 @@ class SimulateWorker(QThread):
         title: str,
         parent=None,
     ):
-        super().__init__(parent)
+        # Production callers always pass a parent (it anchors the thread's
+        # lifetime); None is only for tests that call run() synchronously.
+        super().__init__(parent)  # type: ignore[arg-type]
+        self.finished_err.connect(self.simulation_error)
         self.model_str = model_str
         self.method = method
         self.max_time = max_time
         self.title = title
 
-    def run(self) -> None:
+    def _execute(self) -> None:
         """Executes non-blocking numerical integration off the main thread."""
-        try:
-            t_sim_start = time.perf_counter()
+        t_sim_start = time.perf_counter()
 
-            if te is None:
-                raise RuntimeError("Tellurium is not installed.")
+        if te is None:
+            raise RuntimeError("Tellurium is not installed.")
 
-            r = te.loada(self.model_str)
-            if self.method == "gillespie":
-                r.setIntegrator("gillespie")
-                r.integrator.seed = int(np.random.randint(1000000))
-                result = r.simulate(0, self.max_time, self.max_time * 5)
-            else:
-                result = r.simulate(0, self.max_time, self.max_time * 2)
+        r = te.loada(self.model_str)
+        if self.method == "gillespie":
+            r.setIntegrator("gillespie")
+            r.integrator.seed = int(np.random.randint(1000000))
+            result = r.simulate(0, self.max_time, self.max_time * 5)
+        else:
+            result = r.simulate(0, self.max_time, self.max_time * 2)
 
-            t_sim_end = time.perf_counter()
-            sim_ms = (t_sim_end - t_sim_start) * 1000
+        t_sim_end = time.perf_counter()
+        sim_ms = (t_sim_end - t_sim_start) * 1000
 
-            # Data Decimation (Downsampling): reduce data points if time steps exceed MAX_DOWNSAMPLE_POINTS
-            if result is not None and len(result) > MAX_DOWNSAMPLE_POINTS:
-                step = len(result) // MAX_DOWNSAMPLE_POINTS
-                result = result[::step]
+        # Data Decimation (Downsampling): reduce data points if time steps exceed MAX_DOWNSAMPLE_POINTS
+        if result is not None and len(result) > MAX_DOWNSAMPLE_POINTS:
+            step = len(result) // MAX_DOWNSAMPLE_POINTS
+            result = result[::step]
 
-            # Fast Binary Serialization with Msgpack
-            t_ser_start = time.perf_counter()
-            colnames = list(result.colnames) if hasattr(result, "colnames") else []
-            arr = np.asarray(result, dtype=np.float64)
+        # Fast Binary Serialization with Msgpack
+        t_ser_start = time.perf_counter()
+        colnames = list(result.colnames) if hasattr(result, "colnames") else []
+        arr = np.asarray(result, dtype=np.float64)
 
-            packed_payload = msgpack.packb(
-                {
-                    "colnames": colnames,
-                    "arr_bytes": arr.tobytes(),
-                    "shape": list(arr.shape),
-                    "dtype": str(arr.dtype),
-                    "method": self.method,
-                    "title": self.title,
-                    "sim_duration_ms": sim_ms,
-                }
-            )
-            t_ser_end = time.perf_counter()
-            ser_ms = (t_ser_end - t_ser_start) * 1000
+        packed_payload = msgpack.packb(
+            {
+                "colnames": colnames,
+                "arr_bytes": arr.tobytes(),
+                "shape": list(arr.shape),
+                "dtype": str(arr.dtype),
+                "method": self.method,
+                "title": self.title,
+                "sim_duration_ms": sim_ms,
+            }
+        )
+        t_ser_end = time.perf_counter()
+        ser_ms = (t_ser_end - t_ser_start) * 1000
 
-            logger.debug(
-                f"[PROFILING] Worker Sim Time: {sim_ms:.2f} ms | "
-                f"Msgpack Serialization: {ser_ms:.2f} ms | "
-                f"Payload Size: {len(packed_payload)} bytes"
-            )
-            self.simulation_finished.emit(packed_payload)
-        except Exception as e:
-            self.simulation_error.emit(str(e))
+        logger.debug(
+            f"[PROFILING] Worker Sim Time: {sim_ms:.2f} ms | "
+            f"Msgpack Serialization: {ser_ms:.2f} ms | "
+            f"Payload Size: {len(packed_payload)} bytes"
+        )
+        self.simulation_finished.emit(packed_payload)
 
 
 class SafeFigureCanvasQTAgg(FigureCanvasQTAgg):
@@ -667,6 +667,7 @@ class SimulateView(QWidget):
             method=method,
             max_time=max_time,
             title=title,
+            parent=self,
         )
         self._active_worker.simulation_finished.connect(self._on_simulation_finished)
         self._active_worker.simulation_error.connect(self._on_simulation_error)
@@ -674,8 +675,6 @@ class SimulateView(QWidget):
 
     def teardown(self) -> None:
         """Stops active background worker thread if running."""
-        if self._active_worker is not None and self._active_worker.isRunning():
-            self._active_worker.requestInterruption()
-            self._active_worker.quit()
-            self._active_worker.wait(1000)
+        if self._active_worker is not None:
+            self._active_worker.stop_and_wait(1000)
             self._active_worker = None
