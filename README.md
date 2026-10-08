@@ -83,4 +83,4 @@ mkdocs serve
 
 ## License
 
-Part of the Karcytics ecosystem. See the main Karcytics repository for license details.
+[PolyForm Noncommercial License 1.0.0](LICENSE). Part of the Karcytics ecosystem.
