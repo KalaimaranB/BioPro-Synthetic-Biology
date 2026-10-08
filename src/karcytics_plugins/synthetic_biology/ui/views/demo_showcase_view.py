@@ -525,7 +525,7 @@ class DemoShowcaseView(QWidget):
                 border: 1px solid {Colors.BORDER};
             }}
             QLabel#CodePreview {{
-                font-family: monospace;
+                font-family: Menlo, Consolas, 'Courier New', monospace;
                 font-size: 11px;
                 background: {Colors.BG_DARKEST};
                 color: {Colors.FG_SECONDARY};

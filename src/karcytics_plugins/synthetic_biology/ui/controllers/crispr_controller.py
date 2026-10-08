@@ -43,3 +43,11 @@ class CRISPRDesignController(QObject):
         """Updates SynBioState and notifies View with results."""
         self.state.set_grna_candidates(candidates)
         self.grna_results_ready.emit(candidates)
+
+    def teardown(self) -> None:
+        """Stops active background worker thread if running."""
+        if self._active_worker is not None and self._active_worker.isRunning():
+            self._active_worker.requestInterruption()
+            self._active_worker.quit()
+            self._active_worker.wait(1000)
+            self._active_worker = None

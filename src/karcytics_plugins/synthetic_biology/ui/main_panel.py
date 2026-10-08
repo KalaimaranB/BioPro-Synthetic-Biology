@@ -422,13 +422,51 @@ class SynBioPanel(PluginBase):
     def cleanup(self) -> None:
         """Resource cleanup on plugin close."""
         self.logger.info("Cleaning up Synthetic Biology workspace...")
-        emp_view = getattr(self, "empirical_analytics_view", None)
-        if emp_view is not None:
-            try:
-                emp_view.teardown()
-            except Exception as ex:
-                self.logger.warning(f"Error during view teardown: {ex}")
-        super().cleanup()
+
+        # 1. Teardown views with background workers
+        for view_attr in (
+            "empirical_analytics_view",
+            "lab_execution_view",
+            "simulate_view",
+            "crispr_view",
+            "plasmid_view",
+            "circuit_view",
+        ):
+            view = getattr(self, view_attr, None)
+            if view is not None and hasattr(view, "teardown"):
+                try:
+                    view.teardown()
+                except Exception as ex:
+                    self.logger.warning(f"Error during {view_attr} teardown: {ex}")
+
+        # 2. Teardown controllers managing QThread instances
+        for ctrl_attr in (
+            "_crispr_controller",
+            "_circuit_controller",
+            "_plasmid_controller",
+            "_empirical_controller",
+        ):
+            ctrl = getattr(self, ctrl_attr, None)
+            if ctrl is not None and hasattr(ctrl, "teardown"):
+                try:
+                    ctrl.teardown()
+                except Exception as ex:
+                    self.logger.warning(f"Error during {ctrl_attr} teardown: {ex}")
+
+        try:
+            super().cleanup()
+        except Exception as ex:
+            self.logger.warning(f"Error during super().cleanup(): {ex}")
+
+    def closeEvent(self, event) -> None:
+        """Perform graceful resource teardown and allow Qt window destruction."""
+        self.logger.info("SynBioPanel closeEvent triggered: shutting down background threads.")
+        try:
+            self.cleanup()
+        except Exception as ex:
+            self.logger.warning(f"Error during closeEvent cleanup: {ex}")
+
+        event.accept()
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)

@@ -1,4 +1,4 @@
-"""Unit tests for the SimulateView UI layout and species filtering logic."""
+"""Unit tests for the SimulateView UI layout, PyQtGraph integration, and species filtering logic."""
 
 import sys
 from unittest.mock import MagicMock
@@ -9,6 +9,7 @@ import numpy as np
 if "sbol3" not in sys.modules:
     sys.modules["sbol3"] = MagicMock()
 
+import pyqtgraph as pg
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QListWidget, QListWidgetItem, QSplitter
 
@@ -19,11 +20,13 @@ app = QApplication.instance() or QApplication([])
 
 
 def test_simulate_view_layout_setup():
-    """Test that SimulateView initializes with QSplitter and species QListWidget."""
+    """Test that SimulateView initializes with QSplitter, plot_widget, and species QListWidget."""
     view = SimulateView()
 
     assert hasattr(view, "splitter")
     assert isinstance(view.splitter, QSplitter)
+    assert hasattr(view, "plot_widget")
+    assert isinstance(view.plot_widget, pg.PlotWidget)
     assert hasattr(view, "species_list")
     assert isinstance(view.species_list, QListWidget)
     assert hasattr(view, "select_all_btn")
@@ -31,7 +34,7 @@ def test_simulate_view_layout_setup():
 
 
 def test_species_list_filtering_and_plot_update():
-    """Test species list check state toggling and interactive plot update."""
+    """Test species list check state toggling and interactive PyQtGraph plot update."""
     view = SimulateView()
 
     # Mock simulation result object
@@ -73,22 +76,22 @@ def test_species_list_filtering_and_plot_update():
 
     # Render plot with both checked
     view.update_plot()
-    assert len(view.figure.axes[0].get_lines()) == 2
+    assert len(view.plot_widget.listDataItems()) == 2
 
     # Uncheck one item (TetR)
     view.species_list.item(1).setCheckState(Qt.CheckState.Unchecked)
     view.update_plot()
-    ax = view.figure.axes[0]
-    assert len(ax.get_lines()) == 1
-    assert ax.get_lines()[0].get_label() == "LacI"
+    data_items = view.plot_widget.listDataItems()
+    assert len(data_items) == 1
+    assert data_items[0].name() == "LacI"
 
     # Select all helper
     view._select_all_species()
-    assert len(view.figure.axes[0].get_lines()) == 2
+    assert len(view.plot_widget.listDataItems()) == 2
 
     # Clear all helper
     view._clear_all_species()
-    assert len(view.figure.axes[0].get_lines()) == 0
+    assert len(view.plot_widget.listDataItems()) == 0
 
 
 def test_nan_inf_simulation_result_handling():
@@ -111,11 +114,10 @@ def test_nan_inf_simulation_result_handling():
     view.species_list.addItem(item)
 
     view.update_plot()
-    ax = view.figure.axes[0]
-    assert len(ax.get_lines()) == 0
-    # Verify warning text on canvas
-    texts = [t.get_text() for t in ax.texts]
-    assert any("Simulation generated invalid or infinite values" in t for t in texts)
+    assert len(view.plot_widget.listDataItems()) == 0
+    # Verify warning text on title
+    title_text = view.plot_widget.plotItem.titleLabel.text
+    assert "invalid or infinite values" in title_text.lower()
 
 
 def test_empty_array_simulation_result_handling():
@@ -136,14 +138,13 @@ def test_empty_array_simulation_result_handling():
     view.species_list.addItem(item)
 
     view.update_plot()
-    ax = view.figure.axes[0]
-    assert len(ax.get_lines()) == 0
-    texts = [t.get_text() for t in ax.texts]
-    assert any("Simulation generated invalid or infinite values" in t for t in texts)
+    assert len(view.plot_widget.listDataItems()) == 0
+    title_text = view.plot_widget.plotItem.titleLabel.text
+    assert "invalid or infinite values" in title_text.lower()
 
 
 def test_axis_limits_non_singular():
-    """Test that SimulateView.update_plot enforces non-identical xlim and ylim bounds."""
+    """Test that SimulateView.update_plot renders constant traces without crashes."""
     view = SimulateView()
 
     class ConstantResult:
@@ -162,11 +163,7 @@ def test_axis_limits_non_singular():
     view.species_list.addItem(item)
 
     view.update_plot()
-    ax = view.figure.axes[0]
-    xmin, xmax = ax.get_xlim()
-    ymin, ymax = ax.get_ylim()
-    assert xmin != xmax
-    assert ymin != ymax
+    assert len(view.plot_widget.listDataItems()) == 1
 
 
 def test_safe_figure_canvas_zero_dimension_protection():
@@ -186,6 +183,8 @@ def test_safe_figure_canvas_zero_dimension_protection():
 
 def test_simulate_worker_thread_decoupling():
     """Test that SimulateWorker runs off-thread and emits simulation_finished signal."""
+    import msgpack
+
     from karcytics_plugins.synthetic_biology.ui.views.simulate_view import SimulateWorker
 
     worker = SimulateWorker(
@@ -195,7 +194,7 @@ def test_simulate_worker_thread_decoupling():
         title="Test Thread Decoupling",
     )
 
-    received_payload = {}
+    received_payload = None
 
     def on_finished(payload):
         nonlocal received_payload
@@ -205,6 +204,14 @@ def test_simulate_worker_thread_decoupling():
 
     # Test run() directly or via start()
     worker.run()
-    assert "result" in received_payload
-    assert received_payload["method"] == "ode"
-    assert received_payload["title"] == "Test Thread Decoupling"
+    assert received_payload is not None
+
+    if isinstance(received_payload, bytes):
+        unpacked = msgpack.unpackb(received_payload, raw=False)
+        assert "arr_bytes" in unpacked
+        assert unpacked["method"] == "ode"
+        assert unpacked["title"] == "Test Thread Decoupling"
+    else:
+        assert "result" in received_payload
+        assert received_payload["method"] == "ode"
+        assert received_payload["title"] == "Test Thread Decoupling"

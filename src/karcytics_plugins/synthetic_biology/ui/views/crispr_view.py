@@ -120,7 +120,7 @@ class CRISPRDesignView(QWidget):
         self.target_seq_edit.setText(
             "ATGAGTAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAAATTTTCTGTCAGTGGAGAGGGTGAAGGTGATGCAACATACGGAAAACTTACCCTTAAATTTATTTGCACTACTGGAAAACTACCTGTTCCATGGCCAACACTTGTCACTACTTTCGGTTATGGTGTTCAATGCTTTGCG"
         )
-        self.target_seq_edit.setStyleSheet("font-family: monospace;")
+        self.target_seq_edit.setStyleSheet("font-family: Menlo, Consolas, 'Courier New', monospace;")
         top_layout.addWidget(self.target_seq_edit)
 
         splitter.addWidget(top_widget)
@@ -156,7 +156,7 @@ class CRISPRDesignView(QWidget):
         self.detail_display.setPlaceholderText(
             "Select a guide RNA row to view detailed CFD off-target mismatch breakdown..."
         )
-        self.detail_display.setStyleSheet("font-family: monospace;")
+        self.detail_display.setStyleSheet("font-family: Menlo, Consolas, 'Courier New', monospace;")
         bottom_layout.addWidget(self.detail_display, stretch=1)
 
         splitter.addWidget(bottom_widget)

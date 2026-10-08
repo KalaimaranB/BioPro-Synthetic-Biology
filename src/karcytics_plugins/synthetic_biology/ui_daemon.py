@@ -16,7 +16,24 @@ own `initialize()`/`create_panel()` entry points.
 
 from __future__ import annotations
 
+import faulthandler
 import sys
+
+faulthandler.enable(file=sys.stderr, all_threads=True)
+
+import traceback
+
+def global_exception_handler(exctype, value, tb):
+    print("CRITICAL ERROR CAUGHT BY QT HOOK:", file=sys.stderr)
+    traceback.print_exception(exctype, value, tb)
+    sys.exit(1)
+
+sys.excepthook = global_exception_handler
+
+
+_GLOBAL_PANEL_ANCHOR = None
+
+
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +63,27 @@ try:
 except ImportError:
     pass
 
+try:
+    import matplotlib  # noqa: E402, F401
+    import matplotlib.pyplot  # noqa: E402, F401
+except ImportError:
+    pass
+
+try:
+    import pyqtgraph  # noqa: E402, F401
+except ImportError:
+    pass
+
+try:
+    import tellurium  # noqa: E402, F401
+except ImportError:
+    pass
+
+try:
+    import msgpack  # type: ignore[import-untyped]  # noqa: E402, F401
+except ImportError:
+    pass
+
 
 def _build_plugin_context() -> Any:
     from karcytics_sdk.plugin.context import PluginContext
@@ -66,12 +104,39 @@ def _build_plugin_context() -> Any:
     return PluginContext(services=services, manifest=manifest)
 
 
+_ACTIVE_PLUGIN: Any = None
+_ACTIVE_PANEL: Any = None
+
+
 def main() -> int | None:
+    import os
+    import karcytics_sdk.plugin.ui_daemon_runtime as _ui_runtime
     from karcytics_sdk.plugin import run_ui_daemon
     from karcytics_sdk.plugin.ui_daemon_runtime import send_event
 
+    if not os.environ.get("KARCYTICS_CORE_SERVICES_PORT") or not os.environ.get("KARCYTICS_CORE_SERVICES_TOKEN"):
+        if hasattr(_ui_runtime, "_confirm_hub_theme_or_exit"):
+            _orig_confirm_theme = _ui_runtime._confirm_hub_theme_or_exit
+
+            def _safe_confirm_theme(logger: Any, plugin_id: str) -> None:
+                port = os.environ.get("KARCYTICS_CORE_SERVICES_PORT")
+                token = os.environ.get("KARCYTICS_CORE_SERVICES_TOKEN")
+                if not port or not token:
+                    logger.warning("CoreServices port/token not configured; using fallback dynamic theme colors.")
+                    return
+                _orig_confirm_theme(logger, plugin_id)
+
+            _ui_runtime._confirm_hub_theme_or_exit = _safe_confirm_theme
+
+
     def _build_panel() -> Any:
+        global _ACTIVE_PLUGIN, _ACTIVE_PANEL, _GLOBAL_PANEL_ANCHOR
         from karcytics_sdk.plugin import get_logger
+        from PyQt6.QtGui import QFont
+
+        # Pre-register standard font family substitutions using valid CSS generic / cross-platform names
+        QFont.insertSubstitutions("sans-serif", ["Segoe UI", "Helvetica Neue", "Arial"])
+        QFont.insertSubstitutions("monospace", ["Menlo", "Monaco", "Consolas", "Courier New"])
 
         from karcytics_plugins.synthetic_biology import initialize
 
@@ -79,10 +144,12 @@ def main() -> int | None:
 
         context = _build_plugin_context()
         logger.info("[phase1] _build_panel: initialize() -> SyntheticBiologyPlugin")
-        plugin = initialize(context)
+        _ACTIVE_PLUGIN = initialize(context)
 
         logger.info("[phase1] _build_panel: create_panel()")
-        panel = plugin.create_panel(parent=None)
+        _ACTIVE_PANEL = _ACTIVE_PLUGIN.create_panel(parent=None)
+        panel = _ACTIVE_PANEL
+        _GLOBAL_PANEL_ANCHOR = panel
         logger.info("[phase1] _build_panel: panel constructed")
 
         if hasattr(panel, "state_changed"):

@@ -56,9 +56,6 @@ process_model = "isolated"
 environment = ".venv"
 requirements = "requirements.txt"
 is_beta = true
-# tests/ is excluded from the release ZIP so it must never be hashed into
-# security.json — otherwise the shipped ledger claims files never packaged,
-# and install-time discovery correctly rejects the plugin as UNTRUSTED.
 custom_exclusions = ["tests"]
 requires = ["task_scheduler", "logger", "event_bus"]
 tags = ["synthetic biology", "logic gates", "genetic circuits", "CRISPR", "kinetic simulation", "SBOL", "bioinformatics"]
@@ -73,8 +70,6 @@ authors = [
 ]
 
 [tool.karcytics.plugin.signing]
-# Author's Ed25519 public key — trust root: Karcytics Core Authority → Kalaimaran Balasothy
-# Verified by trust_chain.json (signature to be issued by Karcytics Core Authority)
 author_public_key = "ed9ceefd12e7eebe2774cb6779bbbcf0a799b994f2c0159643c940e5ae1d580f"
 
 
@@ -87,7 +82,6 @@ addopts = "-v --tb=short"
 timeout = 120
 timeout_method = "thread"
 
-# Ruff config lives in ruff.toml (matches the flow-cytometry reference module).
 
 # ── Mypy ──────────────────────────────────────────────────────────────────────
 [tool.mypy]
@@ -112,6 +106,7 @@ module = [
     "karcytics.*",
 ]
 ignore_missing_imports = true
+
 
 # ── uv ────────────────────────────────────────────────────────────────────────
 [tool.uv.sources]

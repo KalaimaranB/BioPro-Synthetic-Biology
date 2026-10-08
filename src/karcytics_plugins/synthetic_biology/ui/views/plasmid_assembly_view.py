@@ -142,7 +142,7 @@ class PrimerDesignDialog(QDialog):
 
         self.result_display = QTextEdit()
         self.result_display.setReadOnly(True)
-        self.result_display.setStyleSheet("font-family: monospace;")
+        self.result_display.setStyleSheet("font-family: Menlo, Consolas, 'Courier New', monospace;")
         layout.addWidget(self.result_display)
 
     def _on_design_clicked(self):
@@ -295,7 +295,7 @@ class PlasmidAssemblyView(QWidget):
         self.seq_display = QTextEdit()
         self.seq_display.setReadOnly(True)
         self.seq_display.setPlaceholderText("Assembled sequence display (FASTA / GenBank)...")
-        self.seq_display.setStyleSheet("font-family: monospace;")
+        self.seq_display.setStyleSheet("font-family: Menlo, Consolas, 'Courier New', monospace;")
         right_layout.addWidget(self.seq_display)
 
         splitter.addWidget(right_panel)

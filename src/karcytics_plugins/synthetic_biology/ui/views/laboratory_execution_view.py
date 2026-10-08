@@ -770,3 +770,11 @@ class LaboratoryExecutionView(QWidget):
             self.table_inventory.insertRow(row)
             for col, val in enumerate(item):
                 self.table_inventory.setItem(row, col, QTableWidgetItem(val))
+
+    def teardown(self) -> None:
+        """Stops active background ProtocolWorker thread if running."""
+        if self.worker is not None and self.worker.isRunning():
+            self.worker.requestInterruption()
+            self.worker.quit()
+            self.worker.wait(1000)
+            self.worker = None

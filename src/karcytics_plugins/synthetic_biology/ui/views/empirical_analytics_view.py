@@ -74,7 +74,7 @@ class EmpiricalAnalyticsView(QWidget):
         # Header Title Label
         title_label = QLabel("Test, Learn & Empirical Analytics")
         title_label.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        font_family = getattr(Fonts, "FAMILY_UI", "sans-serif")
+        font_family = getattr(Fonts, "FAMILY_UI", None) or "Helvetica Neue"
         title_font = QFont(font_family)
         try:
             sz = int(getattr(Fonts, "SIZE_TITLE", 16))

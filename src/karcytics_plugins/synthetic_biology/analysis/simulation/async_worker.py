@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import msgpack  # type: ignore[import-untyped]
+import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal  # noqa: TID251
 
 from ..models.domain import (
     CircuitComponent,
     CircuitEdge,
     SimulationParameters,
-    SimulationResult,
 )
 from .circuit_engine import CircuitSimulationEngine
 
@@ -17,10 +18,10 @@ MAX_DOWNSAMPLE_POINTS = 1000
 
 class CircuitSimWorker(QThread):
     """Granular QThread worker dedicated strictly to executing SciPy solve_ivp
-    circuit simulations.
+    circuit simulations. Emits binary msgpack payload or SimulationResult object.
     """
 
-    simulation_finished = pyqtSignal(SimulationResult)
+    simulation_finished = pyqtSignal(object)
     error_occurred = pyqtSignal(str)
 
     def __init__(
@@ -55,6 +56,22 @@ class CircuitSimWorker(QThread):
                     k: v[::step] for k, v in result.species_concentrations.items()
                 }
 
-            self.simulation_finished.emit(result)
+            if result is not None:
+                # Fast binary msgpack serialization of NumPy byte buffers
+                t_arr = np.asarray(result.time_points, dtype=np.float64)
+                species_bytes = {
+                    k: np.asarray(v, dtype=np.float64).tobytes()
+                    for k, v in result.species_concentrations.items()
+                }
+                packed = msgpack.packb(
+                    {
+                        "time_bytes": t_arr.tobytes(),
+                        "species_bytes": species_bytes,
+                        "num_points": len(t_arr),
+                    }
+                )
+                self.simulation_finished.emit(packed)
+            else:
+                self.simulation_finished.emit(result)
         except Exception as e:
             self.error_occurred.emit(str(e))

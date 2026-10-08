@@ -37,6 +37,12 @@ jobs:
         run: uv run ruff check src/ tests/
         shell: bash
 
+      - name: Ruff — Unbound-variable gate (F821/F823)
+        run: |
+          uv run ruff check src/ tests/ --select F821,F823
+          uv run ruff check Karcytics-SDK/src/karcytics_sdk/ --select F821,F823
+        shell: bash
+
       - name: Ruff — Format check
         run: uv run ruff format --check src/ tests/
         shell: bash

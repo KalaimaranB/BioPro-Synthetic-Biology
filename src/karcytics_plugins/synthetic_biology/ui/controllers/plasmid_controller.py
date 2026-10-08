@@ -106,3 +106,11 @@ class PlasmidAssemblyController(QObject):
             plasmid.primers.extend([fwd, rev])
             self.state.set_active_plasmid(plasmid)
         self.primers_ready.emit(fwd, rev)
+
+    def teardown(self) -> None:
+        """Stops active background worker thread if running."""
+        if self._active_worker is not None and self._active_worker.isRunning():
+            self._active_worker.requestInterruption()
+            self._active_worker.quit()
+            self._active_worker.wait(1000)
+            self._active_worker = None

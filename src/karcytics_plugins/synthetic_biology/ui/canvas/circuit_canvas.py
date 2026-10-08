@@ -36,7 +36,7 @@ class CircuitCanvas(QGraphicsView):
         self._parts = []
 
         # Font for labels
-        self._font = QFont("Inter", 10)
+        self._font = QFont("Helvetica Neue", 10)
 
         # Colors
         self.c_promoter = QColor("#2ecc71")

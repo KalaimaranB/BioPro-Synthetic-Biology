@@ -46,7 +46,32 @@ class CircuitSimulationController(QObject):
         self._active_worker.error_occurred.connect(self.error_raised.emit)
         self._active_worker.start()
 
-    def _on_simulation_finished(self, result: SimulationResult) -> None:
+    def _on_simulation_finished(self, result_or_bytes: object) -> None:
         """Updates SynBioState and notifies View with time-series result."""
+        if isinstance(result_or_bytes, bytes):
+            import msgpack  # type: ignore[import-untyped]
+            import numpy as np
+
+            unpacked = msgpack.unpackb(result_or_bytes, raw=False)
+            t_bytes = unpacked.get("time_bytes", b"")
+            t_arr = np.frombuffer(t_bytes, dtype=np.float64).tolist()
+            species_dict = {}
+            for k, v in unpacked.get("species_bytes", {}).items():
+                species_dict[k] = np.frombuffer(v, dtype=np.float64).tolist()
+            result = SimulationResult(
+                time_points=t_arr,
+                species_concentrations=species_dict,
+            )
+        else:
+            result = result_or_bytes  # type: ignore
+
         self.state.set_simulation_result(result)
         self.simulation_ready.emit(result)
+
+    def teardown(self) -> None:
+        """Stops active background worker thread if running."""
+        if self._active_worker is not None and self._active_worker.isRunning():
+            self._active_worker.requestInterruption()
+            self._active_worker.quit()
+            self._active_worker.wait(1000)
+            self._active_worker = None
