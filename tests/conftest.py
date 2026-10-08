@@ -37,3 +37,11 @@ from karcytics_plugins.synthetic_biology.analysis.state import SynBioState  # no
 def empty_state():
     """Returns a fresh SynBioState with empty circuit data."""
     return SynBioState()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _qt_application():
+    """One QApplication for the whole run: building any widget without one aborts the process."""
+    from PySide6.QtWidgets import QApplication
+
+    return QApplication.instance() or QApplication([])
