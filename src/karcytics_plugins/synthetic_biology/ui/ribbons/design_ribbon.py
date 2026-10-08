@@ -2,6 +2,7 @@
 
 from karcytics_sdk.plugin.components import BioComboBox, PrimaryButton
 from karcytics_sdk.plugin.dialogs import show_warning
+from karcytics_sdk.plugin.theme_fallback import Colors
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QWidget
 
@@ -85,9 +86,8 @@ class DesignRibbon(QWidget):
         self.update_part_selector(self.role_combo.currentText())
 
     def _apply_theme(self):
-        from karcytics_sdk.plugin.theme_fallback import Colors
 
-        hover_color = getattr(Colors, "ACCENT_PRIMARY_HOVER", "#0097a7")
+        hover_color = Colors.ACCENT_PRIMARY_HOVER
         fetch_btn_style = f"""
             QPushButton {{
                 background-color: {Colors.ACCENT_PRIMARY};

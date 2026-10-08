@@ -324,13 +324,8 @@ class CircuitSimulationView(QWidget):
                 )
                 return
 
-        color_palette = [
-            "#38BDF8",  # Sky Blue
-            "#F43F5E",  # Rose Red
-            "#34D399",  # Emerald Green
-            "#F59E0B",  # Amber
-            "#A855F7",  # Purple
-        ]
+        # Trace colours come from the active theme's chart palette.
+        color_palette = list(Colors.CHART_COLORS)
 
         for idx, (species_name, conc_values) in enumerate(result.species_concentrations.items()):
             color = color_palette[idx % len(color_palette)]

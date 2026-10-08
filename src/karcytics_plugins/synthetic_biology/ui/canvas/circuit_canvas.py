@@ -2,6 +2,7 @@
 
 import hashlib
 
+from karcytics_sdk.plugin.theme_fallback import Colors
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen, QPolygonF
 from PySide6.QtWidgets import (
@@ -31,7 +32,7 @@ class CircuitCanvas(QGraphicsView):
         self.setRenderHint(self.renderHints().Antialiasing)
 
         # Basic styling
-        self.setBackgroundBrush(QBrush(QColor("#1e1e1e")))  # Dark theme background
+        self.setBackgroundBrush(QBrush(QColor(Colors.BG_DARKEST)))  # Dark theme background
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self._parts = []
 

@@ -11,6 +11,7 @@ import numpy as np
 import pyqtgraph as pg
 from karcytics_sdk.plugin import OneShotWorkerThread, get_logger
 from karcytics_sdk.plugin.components import BioListWidget, BioSplitter, SecondaryButton
+from karcytics_sdk.plugin.theme_fallback import Colors
 from PySide6.QtCore import Qt, Signal, Slot  # noqa: TID251
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -199,7 +200,7 @@ class SimulateView(QWidget):
         pg.setConfigOption("antialias", True)
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
-        self.plot_widget.setBackground("#0d1117")
+        self.plot_widget.setBackground(Colors.BG_DARKEST)
         self.legend = self.plot_widget.addLegend(offset=(-10, 10))
         if self.legend:
             self.legend.anchor((1, 0), (1, 0))
@@ -245,11 +246,11 @@ class SimulateView(QWidget):
 
         # Eager Initialization (Pre-warming): set default title and labels
         self.plot_widget.setTitle(
-            "<span style='color: #8b949e; font-size: 13px;'>"
+            f"<span style='color: {Colors.FG_SECONDARY}; font-size: 13px;'>"
             "Run a kinetic simulation to plot time-series traces.</span>"
         )
-        self.plot_widget.setLabel("bottom", "Time (seconds)", color="#8b949e")
-        self.plot_widget.setLabel("left", "Concentration", color="#8b949e")
+        self.plot_widget.setLabel("bottom", "Time (seconds)", color=Colors.FG_SECONDARY)
+        self.plot_widget.setLabel("left", "Concentration", color=Colors.FG_SECONDARY)
 
         # Matplotlib compatibility fallback attributes for tests/inspectors if referenced
         self.figure = Figure(figsize=(8, 6), dpi=100)
@@ -268,9 +269,9 @@ class SimulateView(QWidget):
     def _apply_theme(self):
         from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
 
-        dark_bg = getattr(Colors, "BG_DARKEST", "#0d1117")
-        fg_pri = getattr(Colors, "FG_PRIMARY", "#c9d1d9")
-        fg_sec = getattr(Colors, "FG_SECONDARY", "#8b949e")
+        dark_bg = Colors.BG_DARKEST
+        fg_pri = Colors.FG_PRIMARY
+        fg_sec = Colors.FG_SECONDARY
 
         try:
             font_sz = int(str(getattr(Fonts, "SIZE_SMALL", 12)).replace("px", "")) + 2
@@ -314,7 +315,7 @@ class SimulateView(QWidget):
         """
         self.plot_widget.clear()
         self.plot_widget.setTitle(
-            f"<span style='color: #ff5555; font-weight: bold; font-size: 13px;'>{message}</span>"
+            f"<span style='color: {Colors.ACCENT_DANGER}; font-weight: bold; font-size: 13px;'>{message}</span>"
         )
 
     def update_plot(self):  # noqa: PLR0915
@@ -342,7 +343,7 @@ class SimulateView(QWidget):
 
         if not checked_columns:
             self.plot_widget.setTitle(
-                "<span style='color: #8b949e; font-size: 13px;'>"
+                f"<span style='color: {Colors.FG_SECONDARY}; font-size: 13px;'>"
                 "No species selected.<br/>Check items in the right-hand panel to view traces.</span>"
             )
             t_render_end = time.perf_counter()
@@ -396,7 +397,7 @@ class SimulateView(QWidget):
 
         if not valid_traces:
             self.plot_widget.setTitle(
-                "<span style='color: #8b949e; font-size: 13px;'>"
+                f"<span style='color: {Colors.FG_SECONDARY}; font-size: 13px;'>"
                 "No valid species data found to plot.</span>"
             )
             t_render_end = time.perf_counter()
@@ -406,16 +407,8 @@ class SimulateView(QWidget):
             )
             return
 
-        palette = [
-            "#00bcd4",
-            "#4caf50",
-            "#ff9800",
-            "#e91e63",
-            "#9c27b0",
-            "#03a9f4",
-            "#ff5722",
-            "#8bc34a",
-        ]
+        # Trace colours come from the active theme's chart palette.
+        palette = list(Colors.CHART_COLORS)
 
         for idx, (display_name, y_arr) in enumerate(valid_traces):
             color = palette[idx % len(palette)]
@@ -430,10 +423,10 @@ class SimulateView(QWidget):
 
         y_label = "Concentration" if method == "ode" else "Molecule Count"
         self.plot_widget.setTitle(
-            f"<span style='color: #c9d1d9; font-weight: bold; font-size: 14px;'>{title}</span>"
+            f"<span style='color: {Colors.FG_PRIMARY}; font-weight: bold; font-size: 14px;'>{title}</span>"
         )
-        self.plot_widget.setLabel("bottom", "Time (seconds)", color="#8b949e")
-        self.plot_widget.setLabel("left", y_label, color="#8b949e")
+        self.plot_widget.setLabel("bottom", "Time (seconds)", color=Colors.FG_SECONDARY)
+        self.plot_widget.setLabel("left", y_label, color=Colors.FG_SECONDARY)
 
         t_render_end = time.perf_counter()
         logger.debug(
@@ -526,7 +519,7 @@ class SimulateView(QWidget):
         """
         self.plot_widget.clear()
         self.plot_widget.setTitle(
-            f"<span style='color: #ff5555; font-weight: bold; font-size: 12px;'>"
+            f"<span style='color: {Colors.ACCENT_DANGER}; font-weight: bold; font-size: 12px;'>"
             f"Simulation Error:<br/>{err_msg}</span>"
         )
 
@@ -547,7 +540,7 @@ class SimulateView(QWidget):
         if te is None:
             self.plot_widget.clear()
             self.plot_widget.setTitle(
-                "<span style='color: #ff5555; font-weight: bold; font-size: 13px;'>"
+                f"<span style='color: {Colors.ACCENT_DANGER}; font-weight: bold; font-size: 13px;'>"
                 "Tellurium is not installed. Run 'pip install tellurium'.</span>"
             )
             return
@@ -558,7 +551,7 @@ class SimulateView(QWidget):
         if not promoters or not cdss:
             self.plot_widget.clear()
             self.plot_widget.setTitle(
-                "<span style='color: #c9d1d9; font-size: 13px;'>"
+                f"<span style='color: {Colors.FG_PRIMARY}; font-size: 13px;'>"
                 "Circuit requires at least one Promoter and one CDS.</span>"
             )
             return
@@ -620,7 +613,7 @@ class SimulateView(QWidget):
         # Render immediate visual feedback on plot widget while worker computes simulation off-thread
         self.plot_widget.clear()
         self.plot_widget.setTitle(
-            "<span style='color: #00bcd4; font-weight: bold; font-size: 13px;'>"
+            f"<span style='color: {Colors.ACCENT_PRIMARY}; font-weight: bold; font-size: 13px;'>"
             "⚡ Computing ODE Kinetic Simulation (LSODA / Tellurium)... Please wait...</span>"
         )
 

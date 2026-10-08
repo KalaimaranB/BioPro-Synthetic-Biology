@@ -1,6 +1,7 @@
 """Properties view for quantitative data of biological parts (Inspector style)."""
 
 from karcytics_sdk.plugin.components import BioDoubleSpinBox, BioListWidget, BioScrollArea
+from karcytics_sdk.plugin.theme_fallback import Colors
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFormLayout,
@@ -110,7 +111,7 @@ class PropertiesView(QWidget):
         # External Links
         link_label = QLabel(
             f"<a href='http://parts.igem.org/Part:{part.id}' "
-            "style='color: #00bcd4;'>View Part on iGEM Registry</a>"
+            f"style='color: {Colors.ACCENT_PRIMARY};'>View Part on iGEM Registry</a>"
         )
         link_label.setOpenExternalLinks(True)
         self.form_layout.addRow(link_label)
@@ -131,10 +132,10 @@ class PropertiesView(QWidget):
                 if url_match:
                     url = url_match.group(1)
                     citation = citation.replace(
-                        url, f"<a href='{url}' style='color: #8b949e;'>[Link]</a>"
+                        url, f"<a href='{url}' style='color: {Colors.FG_SECONDARY};'>[Link]</a>"
                     )
             source_label = QLabel(
-                f"<small style='color: #8b949e;'><i>Source: {citation}</i></small>"
+                f"<small style='color: {Colors.FG_SECONDARY};'><i>Source: {citation}</i></small>"
             )
             source_label.setOpenExternalLinks(True)
             source_label.setWordWrap(True)

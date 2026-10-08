@@ -449,7 +449,7 @@ class LaboratoryExecutionView(QWidget):
         self.progress_bar.setVisible(True)
         self.status_badge.setText("CALCULATING...")
         self.status_badge.setStyleSheet(
-            "background-color: #D97706; color: white; font-weight: bold; "
+            f"background-color: {Colors.ACCENT_WARNING}; color: white; font-weight: bold; "
             "padding: 3px 10px; border-radius: 12px; font-size: 11px;"
         )
 
@@ -478,7 +478,7 @@ class LaboratoryExecutionView(QWidget):
         self.progress_bar.setVisible(False)
         self.status_badge.setText("SUCCESS")
         self.status_badge.setStyleSheet(
-            "background-color: #059669; color: white; font-weight: bold; "
+            f"background-color: {Colors.ACCENT_SUCCESS}; color: white; font-weight: bold; "
             "padding: 3px 10px; border-radius: 12px; font-size: 11px;"
         )
 
@@ -492,7 +492,7 @@ class LaboratoryExecutionView(QWidget):
         self.progress_bar.setVisible(False)
         self.status_badge.setText("ERROR")
         self.status_badge.setStyleSheet(
-            "background-color: #E11D48; color: white; font-weight: bold; "
+            f"background-color: {Colors.ACCENT_DANGER}; color: white; font-weight: bold; "
             "padding: 3px 10px; border-radius: 12px; font-size: 11px;"
         )
         show_error(

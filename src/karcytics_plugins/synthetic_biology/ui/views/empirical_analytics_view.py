@@ -20,7 +20,7 @@ from karcytics_sdk.plugin.components import (
     SecondaryButton,
 )
 from karcytics_sdk.plugin.dialogs import show_warning
-from karcytics_sdk.plugin.theme_fallback import Fonts
+from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
@@ -383,7 +383,7 @@ class EmpiricalAnalyticsView(QWidget):
             self.plot_widget.plot(
                 t,
                 fit_curve,
-                pen=pg.mkPen(color="#00bcd4", width=2),
+                pen=pg.mkPen(color=Colors.ACCENT_PRIMARY, width=2),
                 name=f"{species} (Optimized Fit)",
             )
 
@@ -391,7 +391,7 @@ class EmpiricalAnalyticsView(QWidget):
             self.plot_widget.plot(
                 t,
                 emp_curve,
-                pen=pg.mkPen(color="#ef5350", width=2, style=Qt.PenStyle.DashLine),
+                pen=pg.mkPen(color=Colors.ACCENT_NEGATIVE, width=2, style=Qt.PenStyle.DashLine),
                 name=f"{species} (Empirical Target)",
             )
 
