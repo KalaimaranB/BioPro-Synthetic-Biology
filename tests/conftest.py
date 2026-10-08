@@ -1,7 +1,5 @@
 import sys
-import types
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock
 
 # Ensure src is in sys.path
@@ -17,129 +15,10 @@ sys.path.insert(0, str(src_dir))
 sys.path.insert(0, str(root_dir))
 
 import pytest  # noqa: E402
-from PySide6.QtWidgets import QLabel, QPushButton, QSplitter, QWidget  # noqa: E402
 
-# Mock karcytics_sdk before it gets imported
-mock_karcytics_sdk_plugin = MagicMock()
-
-
-class DummyTaskBase:
-    def __init__(self, *args, **kwargs):
-        pass
-
-
-from PySide6.QtCore import Signal  # noqa: E402
-
-
-class DummyPluginBase(QWidget):
-    status_message = Signal(str)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__()
-        self.plugin_id = kwargs.get("plugin_id", args[0] if args else "")
-
-
-class DummyAnalysisBase:
-    def __init__(self, *args, **kwargs):
-        pass
-
-
-class DummyButton(QPushButton):
-    pass
-
-
-class DummySplitter(QSplitter):
-    pass
-
-
-class DummyLabel(QLabel):
-    pass
-
-
-from PySide6.QtWidgets import QComboBox, QLineEdit, QListWidget, QSpinBox  # noqa: E402
-
-
-class DummyComboBox(QComboBox):
-    pass
-
-
-class DummyLineEdit(QLineEdit):
-    pass
-
-
-class DummyListWidget(QListWidget):
-    pass
-
-
-class DummySpinBox(QSpinBox):
-    pass
-
-
-mock_karcytics_sdk_plugin.PluginBase = DummyPluginBase
-mock_karcytics_sdk_plugin.AnalysisBase = DummyAnalysisBase
-mock_karcytics_sdk_plugin.PluginState = DummyAnalysisBase
-mock_karcytics_sdk_plugin.validate_file_exists = lambda path: (True, "")
-
-mock_tasks = MagicMock()
-mock_tasks.TaskBase = DummyTaskBase
-mock_karcytics_sdk_plugin.tasks = mock_tasks
-sys.modules["karcytics_sdk.plugin.tasks"] = mock_tasks
-
-
-class MockComponents:
-    PrimaryButton: Any
-    SecondaryButton: Any
-    BioSplitter: Any
-    BioCaptionLabel: Any
-    BioComboBox: Any
-    BioRunButton: Any
-    BioCancelButton: Any
-    BioStatusLabel: Any
-    BioLineEdit: Any
-    BioListWidget: Any
-    BioToggleButton: Any
-    BioSpinBox: Any
-
-
-mock_components = MockComponents()
-mock_components.PrimaryButton = DummyButton
-mock_components.SecondaryButton = DummyButton
-mock_components.BioSplitter = DummySplitter
-mock_components.BioCaptionLabel = DummyLabel
-mock_components.BioComboBox = DummyComboBox
-mock_components.BioRunButton = DummyButton
-mock_components.BioCancelButton = DummyButton
-mock_components.BioStatusLabel = DummyLabel
-mock_components.BioLineEdit = DummyLineEdit
-mock_components.BioListWidget = DummyListWidget
-mock_components.BioToggleButton = DummyButton
-mock_components.BioSpinBox = DummySpinBox
-mock_karcytics_sdk_plugin.components = mock_components
-
-
-class DummyThemeMeta(type):
-    def __getattr__(cls, name):
-        if name.startswith("SIZE"):
-            return "12"
-        return "#000000"
-
-
-class DummyColors(metaclass=DummyThemeMeta):
-    pass
-
-
-sys.modules["karcytics_sdk"] = MagicMock()
-sys.modules["karcytics_sdk.plugin"] = mock_karcytics_sdk_plugin  # type: ignore
-sys.modules["karcytics_sdk.plugin.components"] = mock_components  # type: ignore
-sys.modules["karcytics_sdk.plugin.events"] = MagicMock()
-sys.modules["karcytics_sdk.plugin.workflow"] = MagicMock()
-sys.modules["karcytics_sdk.plugin.tasks"] = mock_tasks
-
-mock_theme_fallback = types.ModuleType("theme_fallback")
-mock_theme_fallback.Colors = DummyColors  # type: ignore
-mock_theme_fallback.Fonts = DummyColors  # type: ignore
-mock_theme_fallback.theme_manager = MagicMock()  # type: ignore
-sys.modules["karcytics_sdk.plugin.theme_fallback"] = mock_theme_fallback
+# The tests run against the real karcytics_sdk (a declared dependency), not a
+# stand-in: a mocked SDK hides exactly the integration mistakes these tests
+# should catch, and every newly-adopted SDK component would need a new stub.
 
 try:
     import sbol3  # noqa: F401
