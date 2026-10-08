@@ -9,11 +9,9 @@ from karcytics_plugins.synthetic_biology.analysis.parts.components import CDS
 
 
 @pytest.fixture
-def panel():
-    widget = initialize().create_panel()
-    yield widget
+def panel(destroy_after):
+    yield destroy_after(initialize().create_panel())
     theme_manager.set_theme("dark")
-    widget.deleteLater()
 
 
 def test_footer_and_canvas_follow_theme_change(panel):

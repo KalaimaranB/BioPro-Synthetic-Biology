@@ -45,3 +45,29 @@ def _qt_application():
     from PySide6.QtWidgets import QApplication
 
     return QApplication.instance() or QApplication([])
+
+
+@pytest.fixture
+def destroy_after():
+    """Register a top-level widget to be destroyed when the test ends.
+
+    A panel that is merely dropped becomes cyclic garbage whose C++ half is
+    still alive. The collector empties the Python wrapper's attributes first,
+    and the C++ teardown then calls back into it: pyqtgraph's
+    `LabelItem.sizeHint` raises AttributeError on its missing `_sizeHint`, and
+    pytest-qt fails whichever unrelated test is running when that collection
+    happens to fire. Destroying the widget through Qt first avoids it.
+    """
+    from PySide6.QtCore import QEvent
+    from PySide6.QtWidgets import QApplication
+
+    widgets = []
+
+    def register(widget):
+        widgets.append(widget)
+        return widget
+
+    yield register
+    for widget in widgets:
+        widget.deleteLater()
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)

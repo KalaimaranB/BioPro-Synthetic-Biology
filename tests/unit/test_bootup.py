@@ -36,13 +36,13 @@ def test_biopro_plugin_alias():
     assert BioProPlugin is SyntheticBiologyPlugin
 
 
-def test_plugin_panel_creation():
+def test_plugin_panel_creation(destroy_after):
     """SyntheticBiologyPlugin must instantiate SynBioPanel via create_panel()."""
     plugin = SyntheticBiologyPlugin()
     panel_class = plugin.get_panel_class()
     assert panel_class.__name__ == "SynBioPanel"
 
-    panel = plugin.create_panel()
+    panel = destroy_after(plugin.create_panel())
     assert panel.__class__.__name__ == "SynBioPanel"
 
 

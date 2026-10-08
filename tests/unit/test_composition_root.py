@@ -28,7 +28,7 @@ def test_service_factory_anchors_to_plugin_dir():
     assert service._repository.file_path == str(expected_path)
 
 
-def test_synbio_panel_handles_plugin_context_parent():
+def test_synbio_panel_handles_plugin_context_parent(destroy_after):
     from PySide6.QtWidgets import QApplication
 
     _app = QApplication.instance() or QApplication([])
@@ -38,6 +38,6 @@ def test_synbio_panel_handles_plugin_context_parent():
         pass
 
     ctx = DummyPluginContext()
-    panel = SynBioPanel(parent=ctx)
+    panel = destroy_after(SynBioPanel(parent=ctx))
     assert panel.context is ctx
     assert panel.parent() is None
