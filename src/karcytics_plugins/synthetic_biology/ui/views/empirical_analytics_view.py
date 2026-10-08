@@ -12,6 +12,7 @@ STRICT CONSTRAINTS ENFORCED:
 from __future__ import annotations
 
 import pyqtgraph as pg
+from karcytics_sdk.plugin.dialogs import show_warning
 from karcytics_sdk.plugin.theme_fallback import Fonts
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QFont
@@ -23,7 +24,6 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QPushButton,
     QSplitter,
     QTableWidget,
@@ -394,7 +394,7 @@ class EmpiricalAnalyticsView(QWidget):
 
     @Slot(str)
     def _on_error(self, err_msg: str) -> None:
-        QMessageBox.warning(self, "Empirical Analytics Error", err_msg)
+        show_warning(self, "Empirical Analytics Error", err_msg)
 
     # ── Teardown & Hot-swapping ───────────────────────────────────────
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 
+from karcytics_sdk.plugin.dialogs import show_error, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from PySide6.QtCore import QMimeData, Qt, Signal, Slot
 from PySide6.QtGui import QDrag
@@ -26,7 +27,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
-    QMessageBox,
     QPushButton,
     QSplitter,
     QTableWidget,
@@ -387,7 +387,7 @@ class PlasmidAssemblyView(QWidget):
                 )
 
         if not parts:
-            QMessageBox.warning(
+            show_warning(
                 self,
                 "Assembly Warning",
                 "Please drag at least one part into the canvas.",
@@ -419,9 +419,7 @@ class PlasmidAssemblyView(QWidget):
     def _on_primer_clicked(self):
         plasmid = self.state.get_active_plasmid()
         if not plasmid or not plasmid.sequence:
-            QMessageBox.warning(
-                self, "Primer Warning", "Assemble or import a plasmid vector first."
-            )
+            show_warning(self, "Primer Warning", "Assemble or import a plasmid vector first.")
             return
 
         dlg = PrimerDesignDialog(
@@ -458,4 +456,4 @@ class PlasmidAssemblyView(QWidget):
 
     @Slot(str)
     def _show_error(self, message: str):
-        QMessageBox.critical(self, "Assembly Error", message)
+        show_error(self, "Assembly Error", message)

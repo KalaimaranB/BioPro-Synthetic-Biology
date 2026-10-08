@@ -7,6 +7,7 @@ signals & slots.
 
 from __future__ import annotations
 
+from karcytics_sdk.plugin.dialogs import show_error, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import (
@@ -15,7 +16,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QMessageBox,
     QPushButton,
     QSplitter,
     QTableWidget,
@@ -177,7 +177,7 @@ class CRISPRDesignView(QWidget):
     def _on_scan_clicked(self):
         seq = self.target_seq_edit.toPlainText().strip()
         if not seq:
-            QMessageBox.warning(self, "Input Error", "Target sequence cannot be empty.")
+            show_warning(self, "Input Error", "Target sequence cannot be empty.")
             return
 
         pam_type = self.pam_combo.currentText()
@@ -258,4 +258,4 @@ class CRISPRDesignView(QWidget):
 
     @Slot(str)
     def _show_error(self, message: str):
-        QMessageBox.critical(self, "CRISPR Engine Error", message)
+        show_error(self, "CRISPR Engine Error", message)

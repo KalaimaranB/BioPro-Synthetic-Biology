@@ -1,8 +1,9 @@
 """Design Ribbon — Fetch and select biological parts via dynamic dropdown."""
 
 from karcytics_sdk.plugin.components import PrimaryButton
+from karcytics_sdk.plugin.dialogs import show_warning
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QMessageBox, QWidget
+from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QWidget
 
 from ...analysis.parts.components import BiologicalPart
 
@@ -245,7 +246,7 @@ class DesignRibbon(QWidget):
             if part:
                 self.part_fetched.emit(part)
             else:
-                QMessageBox.warning(
+                show_warning(
                     self,
                     "Fetch Failed",
                     f"Could not find or instantiate part '{part_id}'.",

@@ -9,6 +9,7 @@ CircuitSimulationController signals & slots.
 from __future__ import annotations
 
 import pyqtgraph as pg
+from karcytics_sdk.plugin.dialogs import show_error
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QPalette
@@ -18,7 +19,6 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
-    QMessageBox,
     QPushButton,
     QSpinBox,
     QSplitter,
@@ -337,4 +337,4 @@ class CircuitSimulationView(QWidget):
 
     @Slot(str)
     def _show_error(self, message: str):
-        QMessageBox.critical(self, "Simulation Engine Error", message)
+        show_error(self, "Simulation Engine Error", message)

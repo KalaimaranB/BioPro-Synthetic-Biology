@@ -11,12 +11,12 @@ from __future__ import annotations
 from typing import Any
 
 from karcytics_sdk.plugin import OneShotWorkerThread
+from karcytics_sdk.plugin.dialogs import get_save_path, show_error, show_info, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
-    QFileDialog,
     QFormLayout,
     QFrame,
     QGroupBox,
@@ -24,7 +24,6 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QProgressBar,
     QPushButton,
     QSpinBox,
@@ -506,7 +505,7 @@ class LaboratoryExecutionView(QWidget):
             "background-color: #E11D48; color: white; font-weight: bold; "
             "padding: 3px 10px; border-radius: 12px; font-size: 11px;"
         )
-        QMessageBox.critical(
+        show_error(
             self,
             "Bench Protocol Error",
             f"Failed to calculate assembly protocol:\n\n{error_message}",
@@ -656,14 +655,14 @@ class LaboratoryExecutionView(QWidget):
     def _on_export_csv_clicked(self) -> None:
         """Export handler opening QFileDialog and executing WorklistGenerator export."""
         if not self.current_protocol:
-            QMessageBox.warning(
+            show_warning(
                 self,
                 "No Protocol Available",
                 "Please generate a bench assembly protocol first before exporting to CSV.",
             )
             return
 
-        filepath, _ = QFileDialog.getSaveFileName(
+        filepath = get_save_path(
             self,
             "Export Tecan Liquid Handler Worklist",
             "tecan_worklist.csv",
@@ -680,15 +679,13 @@ class LaboratoryExecutionView(QWidget):
                     filepath=filepath,
                     default_dest_plate=self.txt_dest_plate.text(),
                 )
-                QMessageBox.information(
+                show_info(
                     self,
                     "Export Successful",
                     f"Successfully exported Tecan worklist to:\n{out_file}",
                 )
             except RobotExportError as e:
-                QMessageBox.critical(
-                    self, "Robot Export Error", f"Failed to export Tecan CSV:\n{e}"
-                )
+                show_error(self, "Robot Export Error", f"Failed to export Tecan CSV:\n{e}")
 
     def _load_sample_inventory(self) -> None:
         """Populates the LIMS inventory table with Phase 2 data models."""

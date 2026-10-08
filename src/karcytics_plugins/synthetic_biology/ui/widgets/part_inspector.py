@@ -1,5 +1,6 @@
 import os
 
+from karcytics_sdk.plugin.dialogs import ask_yes_no, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPixmap
@@ -10,7 +11,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QPushButton,
     QSizePolicy,
     QTabWidget,
@@ -787,16 +787,14 @@ class PartInspector(QWidget):
         part_id = self.current_part.id
         part_name = getattr(self.current_part, "name", "") or part_id
 
-        confirm = QMessageBox.question(
+        confirm = ask_yes_no(
             self,
             "Confirm Part Deletion",
             f"Are you sure you want to delete the part '{part_name}'? "
             "This action cannot be undone.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
         )
 
-        if confirm == QMessageBox.StandardButton.Yes:
+        if confirm:
             if self.catalogue_service:
                 self.catalogue_service.delete_part(part_id)
             self.part_deleted.emit(part_id)
@@ -813,7 +811,7 @@ class PartInspector(QWidget):
         """
         seq = self.seq_edit.toPlainText().strip()
         if not seq:
-            QMessageBox.warning(
+            show_warning(
                 self,
                 "Missing Sequence",
                 "Please enter a DNA sequence before generating the comparative graph.",
@@ -891,7 +889,7 @@ class PartInspector(QWidget):
             dialog.exec()
 
         except Exception as e:
-            QMessageBox.warning(
+            show_warning(
                 self,
                 "Wild Type Reverse Lookup Error",
                 f"Failed to generate comparative graph:\n{str(e)}",
