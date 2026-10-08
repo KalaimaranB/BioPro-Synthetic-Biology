@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QThread, Signal  # noqa: TID251
+from PySide6.QtCore import QThread, Signal
 
-from ..models.domain import PlasmidVector, Primer
-from ..parts.base import BiologicalPart
-from .vector_builder import VectorAssemblyEngine
+from ...analysis.assembly.vector_builder import VectorAssemblyEngine
+from ...analysis.models.domain import PlasmidVector, Primer
+from ...analysis.parts.base import BiologicalPart
 
 
 class AssemblyWorker(QThread):

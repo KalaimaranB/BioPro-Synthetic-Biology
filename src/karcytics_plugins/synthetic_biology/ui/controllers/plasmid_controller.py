@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Slot
 
-from ...analysis.assembly.async_worker import AssemblyWorker
 from ...analysis.assembly.vector_builder import VectorAssemblyEngine
 from ...analysis.models.domain import PlasmidVector, Primer
 from ...analysis.parts.base import BiologicalPart
 from ...analysis.state import SynBioState
+from ..workers import AssemblyWorker
 
 
 class PlasmidAssemblyController(QObject):

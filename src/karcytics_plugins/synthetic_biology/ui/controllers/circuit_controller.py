@@ -12,8 +12,8 @@ from ...analysis.models.domain import (
     SimulationParameters,
     SimulationResult,
 )
-from ...analysis.simulation.async_worker import CircuitSimWorker
 from ...analysis.state import SynBioState
+from ..workers import CircuitSimWorker
 
 
 class CircuitSimulationController(QObject):

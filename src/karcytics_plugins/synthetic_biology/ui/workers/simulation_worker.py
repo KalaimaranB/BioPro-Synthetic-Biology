@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import msgpack  # type: ignore[import-untyped]
 import numpy as np
-from PySide6.QtCore import QThread, Signal  # noqa: TID251
+from PySide6.QtCore import QThread, Signal
 
-from ..models.domain import (
+from ...analysis.models.domain import (
     CircuitComponent,
     CircuitEdge,
     SimulationParameters,
 )
-from .circuit_engine import CircuitSimulationEngine
+from ...analysis.simulation.circuit_engine import CircuitSimulationEngine
 
 MAX_DOWNSAMPLE_POINTS = 1000
 

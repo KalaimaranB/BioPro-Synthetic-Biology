@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QThread, Signal  # noqa: TID251
+from PySide6.QtCore import QThread, Signal
 
-from ..models.domain import gRNACandidate
-from .grna_designer import CRISPRDesignEngine
+from ...analysis.crispr.grna_designer import CRISPRDesignEngine
+from ...analysis.models.domain import gRNACandidate
 
 
 class CRISPRWorker(QThread):

@@ -1,6 +1,5 @@
-"""CRISPR/Cas9 guide RNA design engine and workers."""
+"""CRISPR/Cas9 guide RNA design engine."""
 
-from .async_worker import CRISPRWorker
 from .grna_designer import CRISPRDesignEngine
 
-__all__ = ["CRISPRDesignEngine", "CRISPRWorker"]
+__all__ = ["CRISPRDesignEngine"]

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Slot
 
-from ...analysis.crispr.async_worker import CRISPRWorker
 from ...analysis.models.domain import gRNACandidate
 from ...analysis.state import SynBioState
+from ..workers import CRISPRWorker
 
 
 class CRISPRDesignController(QObject):

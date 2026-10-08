@@ -12,14 +12,8 @@ from .protocol_engine import (
 )
 from .vector_builder import VectorAssemblyEngine
 
-try:
-    from .async_worker import AssemblyWorker
-except ImportError:
-    AssemblyWorker: type | None = None  # type: ignore
-
 __all__ = [
     "VectorAssemblyEngine",
-    "AssemblyWorker",
     "ProtocolEngine",
     "PipettingVolumeError",
     "AssemblyProtocolError",
