@@ -31,42 +31,29 @@ class CircuitCanvas(QGraphicsView):
         self.setScene(self._scene)
         self.setRenderHint(self.renderHints().Antialiasing)
 
-        # Basic styling
-        self.setBackgroundBrush(QBrush(QColor(Colors.BG_DARKEST)))  # Dark theme background
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self._parts = []
 
         # Font for labels
         self._font = QFont("Helvetica Neue", 10)
 
-        # Colors
+        # Part-type colours are SBOL glyph conventions, not theme chrome
         self.c_promoter = QColor("#2ecc71")
         self.c_rbs = QColor("#9b59b6")
         self.c_cds = QColor("#e74c3c")
         self.c_terminator = QColor("#e67e22")
         self.c_insulator = QColor("#f1c40f")
         self.c_sgrna = QColor("#1abc9c")
-        self.c_backbone = QColor("#666666")
-        self.c_text = QColor("#ffffff")
 
-        self.refresh_styles()
-
-        from karcytics_sdk.plugin.theme_fallback import theme_manager
-
-        theme_manager.theme_changed.connect(self.refresh_styles)
-
-    def refresh_styles(self) -> None:
-        """Dynamically update canvas background and label colors on theme change."""
-        from karcytics_sdk.plugin.theme_fallback import Colors
-
-        bg_hex = getattr(Colors, "BG_DARKEST", "#1e1e1e")
-        text_hex = getattr(Colors, "FG_PRIMARY", "#ffffff")
-        self.setBackgroundBrush(QBrush(QColor(bg_hex)))
-        self.c_text = QColor(text_hex)
-        self.render_circuit()
+        self._apply_theme_styles()
 
     def _apply_theme_styles(self) -> None:
-        self.refresh_styles()
+        """Re-read the theme colours and redraw; called by the panel on every theme change."""
+        self.setBackgroundBrush(QBrush(QColor(Colors.BG_DARKEST)))
+        self.c_backbone = QColor(Colors.FG_SECONDARY)
+        self.c_text = QColor(Colors.FG_PRIMARY)
+        self.c_generic = QColor(Colors.BG_LIGHT)
+        self.render_circuit()
 
     def add_part(self, part):
         """Add a fetched part to the canvas."""
@@ -236,7 +223,7 @@ class CircuitCanvas(QGraphicsView):
     def _draw_generic(self, x: float, name: str, cell_w: float):
         """Draw generic box."""
         cx = x + cell_w / 2 - 20
-        self._scene.addRect(cx, -10, 40, 20, QPen(self.c_text), QBrush(QColor("#bdc3c7")))
+        self._scene.addRect(cx, -10, 40, 20, QPen(self.c_text), QBrush(self.c_generic))
         text = self._scene.addText(name, self._font)
         text.setDefaultTextColor(self.c_text)
         tw = text.boundingRect().width()
