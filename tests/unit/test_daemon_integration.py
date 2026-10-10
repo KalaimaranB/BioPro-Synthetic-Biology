@@ -21,11 +21,10 @@ test is sound), then restores the fix.
 from __future__ import annotations
 
 import os
-import signal
+import select
 import struct
 import subprocess
 import sys
-import textwrap
 import time
 from pathlib import Path
 from typing import Any
@@ -59,50 +58,39 @@ def send_frame(proc: subprocess.Popen, data: dict[str, Any]) -> None:
     proc.stdin.flush()
 
 
+def _read_exact(fd: int, n: int, proc: subprocess.Popen, deadline: float) -> bytes | None:
+    buf = bytearray()
+    while len(buf) < n:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None
+        rlist, _, _ = select.select([fd], [], [], min(0.1, remaining))
+        if not rlist:
+            if proc.poll() is not None:
+                return None
+            continue
+        chunk = os.read(fd, n - len(buf))
+        if not chunk:
+            return None
+        buf.extend(chunk)
+    return bytes(buf)
+
+
 def recv_frame(proc: subprocess.Popen, timeout: float = 10.0) -> dict[str, Any] | None:
     """Read one length-prefixed msgpack frame from the worker's stdout.
 
     Returns None on EOF or timeout.
     """
-    import select
-
     fd = proc.stdout.fileno()
-    # Read 4-byte header
-    header = bytearray()
     deadline = time.monotonic() + timeout
-    while len(header) < 4:
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            return None
-        rlist, _, _ = select.select([fd], [], [], min(0.1, remaining))
-        if not rlist:
-            if proc.poll() is not None:
-                return None
-            continue
-        chunk = os.read(fd, 4 - len(header))
-        if not chunk:
-            return None
-        header.extend(chunk)
-
-    length = struct.unpack(">I", bytes(header))[0]
-
-    # Read payload
-    buf = bytearray()
-    while len(buf) < length:
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            return None
-        rlist, _, _ = select.select([fd], [], [], min(0.1, remaining))
-        if not rlist:
-            if proc.poll() is not None:
-                return None
-            continue
-        chunk = os.read(fd, length - len(buf))
-        if not chunk:
-            return None
-        buf.extend(chunk)
-
-    return msgpack.unpackb(bytes(buf), raw=False)
+    header = _read_exact(fd, 4, proc, deadline)
+    if not header:
+        return None
+    length = struct.unpack(">I", header)[0]
+    payload = _read_exact(fd, length, proc, deadline)
+    if not payload:
+        return None
+    return msgpack.unpackb(payload, raw=False)
 
 
 def drain_events_until(proc: subprocess.Popen, topic: str, timeout: float) -> dict | None:
@@ -272,6 +260,42 @@ class TestDaemonSubprocessSmoke:
         assert worker.poll() is None, "Worker process exited after exception"
 
 
+def _find_sdk_runtime_path() -> Path | None:
+    for p in sys.path:
+        candidate = Path(p) / "karcytics_sdk" / "plugin" / "ui_daemon_runtime.py"
+        if candidate.exists():
+            return candidate
+    for pth_file in (Path(p) for p in sys.path):
+        if pth_file.suffix == ".pth":
+            continue
+        candidate = pth_file / "karcytics_sdk" / "plugin" / "ui_daemon_runtime.py"
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _assert_buggy_worker_fails(proc: subprocess.Popen) -> None:
+    ready = drain_events_until(proc, "ready", timeout=20.0)
+    if ready is None:
+        stderr = proc.stderr.read(4096).decode("utf-8", errors="replace")
+        assert "NameError" in stderr or "CRITICAL ERROR" in stderr, (
+            f"Worker failed to start but no NameError found: {stderr}"
+        )
+        return
+
+    try:
+        result = call_worker(proc, "focus", timeout=5.0)
+        time.sleep(0.5)
+        stderr = proc.stderr.read(4096).decode("utf-8", errors="replace")
+        assert (
+            (isinstance(result, dict) and "error" in result)
+            or "NameError" in stderr
+            or "CRITICAL ERROR" in stderr
+        ), f"Expected NameError with buggy code. result={result}, stderr={stderr}"
+    except (TimeoutError, BrokenPipeError, OSError):
+        pass
+
+
 @pytest.mark.integration
 @pytest.mark.timeout(60)
 class TestDaemonRegressionImportTime:
@@ -283,71 +307,21 @@ class TestDaemonRegressionImportTime:
         """Temporarily reintroduce the local `import time` in run(), verify the
         worker crashes or returns a NameError, then restore the fix.
         """
-        import importlib
-        sdk_runtime_path = None
-        # Find the real SDK ui_daemon_runtime.py
-        for p in sys.path:
-            candidate = Path(p) / "karcytics_sdk" / "plugin" / "ui_daemon_runtime.py"
-            if candidate.exists():
-                sdk_runtime_path = candidate
-                break
-        if sdk_runtime_path is None:
-            # Try the editable install path
-            for pth_file in (Path(p) for p in sys.path):
-                if pth_file.suffix == ".pth":
-                    continue
-                candidate = pth_file / "karcytics_sdk" / "plugin" / "ui_daemon_runtime.py"
-                if candidate.exists():
-                    sdk_runtime_path = candidate
-                    break
-
+        sdk_runtime_path = _find_sdk_runtime_path()
         if sdk_runtime_path is None:
             pytest.skip("Could not locate ui_daemon_runtime.py on sys.path")
 
         original = sdk_runtime_path.read_text()
-        assert "import time" not in original.split("def run(")[1].split("\n    os._exit(")[0].replace("#", "").strip() or True
-
-        # Inject the bug: add `import time` inside run() just before time.sleep
         buggy = original.replace(
-            "    # time is imported at module level (line 25); a local re-import here\n    time.sleep(0.02)",
-            "    import time\n    time.sleep(0.02)",
+            "    os._exit(exit_code)",
+            "    import time\n    os._exit(exit_code)",
         )
-        if buggy == original:
-            # Try alternate marker
-            buggy = original.replace(
-                "    time.sleep(0.02)\n\n    # Not sys.exit()",
-                "    import time\n    time.sleep(0.02)\n\n    # Not sys.exit()",
-            )
 
         try:
             sdk_runtime_path.write_text(buggy)
-
             proc = spawn_worker()
             try:
-                ready = drain_events_until(proc, "ready", timeout=20.0)
-                if ready is None:
-                    # Worker may have crashed before ready — check stderr
-                    stderr = proc.stderr.read(4096).decode("utf-8", errors="replace")
-                    assert "NameError" in stderr or "CRITICAL ERROR" in stderr, (
-                        f"Worker failed to start but no NameError found: {stderr}"
-                    )
-                    return  # Test passes: worker crashed due to the bug
-
-                # Worker started — try sending a request (should crash)
-                try:
-                    result = call_worker(proc, "focus", timeout=5.0)
-                    # If we got here, check stderr for the error
-                    time.sleep(0.5)
-                    stderr = proc.stderr.read(4096).decode("utf-8", errors="replace")
-                    # Either the result has an error OR stderr shows the crash
-                    assert (
-                        (isinstance(result, dict) and "error" in result)
-                        or "NameError" in stderr
-                        or "CRITICAL ERROR" in stderr
-                    ), f"Expected NameError with buggy code. result={result}, stderr={stderr}"
-                except (TimeoutError, BrokenPipeError, OSError):
-                    # Worker crashed mid-request — this is expected
-                    pass
+                _assert_buggy_worker_fails(proc)
             finally:
                 try:
                     proc.kill()
@@ -355,7 +329,6 @@ class TestDaemonRegressionImportTime:
                 except Exception:
                     pass
         finally:
-            # RESTORE THE FIX
             sdk_runtime_path.write_text(original)
 
 

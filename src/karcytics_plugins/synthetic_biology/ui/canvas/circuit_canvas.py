@@ -48,7 +48,24 @@ class CircuitCanvas(QGraphicsView):
         self.c_backbone = QColor("#666666")
         self.c_text = QColor("#ffffff")
 
+        self.refresh_styles()
+
+        from karcytics_sdk.plugin.theme_fallback import theme_manager
+
+        theme_manager.theme_changed.connect(self.refresh_styles)
+
+    def refresh_styles(self) -> None:
+        """Dynamically update canvas background and label colors on theme change."""
+        from karcytics_sdk.plugin.theme_fallback import Colors
+
+        bg_hex = getattr(Colors, "BG_DARKEST", "#1e1e1e")
+        text_hex = getattr(Colors, "FG_PRIMARY", "#ffffff")
+        self.setBackgroundBrush(QBrush(QColor(bg_hex)))
+        self.c_text = QColor(text_hex)
         self.render_circuit()
+
+    def _apply_theme_styles(self) -> None:
+        self.refresh_styles()
 
     def add_part(self, part):
         """Add a fetched part to the canvas."""

@@ -20,6 +20,13 @@ class CatalogueView(QWidget):
         self.refresh_catalogue()
         self.refresh_styles()
 
+        from karcytics_sdk.plugin.theme_fallback import theme_manager
+
+        theme_manager.theme_changed.connect(self.refresh_styles)
+
+    def _apply_theme_styles(self) -> None:
+        self.refresh_styles()
+
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

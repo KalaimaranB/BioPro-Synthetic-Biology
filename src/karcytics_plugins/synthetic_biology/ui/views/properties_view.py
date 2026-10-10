@@ -49,6 +49,13 @@ class PropertiesView(QWidget):
         # Apply theme styles
         self.refresh_styles()
 
+        from karcytics_sdk.plugin.theme_fallback import theme_manager
+
+        theme_manager.theme_changed.connect(self.refresh_styles)
+
+    def _apply_theme_styles(self) -> None:
+        self.refresh_styles()
+
     def refresh_styles(self) -> None:
         """Apply theme styling dynamically to list and inspector widgets."""
         from karcytics_sdk.plugin.theme_fallback import Colors

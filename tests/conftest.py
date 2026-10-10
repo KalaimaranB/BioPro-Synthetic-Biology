@@ -17,7 +17,9 @@ sys.path.insert(0, str(src_dir))
 sys.path.insert(0, str(root_dir))
 
 import pytest  # noqa: E402
-from PyQt6.QtWidgets import QLabel, QPushButton, QSplitter, QWidget  # noqa: E402
+from PyQt6.QtWidgets import QApplication, QLabel, QPushButton, QSplitter, QWidget  # noqa: E402
+
+_qapp = QApplication.instance() or QApplication(["pytest", "-platform", "offscreen"])
 
 # Mock karcytics_sdk before it gets imported
 mock_karcytics_sdk_plugin = MagicMock()
@@ -139,6 +141,7 @@ mock_theme_fallback = types.ModuleType("theme_fallback")
 mock_theme_fallback.Colors = DummyColors  # type: ignore
 mock_theme_fallback.Fonts = DummyColors  # type: ignore
 mock_theme_fallback.theme_manager = MagicMock()  # type: ignore
+mock_theme_fallback.get_contrast_text_color = lambda bg: "#ffffff"  # type: ignore
 sys.modules["karcytics_sdk.plugin.theme_fallback"] = mock_theme_fallback
 
 try:

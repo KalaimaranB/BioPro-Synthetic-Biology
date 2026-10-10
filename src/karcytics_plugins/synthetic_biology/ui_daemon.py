@@ -18,24 +18,23 @@ from __future__ import annotations
 
 import faulthandler
 import sys
+import traceback
+from pathlib import Path
+from typing import Any
 
 faulthandler.enable(file=sys.stderr, all_threads=True)
 
-import traceback
 
 def global_exception_handler(exctype, value, tb):
-    print("CRITICAL ERROR CAUGHT BY QT HOOK:", file=sys.stderr)
+    sys.stderr.write("CRITICAL ERROR CAUGHT BY QT HOOK:\n")
     traceback.print_exception(exctype, value, tb)
     sys.exit(1)
+
 
 sys.excepthook = global_exception_handler
 
 
 _GLOBAL_PANEL_ANCHOR = None
-
-
-from pathlib import Path
-from typing import Any
 
 # Run directly as `python ui_daemon.py` by PluginUIDaemon rather than
 # imported as part of the `karcytics_plugins` package — nothing else puts
@@ -110,6 +109,7 @@ _ACTIVE_PANEL: Any = None
 
 def main() -> int | None:
     import os
+
     import karcytics_sdk.plugin.ui_daemon_runtime as _ui_runtime
     from karcytics_sdk.plugin import run_ui_daemon
     from karcytics_sdk.plugin.ui_daemon_runtime import send_event
@@ -159,10 +159,23 @@ def main() -> int | None:
 
         return panel
 
+    def _on_panel_ready(window: Any, panel: Any) -> None:
+        from karcytics_sdk.plugin.components import apply_global_sdk_styles
+        from karcytics_sdk.plugin.theme_fallback import theme_manager
+
+        def _on_theme_update():
+            apply_global_sdk_styles()
+            if hasattr(panel, "_apply_theme_styles"):
+                panel._apply_theme_styles()
+
+        theme_manager.theme_changed.connect(_on_theme_update)
+        _on_theme_update()
+
     run_ui_daemon(
         _build_panel,
         window_title="Synthetic Biology",
         window_size=(1400, 900),
+        on_panel_ready=_on_panel_ready,
         plugin_id="synthetic_biology",
     )
     return 0

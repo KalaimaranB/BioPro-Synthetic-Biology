@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import time
 from typing import Any
 
@@ -105,7 +106,8 @@ class SimulateWorker(QThread):
             print(  # noqa: T201
                 f"[PROFILING] Worker Sim Time: {sim_ms:.2f} ms | "
                 f"Msgpack Serialization: {ser_ms:.2f} ms | "
-                f"Payload Size: {len(packed_payload)} bytes"
+                f"Payload Size: {len(packed_payload)} bytes",
+                file=sys.stderr,
             )
             self.simulation_finished.emit(packed_payload)
         except Exception as e:
@@ -255,8 +257,13 @@ class SimulateView(QWidget):
 
         # Apply dark theme
         self._apply_theme()
+
+        from karcytics_sdk.plugin.theme_fallback import theme_manager
+
+        theme_manager.theme_changed.connect(self.refresh_styles)
+
         t1 = time.perf_counter()
-        print(f"[PROFILING] SimulateView UI Setup Time: {(t1 - t0) * 1000:.2f} ms")  # noqa: T201
+        print(f"[PROFILING] SimulateView UI Setup Time: {(t1 - t0) * 1000:.2f} ms", file=sys.stderr)  # noqa: T201
 
     def refresh_styles(self) -> None:
         """Alias for _apply_theme for theme update signals."""
@@ -278,6 +285,14 @@ class SimulateView(QWidget):
             font_sz = 14
 
         self.plot_widget.setBackground(dark_bg)
+        axis_pen = pg.mkPen(color=fg_sec, width=1)
+        for axis_name in ("left", "bottom", "top", "right"):
+            axis = self.plot_widget.getPlotItem().getAxis(axis_name)
+            axis.setPen(axis_pen)
+            axis.setTextPen(axis_pen)
+        self.plot_widget.setLabel("bottom", "Time (seconds)", color=fg_sec)
+        self.plot_widget.setLabel("left", "Concentration", color=fg_sec)
+
         self.info_label.setStyleSheet(f"color: {fg_sec}; font-size: {font_sz}px;")
         self.species_header.setStyleSheet(f"color: {fg_pri}; font-weight: bold; font-size: 13px;")
 
@@ -370,7 +385,8 @@ class SimulateView(QWidget):
             t_render_end = time.perf_counter()
             print(  # noqa: T201
                 f"[PROFILING] PyQtGraph Render Step (Empty Selection): "
-                f"{(t_render_end - t_render_start) * 1000:.2f} ms"
+                f"{(t_render_end - t_render_start) * 1000:.2f} ms",
+                file=sys.stderr,
             )
             return
 
@@ -424,7 +440,8 @@ class SimulateView(QWidget):
             t_render_end = time.perf_counter()
             print(  # noqa: T201
                 f"[PROFILING] PyQtGraph Render Step (No Valid Traces): "
-                f"{(t_render_end - t_render_start) * 1000:.2f} ms"
+                f"{(t_render_end - t_render_start) * 1000:.2f} ms",
+                file=sys.stderr,
             )
             return
 
@@ -460,7 +477,8 @@ class SimulateView(QWidget):
         t_render_end = time.perf_counter()
         print(  # noqa: T201
             f"[PROFILING] PyQtGraph Render Step: "
-            f"{(t_render_end - t_render_start) * 1000:.2f} ms ({len(valid_traces)} traces plotted)"
+            f"{(t_render_end - t_render_start) * 1000:.2f} ms ({len(valid_traces)} traces plotted)",
+            file=sys.stderr,
         )
 
     @pyqtSlot(object)
@@ -501,7 +519,8 @@ class SimulateView(QWidget):
             deser_ms = (t_deser_end - t_deser_start) * 1000
             print(  # noqa: T201
                 f"[PROFILING] IPC Msgpack Deserialization: {deser_ms:.2f} ms | "
-                f"Worker Simulation: {sim_ms:.2f} ms"
+                f"Worker Simulation: {sim_ms:.2f} ms",
+                file=sys.stderr,
             )
         else:
             result_data = payload.get("result") if isinstance(payload, dict) else payload
@@ -649,7 +668,8 @@ class SimulateView(QWidget):
         t_prep_end = time.perf_counter()
         print(  # noqa: T201
             f"[PROFILING] Simulate Tab Click -> Antimony Model Generation: "
-            f"{(t_prep_end - t_click_start) * 1000:.2f} ms"
+            f"{(t_prep_end - t_click_start) * 1000:.2f} ms",
+            file=sys.stderr,
         )
 
         # Launch background calculation worker

@@ -373,26 +373,36 @@ class PartInspector(QWidget):
         self.layout.addLayout(self.btn_layout)
 
         self.refresh_styles()
+
+        from karcytics_sdk.plugin.theme_fallback import theme_manager
+
+        theme_manager.theme_changed.connect(self.refresh_styles)
+
         self.clear()
         self._on_type_changed(self.type_combo.currentText())
 
+    def _apply_theme_styles(self) -> None:
+        self.refresh_styles()
+
     def refresh_styles(self) -> None:
         """Apply theme-based styles dynamically without hardcoded colors."""
+        from karcytics_sdk.plugin.theme_fallback import get_contrast_text_color
+
         hover_primary = getattr(Colors, "ACCENT_PRIMARY_HOVER", "#0097a7")
         danger_color = getattr(
             Colors, "ACCENT_NEGATIVE", getattr(Colors, "ACCENT_DANGER", "#ef5350")
         )
         sec_hover_bg = getattr(Colors, "BG_LIGHT", getattr(Colors, "BG_DARK", "#161b22"))
-        bg_darkest = getattr(Colors, "BG_DARKEST", "#0d1117")
         bg_medium = getattr(Colors, "BG_MEDIUM", "#21262d")
         fg_primary = getattr(Colors, "FG_PRIMARY", "#e6edf3")
         border = getattr(Colors, "BORDER", "#30363d")
         accent_primary = getattr(Colors, "ACCENT_PRIMARY", "#00bcd4")
+        contrast_text = get_contrast_text_color(accent_primary)
 
         btn_qss = f"""
             QPushButton#PrimaryButton, QPushButton[variant="primary"] {{
                 background-color: {accent_primary};
-                color: {bg_darkest};
+                color: {contrast_text};
                 border: 1px solid {accent_primary};
                 border-radius: 4px;
                 padding: 6px 12px;
@@ -401,7 +411,7 @@ class PartInspector(QWidget):
             QPushButton#PrimaryButton:hover, QPushButton[variant="primary"]:hover {{
                 background-color: {hover_primary};
                 border-color: {hover_primary};
-                color: {bg_darkest};
+                color: {contrast_text};
             }}
             QPushButton#SecondaryButton, QPushButton[variant="secondary"] {{
                 background-color: {bg_medium};

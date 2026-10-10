@@ -89,6 +89,7 @@ class SynBioPanel(PluginBase):
         self.context = raw_context
 
         super().__init__(actual_plugin_id, qt_parent)
+        self.setObjectName("SynBioPanel")
 
         # ── State ─────────────────────────────────────────────────────
         self.state = SynBioState()
@@ -383,6 +384,16 @@ class SynBioPanel(PluginBase):
             self._ribbon_stack.setStyleSheet(
                 f"background: {Colors.BG_DARK}; border-bottom: 1px solid {Colors.BORDER};"
             )
+
+        if hasattr(self, "_status_label") and self._status_label is not None:
+            self._status_label.setStyleSheet(
+                f"color: {Colors.FG_SECONDARY}; font-size: {Fonts.SIZE_SMALL}px; "
+                f"padding: 4px 12px; background: {Colors.BG_DARK}; "
+                f"border-top: 1px solid {Colors.BORDER};"
+            )
+
+        if hasattr(self, "_circuit_canvas") and hasattr(self._circuit_canvas, "refresh_styles"):
+            self._circuit_canvas.refresh_styles()
 
         # Deep recursion for sub-widgets
         for child in self.findChildren(QWidget):
