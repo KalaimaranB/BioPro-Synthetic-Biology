@@ -40,6 +40,8 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _UI_DAEMON = _REPO_ROOT / "src" / "karcytics_plugins" / "synthetic_biology" / "ui_daemon.py"
 _VENV_PYTHON = _REPO_ROOT / ".venv" / "bin" / "python3"
 if not _VENV_PYTHON.exists():
+    _VENV_PYTHON = _REPO_ROOT / ".venv" / "Scripts" / "python.exe"
+if not _VENV_PYTHON.exists():
     _VENV_PYTHON = Path(sys.executable)
 
 _REQUEST_ID = 0
@@ -58,17 +60,62 @@ def send_frame(proc: subprocess.Popen, data: dict[str, Any]) -> None:
     proc.stdin.flush()
 
 
+def _pipe_has_data_win32(fd: int, timeout: float) -> bool:
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    try:
+        handle = msvcrt.get_osfhandle(fd)
+        avail = wintypes.DWORD()
+        start = time.monotonic()
+        while True:
+            res = ctypes.windll.kernel32.PeekNamedPipe(
+                handle, None, 0, None, ctypes.byref(avail), None
+            )
+            if not res or avail.value > 0:
+                return bool(res and avail.value > 0)
+            if time.monotonic() - start >= timeout:
+                return False
+            time.sleep(0.01)
+    except (OSError, ValueError):
+        return False
+
+
+def _pipe_has_data(fd: int, timeout: float = 0.0) -> bool:
+    """Check if data is available to read on an anonymous pipe fd without blocking."""
+    if sys.platform == "win32":
+        return _pipe_has_data_win32(fd, timeout)
+    rlist, _, _ = select.select([fd], [], [], timeout)
+    return bool(rlist)
+
+
+def _drain_pipe(fd: int, timeout: float = 0.2) -> str:
+    """Drain whatever is currently readable on a pipe without blocking."""
+    text = ""
+    current_timeout = timeout
+    while _pipe_has_data(fd, current_timeout):
+        chunk = os.read(fd, 8192)
+        if not chunk:
+            break
+        text += chunk.decode("utf-8", errors="replace")
+        current_timeout = 0.05
+    return text
+
+
 def _read_exact(fd: int, n: int, proc: subprocess.Popen, deadline: float) -> bytes | None:
     buf = bytearray()
     while len(buf) < n:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             return None
-        rlist, _, _ = select.select([fd], [], [], min(0.1, remaining))
-        if not rlist:
+        wait_time = min(0.1, remaining)
+        if not _pipe_has_data(fd, wait_time):
             if proc.poll() is not None:
-                return None
-            continue
+                if not _pipe_has_data(fd, 0.0):
+                    return None
+            else:
+                continue
         chunk = os.read(fd, n - len(buf))
         if not chunk:
             return None
@@ -163,7 +210,7 @@ def worker():
     proc = spawn_worker()
     ready = drain_events_until(proc, "ready", timeout=30.0)
     assert ready is not None, "Worker did not emit 'ready' within 30 s. Stderr:\n" + (
-        proc.stderr.read(4096).decode("utf-8", errors="replace")
+        _drain_pipe(proc.stderr.fileno(), timeout=0.1)
         if proc.poll() is not None
         else "(still running)"
     )
@@ -237,18 +284,8 @@ class TestDaemonSubprocessSmoke:
         call_worker(worker, "theme_changed", {"colors": {}})
         # Give a moment for stderr to flush
         time.sleep(0.2)
-        # Non-blocking read of stderr
-        import select
-
-        stderr_text = ""
-        while True:
-            rlist, _, _ = select.select([worker.stderr.fileno()], [], [], 0.1)
-            if not rlist:
-                break
-            chunk = os.read(worker.stderr.fileno(), 8192)
-            if not chunk:
-                break
-            stderr_text += chunk.decode("utf-8", errors="replace")
+        # Drain stderr without blocking
+        stderr_text = _drain_pipe(worker.stderr.fileno(), timeout=0.1)
         assert "CRITICAL ERROR CAUGHT BY QT HOOK" not in stderr_text, (
             f"Critical error on stderr:\n{stderr_text}"
         )
@@ -288,7 +325,7 @@ def _find_sdk_runtime_path() -> Path | None:
 def _assert_buggy_worker_fails(proc: subprocess.Popen) -> None:
     ready = drain_events_until(proc, "ready", timeout=20.0)
     if ready is None:
-        stderr = proc.stderr.read(4096).decode("utf-8", errors="replace")
+        stderr = _drain_pipe(proc.stderr.fileno(), timeout=0.5)
         assert "NameError" in stderr or "CRITICAL ERROR" in stderr, (
             f"Worker failed to start but no NameError found: {stderr}"
         )
@@ -297,7 +334,7 @@ def _assert_buggy_worker_fails(proc: subprocess.Popen) -> None:
     try:
         result = call_worker(proc, "focus", timeout=5.0)
         time.sleep(0.5)
-        stderr = proc.stderr.read(4096).decode("utf-8", errors="replace")
+        stderr = _drain_pipe(proc.stderr.fileno(), timeout=0.5)
         assert (
             (isinstance(result, dict) and "error" in result)
             or "NameError" in stderr
