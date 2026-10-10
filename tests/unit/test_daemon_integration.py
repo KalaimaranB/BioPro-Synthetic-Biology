@@ -117,12 +117,15 @@ def call_worker(
     interleaved event frames (e.g. loading_progress).
     """
     rid = _next_id()
-    send_frame(proc, {
-        "kind": "request",
-        "request_id": rid,
-        "method": method,
-        "kwargs": kwargs or {},
-    })
+    send_frame(
+        proc,
+        {
+            "kind": "request",
+            "request_id": rid,
+            "method": method,
+            "kwargs": kwargs or {},
+        },
+    )
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         frame = recv_frame(proc, timeout=deadline - time.monotonic())
@@ -153,14 +156,16 @@ def spawn_worker(env_extra: dict[str, str] | None = None) -> subprocess.Popen:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def worker():
     """Spawn a real synthetic_biology worker and wait for "ready"."""
     proc = spawn_worker()
     ready = drain_events_until(proc, "ready", timeout=30.0)
-    assert ready is not None, (
-        "Worker did not emit 'ready' within 30 s. Stderr:\n"
-        + (proc.stderr.read(4096).decode("utf-8", errors="replace") if proc.poll() is not None else "(still running)")
+    assert ready is not None, "Worker did not emit 'ready' within 30 s. Stderr:\n" + (
+        proc.stderr.read(4096).decode("utf-8", errors="replace")
+        if proc.poll() is not None
+        else "(still running)"
     )
     yield proc
     # Teardown: tell the worker to exit, then force-kill if needed
@@ -179,6 +184,7 @@ def worker():
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 @pytest.mark.timeout(45)
@@ -203,11 +209,15 @@ class TestDaemonSubprocessSmoke:
 
     def test_inject_workflow_request(self, worker):
         """(b) inject_workflow request returns a non-error response."""
-        result = call_worker(worker, "inject_workflow", {
-            "payload": None,
-            "filename": "test.json",
-            "metadata": {},
-        })
+        result = call_worker(
+            worker,
+            "inject_workflow",
+            {
+                "payload": None,
+                "filename": "test.json",
+                "metadata": {},
+            },
+        )
         assert isinstance(result, dict)
         assert "error" not in result, f"inject_workflow returned an error: {result}"
 
@@ -229,6 +239,7 @@ class TestDaemonSubprocessSmoke:
         time.sleep(0.2)
         # Non-blocking read of stderr
         import select
+
         stderr_text = ""
         while True:
             rlist, _, _ = select.select([worker.stderr.fileno()], [], [], 0.1)

@@ -120,7 +120,9 @@ class CRISPRDesignView(QWidget):
         self.target_seq_edit.setText(
             "ATGAGTAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTTAATGGGCACAAATTTTCTGTCAGTGGAGAGGGTGAAGGTGATGCAACATACGGAAAACTTACCCTTAAATTTATTTGCACTACTGGAAAACTACCTGTTCCATGGCCAACACTTGTCACTACTTTCGGTTATGGTGTTCAATGCTTTGCG"
         )
-        self.target_seq_edit.setStyleSheet("font-family: Menlo, Consolas, 'Courier New', monospace;")
+        self.target_seq_edit.setStyleSheet(
+            "font-family: Menlo, Consolas, 'Courier New', monospace;"
+        )
         top_layout.addWidget(self.target_seq_edit)
 
         splitter.addWidget(top_widget)

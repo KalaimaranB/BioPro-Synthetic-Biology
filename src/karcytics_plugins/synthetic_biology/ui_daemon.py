@@ -114,7 +114,9 @@ def main() -> int | None:
     from karcytics_sdk.plugin import run_ui_daemon
     from karcytics_sdk.plugin.ui_daemon_runtime import send_event
 
-    if not os.environ.get("KARCYTICS_CORE_SERVICES_PORT") or not os.environ.get("KARCYTICS_CORE_SERVICES_TOKEN"):
+    if not os.environ.get("KARCYTICS_CORE_SERVICES_PORT") or not os.environ.get(
+        "KARCYTICS_CORE_SERVICES_TOKEN"
+    ):
         if hasattr(_ui_runtime, "_confirm_hub_theme_or_exit"):
             _orig_confirm_theme = _ui_runtime._confirm_hub_theme_or_exit
 
@@ -122,12 +124,13 @@ def main() -> int | None:
                 port = os.environ.get("KARCYTICS_CORE_SERVICES_PORT")
                 token = os.environ.get("KARCYTICS_CORE_SERVICES_TOKEN")
                 if not port or not token:
-                    logger.warning("CoreServices port/token not configured; using fallback dynamic theme colors.")
+                    logger.warning(
+                        "CoreServices port/token not configured; using fallback dynamic theme colors."
+                    )
                     return
                 _orig_confirm_theme(logger, plugin_id)
 
             _ui_runtime._confirm_hub_theme_or_exit = _safe_confirm_theme
-
 
     def _build_panel() -> Any:
         global _ACTIVE_PLUGIN, _ACTIVE_PANEL, _GLOBAL_PANEL_ANCHOR
