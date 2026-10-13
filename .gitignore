@@ -65,3 +65,6 @@ debug_cat.json
 test_debug.py
 .Rhistory
 mypy_errors.txt
+
+# Claude Code local settings (can contain machine-specific absolute paths)
+.claude/
