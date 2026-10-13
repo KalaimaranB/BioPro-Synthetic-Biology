@@ -1,7 +1,7 @@
 {
     "security_version": 1,
     "plugin_id": "synthetic_biology",
-    "manifest_hash": "3b9302fe51dbc8076157e64ab0bf3e1cf764a03d078d07d463ba1efeeca2e638",
+    "manifest_hash": "e79723f2ca7294ca0db5035bbcb725e963a9f9c18180e2dac36eae074d3e394e",
     "exclusions": [
         "tests"
     ],

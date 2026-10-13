@@ -112,3 +112,8 @@ ignore_missing_imports = true
 # ── uv ────────────────────────────────────────────────────────────────────────
 [tool.uv.sources]
 karcytics-sdk = { path = "../Karcytics-SDK", editable = true }
+
+[dependency-groups]
+dev = [
+    "types-requests>=2.33.0.20261006",
+]
