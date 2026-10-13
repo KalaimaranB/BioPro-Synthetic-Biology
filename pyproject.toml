@@ -105,6 +105,7 @@ module = [
     "mesa.*",
     "karcytics_sdk.*",
     "karcytics.*",
+    "requests.*",
 ]
 ignore_missing_imports = true
 
