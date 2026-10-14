@@ -192,6 +192,18 @@ class SynBioState(PluginState):
         """Retrieve list of circuit edges."""
         return self.circuit_edges
 
+    def state_changed(self) -> None:
+        """Explicit state change notification hook for Karcytics ecosystem."""
+        logger.debug("SynBioState state_changed notification triggered.")
+        try:
+            from karcytics_sdk.plugin.runtime_services import event_bus
+
+            from .events import CIRCUIT_CHANGED
+
+            event_bus.publish(CIRCUIT_CHANGED, self.to_dict())
+        except Exception:
+            pass
+
     def to_dict(self) -> dict:
         """Standard serialization for undo history snapshots."""
         return {

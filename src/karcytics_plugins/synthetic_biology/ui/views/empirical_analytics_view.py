@@ -13,17 +13,20 @@ from __future__ import annotations
 
 import pyqtgraph as pg
 from karcytics_sdk.plugin.components import (
+    BioButton,
+    BioHeaderLabel,
     BioLineEdit,
     BioSplitter,
     BioTableWidget,
     PrimaryButton,
     SecondaryButton,
 )
-from karcytics_sdk.plugin.dialogs import show_warning
-from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
-from PySide6.QtCore import Qt, Slot
-from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (
+from karcytics_sdk.plugin.dialogs import show_error, show_info, show_warning
+from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
+from karcytics_sdk.plugin.toast import show_toast
+from PyQt6.QtCore import Qt, pyqtSlot, pyqtSlot as Slot
+from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import (
     QFileDialog,
     QFormLayout,
     QGroupBox,
@@ -75,17 +78,7 @@ class EmpiricalAnalyticsView(QWidget):
         main_layout.setSpacing(10)
 
         # Header Title Label
-        title_label = QLabel("Test, Learn & Empirical Analytics")
-        title_label.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        font_family = getattr(Fonts, "FAMILY_UI", None) or "Helvetica Neue"
-        title_font = QFont(font_family)
-        try:
-            sz = int(getattr(Fonts, "SIZE_TITLE", 16))
-        except (ValueError, TypeError):
-            sz = 16
-        title_font.setPointSize(sz)
-        title_font.setBold(True)
-        title_label.setFont(title_font)
+        title_label = BioHeaderLabel("Test, Learn & Empirical Analytics", self)
         main_layout.addWidget(title_label)
 
         # Main Tab Widget
@@ -397,7 +390,7 @@ class EmpiricalAnalyticsView(QWidget):
 
     @Slot(str)
     def _on_error(self, err_msg: str) -> None:
-        show_warning(self, "Empirical Analytics Error", err_msg)
+        show_error(self, err_msg, title="Empirical Analytics Error")
 
     # ── Teardown & Hot-swapping ───────────────────────────────────────
 

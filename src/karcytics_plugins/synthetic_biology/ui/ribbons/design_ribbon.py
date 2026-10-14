@@ -2,14 +2,15 @@
 
 from karcytics_sdk.plugin.components import BioComboBox, PrimaryButton
 from karcytics_sdk.plugin.dialogs import show_warning
+from karcytics_sdk.plugin.ribbon import BioRibbon
 from karcytics_sdk.plugin.theme_fallback import Colors
-from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QWidget
+from PyQt6.QtCore import pyqtSignal as Signal
+from PyQt6.QtWidgets import QLabel
 
 from ...analysis.parts.components import BiologicalPart
 
 
-class DesignRibbon(QWidget):
+class DesignRibbon(BioRibbon):
     """Ribbon for selecting and fetching biological parts from registries."""
 
     part_fetched = Signal(object)  # Emits the BiologicalPart
@@ -42,14 +43,12 @@ class DesignRibbon(QWidget):
     def __init__(self, service_factory, parent=None):
         super().__init__(parent)
         self._factory = service_factory
+        self.run_button.hide()
+        self.cancel_button.hide()
         self._setup_ui()
 
     def _setup_ui(self):
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(8)
-
-        layout.addWidget(QLabel("Role:"))
+        self.add_widget(QLabel("Role:"))
         self.role_combo = BioComboBox()
         self.role_combo.addItems(
             [
@@ -59,25 +58,25 @@ class DesignRibbon(QWidget):
                 "Terminator",
             ]
         )
-        self.role_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+        self.role_combo.setSizeAdjustPolicy(BioComboBox.SizeAdjustPolicy.AdjustToContents)
         self.role_combo.setMinimumWidth(160)
-        layout.addWidget(self.role_combo)
+        self.add_widget(self.role_combo)
 
-        # Dynamic Part Selector QComboBox (replacing QLineEdit)
-        layout.addWidget(QLabel("Part:"))
+        # Dynamic Part Selector BioComboBox
+        self.add_widget(QLabel("Part:"))
         self.part_selector_combo = BioComboBox()
         self.part_selector_combo.setMinimumWidth(280)
-        self.part_selector_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
-        layout.addWidget(self.part_selector_combo)
+        self.part_selector_combo.setSizeAdjustPolicy(BioComboBox.SizeAdjustPolicy.AdjustToContents)
+        self.add_widget(self.part_selector_combo)
 
         # Connect Role dropdown to update_part_selector method
         self.role_combo.currentTextChanged.connect(self.update_part_selector)
 
         self.fetch_btn = PrimaryButton("Fetch Part")
         self.fetch_btn.clicked.connect(self._on_fetch)
-        layout.addWidget(self.fetch_btn)
+        self.add_widget(self.fetch_btn)
 
-        layout.addStretch()
+        self.add_stretch()
 
         # Apply dark theme styling
         self._apply_theme()
@@ -212,8 +211,8 @@ class DesignRibbon(QWidget):
             else:
                 show_warning(
                     self,
-                    "Fetch Failed",
                     f"Could not find or instantiate part '{part_id}'.",
+                    title="Fetch Failed",
                 )
         finally:
             self.fetch_btn.setEnabled(True)

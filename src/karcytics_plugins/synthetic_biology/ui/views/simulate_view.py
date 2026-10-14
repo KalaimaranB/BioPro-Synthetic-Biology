@@ -9,11 +9,18 @@ import matplotlib
 import msgpack  # type: ignore[import-untyped]
 import numpy as np
 import pyqtgraph as pg
-from karcytics_sdk.plugin import OneShotWorkerThread, get_logger
-from karcytics_sdk.plugin.components import BioListWidget, BioSplitter, SecondaryButton
+from karcytics_sdk.plugin import get_logger
+from karcytics_sdk.plugin.components import (
+    BioButton,
+    BioListWidget,
+    BioProgressDialog,
+    BioSplitter,
+    SecondaryButton,
+)
 from karcytics_sdk.plugin.theme_fallback import Colors
-from PySide6.QtCore import Qt, Signal, Slot  # noqa: TID251
-from PySide6.QtWidgets import (
+from karcytics_sdk.plugin.toast import show_toast
+from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, pyqtSignal as Signal, pyqtSlot as Slot  # noqa: TID251
+from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QListWidgetItem,
@@ -31,6 +38,7 @@ except ImportError:
     te = None
 
 from ...analysis.parts.components import CDS, Promoter, sgRNA
+from ...analysis.base_worker import BaseSDKWorker
 from ...analysis.prediction.graphing_utils import apply_standard_axes  # noqa: F401
 
 # stdout carries the Hub wire protocol in an isolated plugin, so timing
@@ -40,8 +48,8 @@ logger = get_logger(__name__)
 MAX_DOWNSAMPLE_POINTS = 1000
 
 
-class SimulateWorker(OneShotWorkerThread):
-    """Background worker QThread executing Tellurium ODE / Gillespie numerical
+class SimulateWorker(BaseSDKWorker):
+    """Background worker executing Tellurium ODE / Gillespie numerical
     simulation routines completely off the main GUI thread.
     Serializes array payloads using msgpack binary format.
     """
@@ -66,54 +74,69 @@ class SimulateWorker(OneShotWorkerThread):
         self.max_time = max_time
         self.title = title
 
-    def _execute(self) -> None:
+    def run(self) -> None:
         """Executes non-blocking numerical integration off the main thread."""
-        t_sim_start = time.perf_counter()
+        try:
+            if self.is_cancelled():
+                return
+            t_sim_start = time.perf_counter()
 
-        if te is None:
-            raise RuntimeError("Tellurium is not installed.")
+            if te is None:
+                raise RuntimeError("Tellurium is not installed.")
 
-        r = te.loada(self.model_str)
-        if self.method == "gillespie":
-            r.setIntegrator("gillespie")
-            r.integrator.seed = int(np.random.randint(1000000))
-            result = r.simulate(0, self.max_time, self.max_time * 5)
-        else:
-            result = r.simulate(0, self.max_time, self.max_time * 2)
+            r = te.loada(self.model_str)
+            if self.method == "gillespie":
+                r.setIntegrator("gillespie")
+                r.integrator.seed = int(np.random.randint(1000000))
+                result = r.simulate(0, self.max_time, self.max_time * 5)
+            else:
+                result = r.simulate(0, self.max_time, self.max_time * 2)
 
-        t_sim_end = time.perf_counter()
-        sim_ms = (t_sim_end - t_sim_start) * 1000
+            if self.is_cancelled():
+                return
 
-        # Data Decimation (Downsampling): reduce data points if time steps exceed MAX_DOWNSAMPLE_POINTS
-        if result is not None and len(result) > MAX_DOWNSAMPLE_POINTS:
-            step = len(result) // MAX_DOWNSAMPLE_POINTS
-            result = result[::step]
+            t_sim_end = time.perf_counter()
+            sim_ms = (t_sim_end - t_sim_start) * 1000
 
-        # Fast Binary Serialization with Msgpack
-        t_ser_start = time.perf_counter()
-        colnames = list(result.colnames) if hasattr(result, "colnames") else []
-        arr = np.asarray(result, dtype=np.float64)
+            # Data Decimation (Downsampling): reduce data points if time steps exceed MAX_DOWNSAMPLE_POINTS
+            if result is not None and len(result) > MAX_DOWNSAMPLE_POINTS:
+                step = len(result) // MAX_DOWNSAMPLE_POINTS
+                result = result[::step]
 
-        packed_payload = msgpack.packb(
-            {
-                "colnames": colnames,
-                "arr_bytes": arr.tobytes(),
-                "shape": list(arr.shape),
-                "dtype": str(arr.dtype),
-                "method": self.method,
-                "title": self.title,
-                "sim_duration_ms": sim_ms,
-            }
-        )
-        t_ser_end = time.perf_counter()
-        ser_ms = (t_ser_end - t_ser_start) * 1000
+            # Fast Binary Serialization with Msgpack
+            t_ser_start = time.perf_counter()
+            colnames = list(result.colnames) if hasattr(result, "colnames") else []
+            arr = np.asarray(result, dtype=np.float64)
 
-        logger.debug(
-            f"[PROFILING] Worker Sim Time: {sim_ms:.2f} ms | "
-            f"Msgpack Serialization: {ser_ms:.2f} ms | "
-            f"Payload Size: {len(packed_payload)} bytes"
-        )
-        self.simulation_finished.emit(packed_payload)
+            packed_payload = msgpack.packb(
+                {
+                    "colnames": colnames,
+                    "arr_bytes": arr.tobytes(),
+                    "shape": list(arr.shape),
+                    "dtype": str(arr.dtype),
+                    "method": self.method,
+                    "title": self.title,
+                    "sim_duration_ms": sim_ms,
+                }
+            )
+            t_ser_end = time.perf_counter()
+            ser_ms = (t_ser_end - t_ser_start) * 1000
+
+            logger.debug(
+                f"[PROFILING] Worker Sim Time: {sim_ms:.2f} ms | "
+                f"Msgpack Serialization: {ser_ms:.2f} ms | "
+                f"Payload Size: {len(packed_payload)} bytes"
+            )
+            if not self.is_cancelled():
+                self.simulation_finished.emit(packed_payload)
+        except Exception as e:
+            if not self.is_cancelled():
+                self.simulation_error.emit(str(e))
+        finally:
+            self._is_running = False
+
+    def _execute(self) -> None:
+        self.run()
 
 
 class SafeFigureCanvasQTAgg(FigureCanvasQTAgg):
@@ -172,6 +195,7 @@ class SimulateView(QWidget):
         self._last_simulation_method = None
         self._last_simulation_title = None
         self._active_worker: SimulateWorker | None = None
+        self.progress_dialog: BioProgressDialog | None = None
         self._setup_ui()
 
     def _setup_ui(self):  # noqa: PLR0915
@@ -439,6 +463,9 @@ class SimulateView(QWidget):
         """Callback slot handling calculation result from QThread worker.
         Executes strictly on the Main Qt GUI thread.
         """
+        if hasattr(self, "progress_dialog") and self.progress_dialog is not None:
+            self.progress_dialog.close()
+            self.progress_dialog = None
         t_deser_start = time.perf_counter()
 
         result_data: Any = None
@@ -511,12 +538,16 @@ class SimulateView(QWidget):
 
         # Render selected traces on pyqtgraph plot widget
         self.update_plot()
+        show_toast("Simulation completed successfully", level="info")
 
     @Slot(str)
     def _on_simulation_error(self, err_msg: str) -> None:
         """Callback slot handling calculation errors from background QThread worker.
         Executes strictly on the Main Qt GUI thread.
         """
+        if hasattr(self, "progress_dialog") and self.progress_dialog is not None:
+            self.progress_dialog.close()
+            self.progress_dialog = None
         self.plot_widget.clear()
         self.plot_widget.setTitle(
             f"<span style='color: {Colors.ACCENT_DANGER}; font-weight: bold; font-size: 12px;'>"
@@ -610,12 +641,18 @@ class SimulateView(QWidget):
             else "Dynamic Circuit Simulation (Deterministic ODE)"
         )
 
-        # Render immediate visual feedback on plot widget while worker computes simulation off-thread
+        # Immediate feedback and BioProgressDialog
         self.plot_widget.clear()
         self.plot_widget.setTitle(
             f"<span style='color: {Colors.ACCENT_PRIMARY}; font-weight: bold; font-size: 13px;'>"
             "⚡ Computing ODE Kinetic Simulation (LSODA / Tellurium)... Please wait...</span>"
         )
+        if hasattr(self, "progress_dialog") and self.progress_dialog is not None:
+            self.progress_dialog.close()
+        self.progress_dialog = BioProgressDialog(
+            "Computing simulation...", "Cancel", 0, 0, self
+        )
+        self.progress_dialog.show()
 
         t_prep_end = time.perf_counter()
         logger.debug(
@@ -625,8 +662,8 @@ class SimulateView(QWidget):
 
         # Launch background calculation worker
         if self._active_worker is not None and self._active_worker.isRunning():
-            self._active_worker.terminate()
-            self._active_worker.wait()
+            self._active_worker.cancel()
+            self._active_worker.wait(500)
 
         self._active_worker = SimulateWorker(
             model_str=model_str,
@@ -640,7 +677,10 @@ class SimulateView(QWidget):
         self._active_worker.start()
 
     def teardown(self) -> None:
-        """Stops active background worker thread if running."""
+        """Stops active background worker if running."""
+        if hasattr(self, "progress_dialog") and self.progress_dialog is not None:
+            self.progress_dialog.close()
+            self.progress_dialog = None
         if self._active_worker is not None:
             self._active_worker.stop_and_wait(1000)
             self._active_worker = None

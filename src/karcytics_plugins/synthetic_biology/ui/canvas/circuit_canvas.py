@@ -2,13 +2,13 @@
 
 import hashlib
 
+from karcytics_sdk.plugin import DirtyTrackingGraphicsScene, DirtyTrackingGraphicsView
 from karcytics_sdk.plugin.theme_fallback import Colors
-from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen, QPolygonF
-from PySide6.QtWidgets import (
+from PyQt6.QtCore import QPointF, Qt
+from PyQt6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen, QPolygonF
+from PyQt6.QtWidgets import (
     QGraphicsPathItem,
     QGraphicsPolygonItem,
-    QGraphicsScene,
     QGraphicsView,
 )
 
@@ -22,17 +22,24 @@ from ...analysis.parts.components import (
 )
 
 
-class CircuitCanvas(QGraphicsView):
+class CircuitScene(DirtyTrackingGraphicsScene):
+    """QGraphicsScene for biological circuit diagram with SDK dirty-tracking."""
+
+    pass
+
+
+class CircuitCanvas(DirtyTrackingGraphicsView):
     """Central workspace canvas for the biological diagram."""
 
     def __init__(self, parent=None):
-        super().__init__(parent)
-        self._scene = QGraphicsScene(self)
-        self.setScene(self._scene)
+        self._scene = CircuitScene(parent)
+        super().__init__(self._scene, parent)
         self.setRenderHint(self.renderHints().Antialiasing)
 
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self._parts = []
+        self._show_sequences: bool = False
+        self._show_stubs: bool = True
 
         # Font for labels
         self._font = QFont("Helvetica Neue", 10)
@@ -54,6 +61,28 @@ class CircuitCanvas(QGraphicsView):
         self.c_text = QColor(Colors.FG_PRIMARY)
         self.c_generic = QColor(Colors.BG_LIGHT)
         self.render_circuit()
+
+    def set_show_sequences(self, show: bool) -> None:
+        """Toggle DNA sequence string rendering."""
+        self._show_sequences = bool(show)
+        self.render_circuit()
+
+    def toggle_seq(self, show: bool | None = None) -> None:
+        """Helper to toggle sequence display."""
+        if show is None:
+            show = not self._show_sequences
+        self.set_show_sequences(show)
+
+    def set_show_stubs(self, show: bool) -> None:
+        """Toggle repression connection lines / stubs rendering."""
+        self._show_stubs = bool(show)
+        self.render_circuit()
+
+    def toggle_stubs(self, show: bool | None = None) -> None:
+        """Helper to toggle repression stubs display."""
+        if show is None:
+            show = not self._show_stubs
+        self.set_show_stubs(show)
 
     def add_part(self, part):
         """Add a fetched part to the canvas."""
@@ -107,27 +136,37 @@ class CircuitCanvas(QGraphicsView):
 
             part_positions[i] = cx
 
+            # Render sequence text below part if toggle_seq is enabled
+            if self._show_sequences:
+                seq = getattr(part, "sequence", "") or ""
+                if seq:
+                    seq_font = QFont("Courier New", 7)
+                    display_seq = seq if len(seq) <= 14 else f"{seq[:12]}.."
+                    seq_item = self._scene.addText(display_seq, seq_font)
+                    seq_item.setDefaultTextColor(QColor("#888888"))
+                    sw = seq_item.boundingRect().width()
+                    seq_item.setPos(x_offset + (w - sw) / 2, 45)
+
             x_offset += w
 
-        # Draw Chemical Connections (Repression Lines)
-        # Find all CDS products
-        cds_map = {}  # product_name -> cx
-        for i, part in enumerate(self._parts):
-            if isinstance(part, CDS):
-                product = getattr(part, "product", part.name.replace(" ", "_"))
-                cds_map[product] = part_positions[i]
-            elif isinstance(part, sgRNA):
-                # sgRNA also acts as a repressor product
-                cds_map[part.name] = part_positions[i]
+        # Draw Chemical Connections (Repression Lines) if stubs enabled
+        if self._show_stubs:
+            cds_map = {}  # product_name -> cx
+            for i, part in enumerate(self._parts):
+                if isinstance(part, CDS):
+                    product = getattr(part, "product", part.name.replace(" ", "_"))
+                    cds_map[product] = part_positions[i]
+                elif isinstance(part, sgRNA):
+                    cds_map[part.name] = part_positions[i]
 
-        # Draw connections to promoters
-        for i, part in enumerate(self._parts):
-            if isinstance(part, Promoter):
-                repressors = getattr(part, "repressors", [])
-                for rep in repressors:
-                    if rep in cds_map:
-                        color = self._get_color_for_repressor(rep)
-                        self._draw_repression_line(cds_map[rep], part_positions[i], color)
+            # Draw connections to promoters
+            for i, part in enumerate(self._parts):
+                if isinstance(part, Promoter):
+                    repressors = getattr(part, "repressors", [])
+                    for rep in repressors:
+                        if rep in cds_map:
+                            color = self._get_color_for_repressor(rep)
+                            self._draw_repression_line(cds_map[rep], part_positions[i], color)
 
     def _get_color_for_repressor(self, rep: str) -> QColor:
         """Deterministically generate a vibrant color based on a string hash."""

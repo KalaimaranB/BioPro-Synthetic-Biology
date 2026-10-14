@@ -10,27 +10,33 @@ from __future__ import annotations
 
 from typing import Any
 
-from karcytics_sdk.plugin import OneShotWorkerThread
 from karcytics_sdk.plugin.components import (
     BioComboBox,
     BioDoubleSpinBox,
     BioLineEdit,
+    BioProgressDialog,
     BioSpinBox,
     BioSplitter,
     BioTableWidget,
     PrimaryButton,
+    SecondaryButton,
 )
-from karcytics_sdk.plugin.dialogs import get_save_path, show_error, show_info, show_warning
+from karcytics_sdk.plugin.dialogs import (
+    get_save_path,
+    show_error,
+    show_info,
+    show_warning,
+)
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
-from PySide6.QtCore import Qt, Slot
-from PySide6.QtWidgets import (
+from karcytics_sdk.plugin.toast import show_toast
+from PyQt6.QtCore import Qt, pyqtSignal as Signal, pyqtSlot as Slot, pyqtSignal, pyqtSlot
+from PyQt6.QtWidgets import (
     QFormLayout,
     QFrame,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QProgressBar,
     QTableWidgetItem,
     QTabWidget,
     QVBoxLayout,
@@ -47,16 +53,17 @@ from ...models.inventory_models import (
     Reagent,
     StorageLocation,
 )
+from ...analysis.base_worker import BaseSDKWorker
 from ...utils.robot_exporter import RobotExportError, WorklistGenerator
 
 
-class ProtocolWorker(OneShotWorkerThread):
-    """Background QThread worker executing ProtocolEngine computational routines
+class ProtocolWorker(BaseSDKWorker):
+    """SDK AnalysisWorker compliant worker executing ProtocolEngine computational routines
     off the main GUI thread.
     """
 
-    # Results arrive on the inherited `finished_ok` (a BenchProtocol) and
-    # `finished_err` (an error string) signals.
+    finished_ok = pyqtSignal(object)
+    finished_err = pyqtSignal(str)
 
     def __init__(  # noqa: PLR0913
         self,
@@ -71,8 +78,6 @@ class ProtocolWorker(OneShotWorkerThread):
         reaction_volume_ul: float = 20.0,
         parent: QWidget | None = None,
     ) -> None:
-        # Production callers always pass a parent (it anchors the thread's
-        # lifetime); None is only for tests that call run() synchronously.
         super().__init__(parent)  # type: ignore[arg-type]
         self.num_reactions = num_reactions
         self.vector_bp = vector_bp
@@ -85,20 +90,34 @@ class ProtocolWorker(OneShotWorkerThread):
         self.reaction_volume_ul = reaction_volume_ul
         self.engine = ProtocolEngine()
 
-    def _execute(self) -> Any:
+    def run(self) -> None:
         """Executes ProtocolEngine routines asynchronously."""
-        protocol = self.engine.generate_bench_protocol(
-            num_reactions=self.num_reactions,
-            vector_bp=self.vector_bp,
-            vector_conc_ng_ul=self.vector_conc_ng_ul,
-            inserts=self.inserts,
-            assembly_type=self.assembly_type,
-            overage_pct=self.overage_pct,
-            vector_mass_ng=self.vector_mass_ng,
-            default_molar_ratio=self.default_molar_ratio,
-            reaction_volume_ul=self.reaction_volume_ul,
-        )
-        return protocol
+        try:
+            if self.is_cancelled():
+                return
+            protocol = self.engine.generate_bench_protocol(
+                num_reactions=self.num_reactions,
+                vector_bp=self.vector_bp,
+                vector_conc_ng_ul=self.vector_conc_ng_ul,
+                inserts=self.inserts,
+                assembly_type=self.assembly_type,
+                overage_pct=self.overage_pct,
+                vector_mass_ng=self.vector_mass_ng,
+                default_molar_ratio=self.default_molar_ratio,
+                reaction_volume_ul=self.reaction_volume_ul,
+            )
+            if not self.is_cancelled():
+                self.finished_ok.emit(protocol)
+                self.finished.emit(protocol)
+        except Exception as exc:
+            if not self.is_cancelled():
+                self.finished_err.emit(str(exc))
+                self.error.emit(str(exc))
+        finally:
+            self._is_running = False
+
+    def _execute(self) -> Any:
+        return self.run()
 
 
 class LaboratoryExecutionView(QWidget):
@@ -112,6 +131,7 @@ class LaboratoryExecutionView(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.current_protocol: BenchProtocol | None = None
         self.worker: ProtocolWorker | None = None
+        self.progress_dialog: BioProgressDialog | None = None
 
         self._init_ui()
         self._load_sample_inventory()
@@ -285,12 +305,7 @@ class LaboratoryExecutionView(QWidget):
 
         input_layout.addLayout(form_layout)
 
-        # Progress Bar & Calculate Button
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setRange(0, 0)
-        self.progress_bar.setFixedHeight(6)
-        self.progress_bar.setVisible(False)
-        input_layout.addWidget(self.progress_bar)
+        # Calculate Button
         self.btn_generate = PrimaryButton("⚡ Generate Bench Protocol")
         self.btn_generate.clicked.connect(self._on_generate_protocol_clicked)
         input_layout.addWidget(self.btn_generate)
@@ -375,6 +390,10 @@ class LaboratoryExecutionView(QWidget):
         self.btn_export_csv.clicked.connect(self._on_export_csv_clicked)
         ctrl_layout.addWidget(self.btn_export_csv)
 
+        self.btn_export_opentrons = SecondaryButton("🤖 Export to Opentrons OT-2")
+        self.btn_export_opentrons.clicked.connect(self._on_export_opentrons_clicked)
+        ctrl_layout.addWidget(self.btn_export_opentrons)
+
         layout.addWidget(ctrl_box)
 
         # Worklist Transfer Table
@@ -446,12 +465,15 @@ class LaboratoryExecutionView(QWidget):
         ]
 
         self.btn_generate.setEnabled(False)
-        self.progress_bar.setVisible(True)
         self.status_badge.setText("CALCULATING...")
         self.status_badge.setStyleSheet(
             f"background-color: {Colors.ACCENT_WARNING}; color: white; font-weight: bold; "
             "padding: 3px 10px; border-radius: 12px; font-size: 11px;"
         )
+        self.progress_dialog = BioProgressDialog(
+            "Calculating assembly protocol...", "Cancel", 0, 0, self
+        )
+        self.progress_dialog.show()
 
         # Launch QThread Worker
         self.worker = ProtocolWorker(
@@ -475,7 +497,9 @@ class LaboratoryExecutionView(QWidget):
         """Callback slot handling successful ProtocolEngine calculation from QThread."""
         self.current_protocol = protocol
         self.btn_generate.setEnabled(True)
-        self.progress_bar.setVisible(False)
+        if self.progress_dialog is not None:
+            self.progress_dialog.close()
+            self.progress_dialog = None
         self.status_badge.setText("SUCCESS")
         self.status_badge.setStyleSheet(
             f"background-color: {Colors.ACCENT_SUCCESS}; color: white; font-weight: bold; "
@@ -484,12 +508,15 @@ class LaboratoryExecutionView(QWidget):
 
         self._populate_results_tables(protocol)
         self._populate_worklist_table(protocol)
+        show_toast("Assembly protocol generated successfully", level="info")
 
     @Slot(str)
     def _on_protocol_error(self, error_message: str) -> None:
         """Callback slot handling calculation errors from QThread worker."""
         self.btn_generate.setEnabled(True)
-        self.progress_bar.setVisible(False)
+        if self.progress_dialog is not None:
+            self.progress_dialog.close()
+            self.progress_dialog = None
         self.status_badge.setText("ERROR")
         self.status_badge.setStyleSheet(
             f"background-color: {Colors.ACCENT_DANGER}; color: white; font-weight: bold; "
@@ -497,8 +524,8 @@ class LaboratoryExecutionView(QWidget):
         )
         show_error(
             self,
-            "Bench Protocol Error",
             f"Failed to calculate assembly protocol:\n\n{error_message}",
+            title="Bench Protocol Error",
         )
 
     def _populate_results_tables(self, protocol: BenchProtocol) -> None:
@@ -647,16 +674,16 @@ class LaboratoryExecutionView(QWidget):
         if not self.current_protocol:
             show_warning(
                 self,
-                "No Protocol Available",
                 "Please generate a bench assembly protocol first before exporting to CSV.",
+                title="No Protocol Available",
             )
             return
 
         filepath = get_save_path(
             self,
-            "Export Tecan Liquid Handler Worklist",
-            "tecan_worklist.csv",
-            "CSV Files (*.csv);;All Files (*)",
+            title="Export Tecan Liquid Handler Worklist",
+            start_dir="tecan_worklist.csv",
+            file_filter="CSV Files (*.csv);;All Files (*)",
         )
 
         if filepath:
@@ -669,13 +696,20 @@ class LaboratoryExecutionView(QWidget):
                     filepath=filepath,
                     default_dest_plate=self.txt_dest_plate.text(),
                 )
+                show_toast("Successfully exported Tecan worklist", level="info")
                 show_info(
                     self,
-                    "Export Successful",
                     f"Successfully exported Tecan worklist to:\n{out_file}",
+                    title="Export Successful",
                 )
             except RobotExportError as e:
-                show_error(self, "Robot Export Error", f"Failed to export Tecan CSV:\n{e}")
+                show_error(
+                    self, f"Failed to export Tecan CSV:\n{e}", title="Robot Export Error"
+                )
+
+    def _on_export_opentrons_clicked(self) -> None:
+        """Placeholder notification for upcoming Opentrons OT-2 liquid handler export."""
+        show_toast("Opentrons OT-2 export coming in v2.1", level="info")
 
     def _load_sample_inventory(self) -> None:
         """Populates the LIMS inventory table with Phase 2 data models."""
@@ -759,7 +793,10 @@ class LaboratoryExecutionView(QWidget):
                 self.table_inventory.setItem(row, col, QTableWidgetItem(val or ""))
 
     def teardown(self) -> None:
-        """Stops active background ProtocolWorker thread if running."""
+        """Stops active background ProtocolWorker if running."""
+        if hasattr(self, "progress_dialog") and self.progress_dialog is not None:
+            self.progress_dialog.close()
+            self.progress_dialog = None
         if self.worker is not None:
             self.worker.stop_and_wait(1000)
             self.worker = None

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from karcytics_sdk.plugin import OneShotWorkerThread
-from PySide6.QtCore import QObject, Signal
+from PyQt6.QtCore import QObject, pyqtSignal as Signal
 
+from ...analysis.base_worker import BaseSDKWorker
 from ...analysis.empirical.fcs_ingestion import (
     FCSDataIngestionService,
     FCSEventData,
@@ -25,8 +25,8 @@ from ...analysis.models.domain import (
 from ...analysis.state import SynBioState
 
 
-class EmpiricalWorker(OneShotWorkerThread):
-    """Background worker for NGS alignment and ML parameter fitting."""
+class EmpiricalWorker(BaseSDKWorker):
+    """SDK AnalysisWorker compliant worker for NGS alignment and ML parameter fitting."""
 
     fcs_done = Signal(FCSEventData)
     ngs_done = Signal(NGSAlignmentResult)
@@ -48,7 +48,6 @@ class EmpiricalWorker(OneShotWorkerThread):
         # Production callers always pass a parent (it anchors the thread's
         # lifetime); None is only for tests that call run() synchronously.
         super().__init__(parent)  # type: ignore[arg-type]
-        self.finished_err.connect(self.error_occurred)
         self.task_type = task_type
         self.fcs_service = fcs_service or FCSDataIngestionService()
         self.fcs_path = fcs_path
@@ -58,24 +57,38 @@ class EmpiricalWorker(OneShotWorkerThread):
         self.edges = edges or []
         self.fcs_data = fcs_data
 
+    def run(self):
+        try:
+            if self.is_cancelled():
+                return
+            if self.task_type == "fcs":
+                res = self.fcs_service.ingest_fcs_file(self.fcs_path)
+                if not self.is_cancelled():
+                    self.fcs_done.emit(res)
+            elif self.task_type == "ngs":
+                ref = self.plasmid or PlasmidVector(
+                    id="pDEFAULT", name="Reference Construct", sequence="ATGC" * 50
+                )
+                res = NGSAlignmentService.align_ngs_reads(self.ngs_path, ref)
+                if not self.is_cancelled():
+                    self.ngs_done.emit(res)
+            elif self.task_type == "opt":
+                fcs = self.fcs_data or self.fcs_service.ingest_fcs_file("dummy.fcs")
+                res = CircuitMLOptimizationEngine.fit_kinetic_parameters(
+                    components=self.components,
+                    edges=self.edges,
+                    fcs_data=fcs,
+                )
+                if not self.is_cancelled():
+                    self.opt_done.emit(res)
+        except Exception as ex:
+            if not self.is_cancelled():
+                self.error_occurred.emit(str(ex))
+        finally:
+            self._is_running = False
+
     def _execute(self) -> None:
-        if self.task_type == "fcs":
-            fcs_result = self.fcs_service.ingest_fcs_file(self.fcs_path)
-            self.fcs_done.emit(fcs_result)
-        elif self.task_type == "ngs":
-            ref = self.plasmid or PlasmidVector(
-                id="pDEFAULT", name="Reference Construct", sequence="ATGC" * 50
-            )
-            ngs_result = NGSAlignmentService.align_ngs_reads(self.ngs_path, ref)
-            self.ngs_done.emit(ngs_result)
-        elif self.task_type == "opt":
-            fcs = self.fcs_data or self.fcs_service.ingest_fcs_file("dummy.fcs")
-            opt_result = CircuitMLOptimizationEngine.fit_kinetic_parameters(
-                components=self.components,
-                edges=self.edges,
-                fcs_data=fcs,
-            )
-            self.opt_done.emit(opt_result)
+        self.run()
 
 
 class EmpiricalAnalyticsController(QObject):

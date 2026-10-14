@@ -138,7 +138,10 @@ def main() -> int | None:
     def _build_panel() -> Any:
         global _ACTIVE_PLUGIN, _ACTIVE_PANEL, _GLOBAL_PANEL_ANCHOR
         from karcytics_sdk.plugin import get_logger
-        from PySide6.QtGui import QFont
+        try:
+            from PySide6.QtGui import QFont
+        except ImportError:
+            from PyQt6.QtGui import QFont
 
         # Pre-register standard font family substitutions using valid CSS generic / cross-platform names
         QFont.insertSubstitutions("sans-serif", ["Segoe UI", "Helvetica Neue", "Arial"])

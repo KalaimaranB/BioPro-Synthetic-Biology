@@ -7,16 +7,21 @@ signals & slots.
 
 from __future__ import annotations
 
-from karcytics_sdk.plugin.components import BioComboBox, BioSplitter, BioTableWidget, PrimaryButton
+from karcytics_sdk.plugin.components import (
+    BioComboBox,
+    BioSplitter,
+    BioTableWidget,
+    PrimaryButton,
+)
 from karcytics_sdk.plugin.dialogs import show_error, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
-from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtWidgets import (
+from karcytics_sdk.plugin.toast import show_toast
+from PyQt6.QtCore import Qt, pyqtSignal as Signal, pyqtSlot as Slot, pyqtSlot
+from PyQt6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QTableWidget,
     QTableWidgetItem,
     QTextEdit,
     QVBoxLayout,
@@ -132,8 +137,8 @@ class CRISPRDesignView(QWidget):
 
         # Table of Candidates
         self.grna_table = BioTableWidget()
-        self.grna_table.setRowCount(0)
         self.grna_table.setColumnCount(8)
+        self.grna_table.setRowCount(0)
         self.grna_table.setHorizontalHeaderLabels(
             [
                 "Protospacer (20bp)",
@@ -148,7 +153,7 @@ class CRISPRDesignView(QWidget):
         )
         if (hv := self.grna_table.horizontalHeader()) is not None:
             hv.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.grna_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.grna_table.setSelectionBehavior(BioTableWidget.SelectionBehavior.SelectRows)
         self.grna_table.itemSelectionChanged.connect(self._on_table_selection_changed)
         bottom_layout.addWidget(self.grna_table, stretch=2)
 
@@ -177,7 +182,7 @@ class CRISPRDesignView(QWidget):
     def _on_scan_clicked(self):
         seq = self.target_seq_edit.toPlainText().strip()
         if not seq:
-            show_warning(self, "Input Error", "Target sequence cannot be empty.")
+            show_warning(self, "Target sequence cannot be empty.", title="Input Error")
             return
 
         pam_type = self.pam_combo.currentText()
@@ -221,6 +226,8 @@ class CRISPRDesignView(QWidget):
                 poly_t_item.setForeground(Qt.GlobalColor.red)
             self.grna_table.setItem(row, 7, poly_t_item)
 
+        show_toast(f"Found {len(candidates)} gRNA candidate(s)", level="info")
+
     def _on_table_selection_changed(self):
         selected_rows = self.grna_table.selectedItems()
         if not selected_rows:
@@ -258,4 +265,4 @@ class CRISPRDesignView(QWidget):
 
     @Slot(str)
     def _show_error(self, message: str):
-        show_error(self, "CRISPR Engine Error", message)
+        show_error(self, message, title="CRISPR Engine Error")

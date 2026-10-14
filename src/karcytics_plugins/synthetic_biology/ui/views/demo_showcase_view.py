@@ -9,15 +9,19 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from karcytics_sdk.plugin.components import BioSplitter, BioTableWidget, PrimaryButton
+from karcytics_sdk.plugin.components import (
+    BioSplitter,
+    BioTableWidget,
+    PrimaryButton,
+)
 from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (
+from karcytics_sdk.plugin.toast import show_toast
+from PyQt6.QtCore import Qt, pyqtSignal, pyqtSignal as Signal
+from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
@@ -115,7 +119,7 @@ class DemoShowcaseView(QWidget):
         topo_header = self.topo_table.horizontalHeader()
         if topo_header is not None:
             topo_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.topo_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.topo_table.setEditTriggers(BioTableWidget.EditTrigger.NoEditTriggers)
 
         demo_parts = [
             ("comp_1", "pTac Promoter", "Promoter", "y_max=5.0 RPU, Kd=0.05"),
@@ -150,7 +154,7 @@ class DemoShowcaseView(QWidget):
         plasmid_header = self.plasmid_table.horizontalHeader()
         if plasmid_header is not None:
             plasmid_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.plasmid_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.plasmid_table.setEditTriggers(BioTableWidget.EditTrigger.NoEditTriggers)
 
         demo_feats = [
             ("AmpR", "CDS", "120 - 980 bp", "+1 (Forward)"),
@@ -196,7 +200,7 @@ class DemoShowcaseView(QWidget):
         crispr_header = self.crispr_table.horizontalHeader()
         if crispr_header is not None:
             crispr_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.crispr_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.crispr_table.setEditTriggers(BioTableWidget.EditTrigger.NoEditTriggers)
 
         demo_grna = [
             ("LacI_Repressor", "GCTAGCTAGCTAGCTAGC", "NGG", "94.0%", "Low Risk (97.0)"),
@@ -471,6 +475,7 @@ class DemoShowcaseView(QWidget):
             if hasattr(self.main_panel, "_tab_bar"):
                 self.main_panel._tab_bar.setCurrentIndex(0)
 
+        show_toast("Demo showcase loaded into workspace", level="info")
         self.demo_loaded.emit()
 
     def _apply_theme_styles(self) -> None:

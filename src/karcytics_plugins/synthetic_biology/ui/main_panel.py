@@ -127,8 +127,13 @@ class SynBioPanel(PluginBase):
             EmpiricalAnalyticsController,
             PlasmidAssemblyController,
         )
-        from .ribbons import BiologicalViewRibbon, DesignRibbon, SimulateRibbon
-        from .ribbons.catalogue_ribbon import CatalogueRibbon
+        from .ribbons import (
+            BiologicalViewRibbon,
+            CatalogueRibbon,
+            DesignRibbon,
+            PlaceholderRibbon,
+            SimulateRibbon,
+        )
         from .views.catalogue_view import CatalogueView
         from .views.circuit_simulation_view import CircuitSimulationView
         from .views.crispr_view import CRISPRDesignView
@@ -185,15 +190,15 @@ class SynBioPanel(PluginBase):
 
         self._design_ribbon = DesignRibbon(self._factory)
         self._bio_ribbon = BiologicalViewRibbon(self._factory)
-        self._plasmid_ribbon = QWidget()
-        self._crispr_ribbon = QWidget()
-        self._circuit_sim_ribbon = QWidget()
-        self._empirical_ribbon = QWidget()
-        self._lab_execution_ribbon = QWidget()
+        self._plasmid_ribbon = PlaceholderRibbon("Plasmid Assembly Ribbon")
+        self._crispr_ribbon = PlaceholderRibbon("CRISPR Design Ribbon")
+        self._circuit_sim_ribbon = PlaceholderRibbon("Circuit Simulation Ribbon")
+        self._empirical_ribbon = PlaceholderRibbon("Empirical Analytics Ribbon")
+        self._lab_execution_ribbon = PlaceholderRibbon("Laboratory Execution Ribbon")
         self._sim_ribbon = SimulateRibbon(self._factory)
-        self._data_ribbon = QWidget()
+        self._data_ribbon = PlaceholderRibbon("Quantitative Data Ribbon")
         self._catalogue_ribbon = CatalogueRibbon(self._factory)
-        self._demo_ribbon = QWidget()
+        self._demo_ribbon = PlaceholderRibbon("Demo Showcase Ribbon")
 
         self._ribbon_stack.addWidget(self._design_ribbon)
         self._ribbon_stack.addWidget(self._bio_ribbon)
@@ -212,7 +217,7 @@ class SynBioPanel(PluginBase):
         self._central_stack = QStackedWidget()
 
         self._circuit_canvas = CircuitCanvas()
-        self._properties_view = PropertiesView()
+        self._properties_view = PropertiesView(state=self.state)
         self._simulate_view = SimulateView()
         self._catalogue_view = CatalogueView(self._factory.get("parts_catalogue"))
 
@@ -232,6 +237,14 @@ class SynBioPanel(PluginBase):
 
         # Connect design ribbon to local cache and views
         self._design_ribbon.part_fetched.connect(self._on_part_added)
+
+        # Connect biological view ribbon toggles to circuit canvas
+        self._bio_ribbon.toggle_seq.toggled.connect(self._circuit_canvas.set_show_sequences)
+        self._bio_ribbon.toggle_stubs.toggled.connect(self._circuit_canvas.set_show_stubs)
+
+        # Connect properties view state sync
+        if hasattr(self, "state_changed"):
+            self._properties_view.state_changed.connect(self.state_changed)
 
         # Connect simulate ribbon to simulation view
         self._sim_ribbon.run_simulation.connect(self._on_run_simulation)

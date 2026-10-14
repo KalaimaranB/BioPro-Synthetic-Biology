@@ -43,20 +43,20 @@ def apply_standard_axes(
        ax.grid(True, color='#D3D3D3', linestyle='--', alpha=0.7).
     8. Execute fig.tight_layout() to prevent label truncation.
     """
-    light_bg_fig = "#ffffff"
-    light_bg_ax = "#F8F9FA"
-    dark_text_color = "#333333"
-    spine_color = "#333333"
-    grid_color = "#D3D3D3"
+    bg_fig = getattr(Colors, "BG_DARKEST", "#0d1117")
+    bg_ax = getattr(Colors, "BG_DARK", "#161b22")
+    text_color = getattr(Colors, "FG_PRIMARY", "#c9d1d9")
+    spine_color = getattr(Colors, "BORDER", "#30363d")
+    grid_color = getattr(Colors, "BORDER", "#30363d")
 
     # Set background colors
-    fig.patch.set_facecolor(light_bg_fig)
-    ax.set_facecolor(light_bg_ax)
+    fig.patch.set_facecolor(bg_fig)
+    ax.set_facecolor(bg_ax)
 
-    # Set Title and Labels with font size 12 and crisp dark text
-    ax.set_title(title, color=dark_text_color, fontsize=12, fontweight="bold", pad=12)
-    ax.set_xlabel(x_label, color=dark_text_color, fontsize=12, fontweight="bold")
-    ax.set_ylabel(y_label, color=dark_text_color, fontsize=12, fontweight="bold")
+    # Set Title and Labels with font size 12 and theme text
+    ax.set_title(title, color=text_color, fontsize=12, fontweight="bold", pad=12)
+    ax.set_xlabel(x_label, color=text_color, fontsize=12, fontweight="bold")
+    ax.set_ylabel(y_label, color=text_color, fontsize=12, fontweight="bold")
 
     # Hide top and right spines
     ax.spines["top"].set_visible(False)
@@ -68,11 +68,11 @@ def apply_standard_axes(
     ax.spines["left"].set_visible(True)
     ax.spines["left"].set_color(spine_color)
 
-    # Style ticks with font size 10 and dark text color
+    # Style ticks with font size 10 and theme text color
     ax.tick_params(
         axis="both",
         which="both" if (is_log_x or is_log_y) else "major",
-        colors=dark_text_color,
+        colors=text_color,
         labelsize=10,
     )
 

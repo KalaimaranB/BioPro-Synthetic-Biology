@@ -44,10 +44,14 @@ def test_apply_standard_axes_formatting():
     assert x_margin == 0.02
     assert y_margin == 0.05
 
-    # 5. Light theme facecolors & dark text
-    assert fig.patch.get_facecolor() == matplotlib.colors.to_rgba("#ffffff")
-    assert ax.get_facecolor() == matplotlib.colors.to_rgba("#F8F9FA")
-    assert ax.xaxis.label.get_color() == "#333333"
+    # 5. Theme facecolors & text colors
+    from karcytics_sdk.plugin.theme_fallback import Colors
+    expected_bg_fig = getattr(Colors, "BG_DARKEST", "#0d1117")
+    expected_bg_ax = getattr(Colors, "BG_DARK", "#161b22")
+    expected_text = getattr(Colors, "FG_PRIMARY", "#c9d1d9")
+    assert fig.patch.get_facecolor() == matplotlib.colors.to_rgba(expected_bg_fig)
+    assert ax.get_facecolor() == matplotlib.colors.to_rgba(expected_bg_ax)
+    assert ax.xaxis.label.get_color() == expected_text
 
 
 def test_apply_standard_axes_non_singular_limits():

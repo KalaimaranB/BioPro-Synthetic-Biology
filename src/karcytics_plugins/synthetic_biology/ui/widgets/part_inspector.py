@@ -7,11 +7,12 @@ from karcytics_sdk.plugin.components import (
     PrimaryButton,
     SecondaryButton,
 )
-from karcytics_sdk.plugin.dialogs import ask_yes_no, show_warning
+from karcytics_sdk.plugin.dialogs import ask_yes_no, show_error, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import (
+from karcytics_sdk.plugin.toast import show_toast
+from PyQt6.QtCore import Qt, pyqtSignal, pyqtSignal as Signal
+from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import (
     QDialog,
     QFormLayout,
     QHBoxLayout,
@@ -333,7 +334,6 @@ class PartInspector(QWidget):
         self.seq_graph_btn = PrimaryButton("📊 Graph WT vs Mutation")
         self.seq_graph_btn.clicked.connect(self._on_graph_wt_vs_mutation)
         self.seq_layout.addWidget(self.seq_graph_btn)
-
         self.tabs.addTab(self.seq_tab, "Sequence")
 
         # Structure Tab
@@ -587,6 +587,7 @@ class PartInspector(QWidget):
             part.translation_initiation_rate = _parse_float(self.rbs_init_rate_edit.text())
 
         self.part_saved.emit(part)
+        show_toast(self, "Part saved successfully.", "success")
 
     def _on_sequence_changed(self):
         """Auto-trigger parameter prediction if in New Theoretical Part mode
@@ -723,6 +724,7 @@ class PartInspector(QWidget):
             if self.catalogue_service:
                 self.catalogue_service.delete_part(part_id)
             self.part_deleted.emit(part_id)
+            show_toast(self, "Part deleted.", "info")
 
     def _open_model_details_dialog(self, link_str: str = ""):
         """Open the detailed mathematical & biological model breakdown popup dialog."""

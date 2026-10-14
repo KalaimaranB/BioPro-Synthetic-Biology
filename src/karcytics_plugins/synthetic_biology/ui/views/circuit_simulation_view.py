@@ -12,15 +12,17 @@ import pyqtgraph as pg
 from karcytics_sdk.plugin.components import (
     BioComboBox,
     BioDoubleSpinBox,
+    BioRunButton,
     BioSpinBox,
     BioSplitter,
     PrimaryButton,
 )
-from karcytics_sdk.plugin.dialogs import show_error
+from karcytics_sdk.plugin.dialogs import show_error, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
-from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtGui import QPalette
-from PySide6.QtWidgets import (
+from karcytics_sdk.plugin.toast import show_toast
+from PyQt6.QtCore import Qt, pyqtSignal as Signal, pyqtSlot as Slot, pyqtSignal, pyqtSlot
+from PyQt6.QtGui import QPalette
+from PyQt6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -118,7 +120,7 @@ class CircuitSimulationView(QWidget):
 
         left_layout.addLayout(form)
 
-        self.btn_run_sim = PrimaryButton("▶ Run Predictive Simulation")
+        self.btn_run_sim = BioRunButton("▶ Run Predictive Simulation")
         self.btn_run_sim.clicked.connect(self._on_run_sim_clicked)
         left_layout.addWidget(self.btn_run_sim)
 
@@ -332,6 +334,8 @@ class CircuitSimulationView(QWidget):
             pen = pg.mkPen(color=color, width=2.5)
             self.plot_widget.plot(t_points, conc_values, name=species_name, pen=pen)
 
-    @Slot(str)
+        show_toast(self, "Predictive simulation completed.", "success")
+
+    @pyqtSlot(str)
     def _show_error(self, message: str):
         show_error(self, "Simulation Engine Error", message)

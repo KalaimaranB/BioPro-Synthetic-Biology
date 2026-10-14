@@ -302,6 +302,14 @@ class WorklistGenerator:
 
         return cls.export_transfers_to_tecan_csv(transfers, filepath)
 
+    @classmethod
+    def export_to_opentrons(cls, *args: Any, **kwargs: Any) -> None:
+        """Placeholder for Opentrons OT-2 Python script generator."""
+        from karcytics_sdk.plugin.toast import show_toast
+
+        show_toast("Opentrons OT-2 export coming in v2.1", level="info")
+
+
     @staticmethod
     def _resolve_source(
         component_name: str,

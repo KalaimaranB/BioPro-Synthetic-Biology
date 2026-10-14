@@ -1,9 +1,13 @@
 """Properties view for quantitative data of biological parts (Inspector style)."""
 
-from karcytics_sdk.plugin.components import BioDoubleSpinBox, BioListWidget, BioScrollArea
+from karcytics_sdk.plugin.components import (
+    BioDoubleSpinBox,
+    BioListWidget,
+    BioScrollArea,
+)
 from karcytics_sdk.plugin.theme_fallback import Colors
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
@@ -17,8 +21,12 @@ from ...analysis.parts.components import CDS, RBS, Promoter, Terminator
 class PropertiesView(QWidget):
     """An inspector view for viewing and editing kinetic properties of components."""
 
-    def __init__(self, parent=None):
+    state_changed = pyqtSignal()
+    param_changed = pyqtSignal(str, float)
+
+    def __init__(self, state=None, parent=None):
         super().__init__(parent)
+        self.state = state
         self._parts = []
         self._current_part = None
         self._setup_ui()
@@ -225,7 +233,7 @@ class PropertiesView(QWidget):
         max_val: float,
         step: float,
     ):
-        """Helper to create and bind a QDoubleSpinBox to a part attribute."""
+        """Helper to create and bind a BioDoubleSpinBox to a part attribute."""
         spin = BioDoubleSpinBox()
         spin.setRange(min_val, max_val)
         spin.setSingleStep(step)
@@ -245,3 +253,24 @@ class PropertiesView(QWidget):
     def _on_param_changed(self, attr_name: str, value: float):
         if self._current_part:
             setattr(self._current_part, attr_name, value)
+            if hasattr(self, "state") and self.state is not None:
+                if hasattr(self.state, "state_changed"):
+                    if callable(self.state.state_changed):
+                        self.state.state_changed()
+                    elif hasattr(self.state.state_changed, "emit"):
+                        self.state.state_changed.emit()
+            self.state_changed.emit()
+            self.param_changed.emit(attr_name, value)
+            try:
+                from karcytics_sdk.plugin.runtime_services import event_bus
+
+                event_bus.publish(
+                    "synbio.circuit.changed",
+                    {
+                        "part_id": getattr(self._current_part, "id", ""),
+                        "attr": attr_name,
+                        "value": value,
+                    },
+                )
+            except Exception:
+                pass

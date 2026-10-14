@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 
 from karcytics_sdk.plugin.components import (
+    BioButton,
     BioDoubleSpinBox,
     BioLineEdit,
     BioListWidget,
@@ -22,9 +23,10 @@ from karcytics_sdk.plugin.components import (
 )
 from karcytics_sdk.plugin.dialogs import show_error, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
-from PySide6.QtCore import QMimeData, Qt, Signal, Slot
-from PySide6.QtGui import QDrag
-from PySide6.QtWidgets import (
+from karcytics_sdk.plugin.toast import show_toast
+from PyQt6.QtCore import QMimeData, Qt, pyqtSignal, pyqtSlot, pyqtSignal as Signal, pyqtSlot as Slot
+from PyQt6.QtGui import QDrag
+from PyQt6.QtWidgets import (
     QAbstractItemView,
     QDialog,
     QFileDialog,
@@ -290,8 +292,8 @@ class PlasmidAssemblyView(QWidget):
         right_layout.addWidget(lbl_map)
 
         self.feature_table = BioTableWidget()
-        self.feature_table.setRowCount(0)
         self.feature_table.setColumnCount(5)
+        self.feature_table.setRowCount(0)
         self.feature_table.setHorizontalHeaderLabels(["Name", "Type", "Start", "End", "Strand"])
         if (hv := self.feature_table.horizontalHeader()) is not None:
             hv.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -394,8 +396,8 @@ class PlasmidAssemblyView(QWidget):
         if not parts:
             show_warning(
                 self,
-                "Assembly Warning",
                 "Please drag at least one part into the canvas.",
+                title="Assembly Warning",
             )
             return
 
@@ -424,7 +426,9 @@ class PlasmidAssemblyView(QWidget):
     def _on_primer_clicked(self):
         plasmid = self.state.get_active_plasmid()
         if not plasmid or not plasmid.sequence:
-            show_warning(self, "Primer Warning", "Assemble or import a plasmid vector first.")
+            show_warning(
+                self, "Assemble or import a plasmid vector first.", title="Primer Warning"
+            )
             return
 
         dlg = PrimerDesignDialog(
@@ -458,7 +462,8 @@ class PlasmidAssemblyView(QWidget):
             [vector.sequence[i : i + 60] for i in range(0, len(vector.sequence), 60)]
         )
         self.seq_display.setText(header + formatted_seq)
+        show_toast("Plasmid construct assembled successfully", level="info")
 
     @Slot(str)
     def _show_error(self, message: str):
-        show_error(self, "Assembly Error", message)
+        show_error(self, message, title="Assembly Error")
