@@ -17,7 +17,7 @@ This plugin's actual dependencies, per `pyproject.toml`:
 | Package | Purpose |
 |---------|---------|
 | `karcytics-sdk` | Plugin base classes, UI kit, signing/trust |
-| `PyQt6` | UI framework |
+| `PySide6` | UI framework |
 | `numpy`, `scipy`, `pandas`, `matplotlib` | Numerical computation, ODE solving, plotting |
 | `networkx` | Circuit graph representation & orthogonality checking |
 | `sbol3` | SBOL3 standard biological parts data format |

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QObject, pyqtSignal as Signal
+from PySide6.QtCore import QObject, Signal
 
 from ...analysis.base_worker import BaseSDKWorker
 from ...analysis.empirical.fcs_ingestion import (

@@ -15,14 +15,13 @@ from karcytics_sdk.plugin.components import (
     BioRunButton,
     BioSpinBox,
     BioSplitter,
-    PrimaryButton,
 )
-from karcytics_sdk.plugin.dialogs import show_error, show_warning
+from karcytics_sdk.plugin.dialogs import show_error
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from karcytics_sdk.plugin.toast import show_toast
-from PyQt6.QtCore import Qt, pyqtSignal as Signal, pyqtSlot as Slot, pyqtSignal, pyqtSlot
-from PyQt6.QtGui import QPalette
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtGui import QPalette
+from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -336,6 +335,6 @@ class CircuitSimulationView(QWidget):
 
         show_toast("Predictive simulation completed.", window=self)
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _show_error(self, message: str):
         show_error(self, "Simulation Engine Error", message)

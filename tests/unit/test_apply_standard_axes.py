@@ -46,6 +46,7 @@ def test_apply_standard_axes_formatting():
 
     # 5. Theme facecolors & text colors
     from karcytics_sdk.plugin.theme_fallback import Colors
+
     expected_bg_fig = getattr(Colors, "BG_DARKEST", "#0d1117")
     expected_bg_ax = getattr(Colors, "BG_DARK", "#161b22")
     expected_text = getattr(Colors, "FG_PRIMARY", "#c9d1d9")

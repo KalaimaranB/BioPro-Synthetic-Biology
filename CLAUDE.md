@@ -24,9 +24,9 @@ Pre-commit runs ruff, mypy, pip-audit, license compliance, `tests/unit/`, plugin
 ## Structure
 
 `src/karcytics_plugins/synthetic_biology/`:
-- `analysis/` — `state.py` (`SynBioState`: circuit + view layers), `config.py` (simulation/workspace config), `events.py` (`CentralEventBus` topic constants). No PyQt6 imports.
+- `analysis/` — `state.py` (`SynBioState`: circuit + view layers), `config.py` (simulation/workspace config), `events.py` (`CentralEventBus` topic constants). No PySide6 imports.
 - `models/` — circuit/gate domain models.
-- `ui/` — PyQt6 interface.
+- `ui/` — PySide6 interface.
 - `utils/` — shared helpers.
 
 Same `PluginBase`/`AnalysisBase` split as the other Karcytics plugins — see [Karcytics-SDK](../Karcytics-SDK)'s `CLAUDE.md` for the pattern.

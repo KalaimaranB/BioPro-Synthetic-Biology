@@ -16,8 +16,8 @@ from karcytics_sdk.plugin.components import (
 from karcytics_sdk.plugin.dialogs import show_error, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from karcytics_sdk.plugin.toast import show_toast
-from PyQt6.QtCore import Qt, pyqtSignal as Signal, pyqtSlot as Slot, pyqtSlot
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QHeaderView,

@@ -8,6 +8,7 @@ background QThread (ProtocolWorker).
 
 from __future__ import annotations
 
+import dataclasses
 from typing import Any
 
 from karcytics_sdk.plugin.components import (
@@ -29,8 +30,8 @@ from karcytics_sdk.plugin.dialogs import (
 )
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from karcytics_sdk.plugin.toast import show_toast
-from PyQt6.QtCore import Qt, pyqtSignal as Signal, pyqtSlot as Slot, pyqtSignal, pyqtSlot
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtWidgets import (
     QFormLayout,
     QFrame,
     QGroupBox,
@@ -47,13 +48,13 @@ from ...analysis.assembly.protocol_engine import (
     BenchProtocol,
     ProtocolEngine,
 )
+from ...analysis.base_worker import BaseSDKWorker
 from ...models.inventory_models import (
     Oligo,
     PlasmidInventoryItem,
     Reagent,
     StorageLocation,
 )
-from ...analysis.base_worker import BaseSDKWorker
 from ...utils.robot_exporter import RobotExportError, WorklistGenerator
 
 
@@ -62,8 +63,8 @@ class ProtocolWorker(BaseSDKWorker):
     off the main GUI thread.
     """
 
-    finished_ok = pyqtSignal(object)
-    finished_err = pyqtSignal(str)
+    finished_ok = Signal(object)
+    finished_err = Signal(str)
 
     def __init__(  # noqa: PLR0913
         self,
@@ -107,8 +108,13 @@ class ProtocolWorker(BaseSDKWorker):
                 reaction_volume_ul=self.reaction_volume_ul,
             )
             if not self.is_cancelled():
-                self.finished_ok.emit(protocol)
-                self.finished.emit(protocol)
+                payload = (
+                    protocol.to_dict()
+                    if hasattr(protocol, "to_dict")
+                    else dataclasses.asdict(protocol)
+                )
+                self.finished_ok.emit(payload)
+                self.finished.emit(payload)
         except Exception as exc:
             if not self.is_cancelled():
                 self.finished_err.emit(str(exc))
@@ -129,7 +135,7 @@ class LaboratoryExecutionView(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.current_protocol: BenchProtocol | None = None
+        self.current_protocol: dict[str, Any] | BenchProtocol | None = None
         self.worker: ProtocolWorker | None = None
         self.progress_dialog: BioProgressDialog | None = None
 
@@ -493,7 +499,7 @@ class LaboratoryExecutionView(QWidget):
         self.worker.start()
 
     @Slot(object)
-    def _on_protocol_finished(self, protocol: BenchProtocol) -> None:
+    def _on_protocol_finished(self, protocol: dict[str, Any] | BenchProtocol) -> None:
         """Callback slot handling successful ProtocolEngine calculation from QThread."""
         self.current_protocol = protocol
         self.btn_generate.setEnabled(True)
@@ -528,13 +534,21 @@ class LaboratoryExecutionView(QWidget):
             message=f"Failed to calculate assembly protocol:\n\n{error_message}",
         )
 
-    def _populate_results_tables(self, protocol: BenchProtocol) -> None:
+    def _populate_results_tables(self, protocol: dict[str, Any] | BenchProtocol) -> None:
         """Populates Master Mix and Reaction Pipetting result tables."""
         # 1. Master Mix Table
-        mm_data = protocol.master_mix
+        if isinstance(protocol, dict):
+            mm_data = protocol.get("master_mix", {})
+            mm_totals = mm_data.get("master_mix_volumes_total", {})
+            mm_per_rxn = mm_data.get("component_volumes_per_rxn", {})
+        else:
+            mm_data = protocol.master_mix
+            mm_totals = mm_data.master_mix_volumes_total
+            mm_per_rxn = mm_data.component_volumes_per_rxn
+
         self.table_master_mix.setRowCount(0)
-        for comp, tot_vol in mm_data.master_mix_volumes_total.items():
-            per_rxn_vol = mm_data.component_volumes_per_rxn.get(comp, 0.0)
+        for comp, tot_vol in mm_totals.items():
+            per_rxn_vol = mm_per_rxn.get(comp, 0.0)
             row_idx = self.table_master_mix.rowCount()
             self.table_master_mix.insertRow(row_idx)
             self.table_master_mix.setItem(row_idx, 0, QTableWidgetItem(comp))
@@ -542,35 +556,71 @@ class LaboratoryExecutionView(QWidget):
             self.table_master_mix.setItem(row_idx, 2, QTableWidgetItem(f"{tot_vol:.3f}"))
 
         # 2. Pipetting Table
-        rr_data = protocol.reaction_ratio
+        if isinstance(protocol, dict):
+            rr_data = protocol.get("reaction_ratio", {})
+            v = rr_data.get("vector_spec", {})
+            v_name = v.get("name", "Destination Vector")
+            v_role = v.get("role", "vector")
+            v_len = v.get("length_bp", 0)
+            v_conc = v.get("concentration_ng_ul", 0.0)
+            v_ratio = v.get("molar_ratio", 1.0)
+            v_mass = v.get("target_mass_ng", 0.0)
+            v_vol = v.get("volume_ul", 0.0)
+
+            insert_specs = rr_data.get("insert_specs", [])
+            water_vol = rr_data.get("water_volume_ul", 0.0)
+        else:
+            rr_data = protocol.reaction_ratio
+            v = rr_data.vector_spec
+            v_name = v.name
+            v_role = v.role
+            v_len = v.length_bp
+            v_conc = v.concentration_ng_ul
+            v_ratio = v.molar_ratio
+            v_mass = v.target_mass_ng
+            v_vol = v.volume_ul
+
+            insert_specs = rr_data.insert_specs
+            water_vol = rr_data.water_volume_ul
+
         self.table_pipetting.setRowCount(0)
 
         # Vector row
-        v = rr_data.vector_spec
         self._add_pipetting_row(
-            v.name,
-            v.role,
-            v.length_bp,
-            v.concentration_ng_ul,
-            v.molar_ratio,
-            v.target_mass_ng,
-            v.volume_ul,
+            v_name,
+            v_role,
+            v_len,
+            v_conc,
+            v_ratio,
+            v_mass,
+            v_vol,
         )
 
         # Insert rows
-        for ins in rr_data.insert_specs:
-            self._add_pipetting_row(
-                ins.name,
-                ins.role,
-                ins.length_bp,
-                ins.concentration_ng_ul,
-                ins.molar_ratio,
-                ins.target_mass_ng,
-                ins.volume_ul,
-            )
+        for ins in insert_specs:
+            if isinstance(ins, dict):
+                self._add_pipetting_row(
+                    ins.get("name", "Insert"),
+                    ins.get("role", "insert"),
+                    ins.get("length_bp", 0),
+                    ins.get("concentration_ng_ul", 0.0),
+                    ins.get("molar_ratio", 0.0),
+                    ins.get("target_mass_ng", 0.0),
+                    ins.get("volume_ul", 0.0),
+                )
+            else:
+                self._add_pipetting_row(
+                    ins.name,
+                    ins.role,
+                    ins.length_bp,
+                    ins.concentration_ng_ul,
+                    ins.molar_ratio,
+                    ins.target_mass_ng,
+                    ins.volume_ul,
+                )
 
         # Water row
-        if rr_data.water_volume_ul > 0:
+        if water_vol > 0:
             self._add_pipetting_row(
                 "Nuclease-Free Water",
                 "diluent",
@@ -578,7 +628,7 @@ class LaboratoryExecutionView(QWidget):
                 0.0,
                 0.0,
                 0.0,
-                rr_data.water_volume_ul,
+                water_vol,
             )
 
     def _add_pipetting_row(
@@ -601,16 +651,32 @@ class LaboratoryExecutionView(QWidget):
         self.table_pipetting.setItem(row_idx, 5, QTableWidgetItem(f"{mass:.1f}"))
         self.table_pipetting.setItem(row_idx, 6, QTableWidgetItem(f"{vol:.3f}"))
 
-    def _populate_worklist_table(self, protocol: BenchProtocol) -> None:
+    def _populate_worklist_table(self, protocol: dict[str, Any] | BenchProtocol) -> None:
         """Populates the Liquid Handler worklist preview table."""
         self.table_worklist.setRowCount(0)
 
         try:
             # Generate transfer list
             transfers = []
-            for rxn_idx in range(protocol.num_reactions):
-                dest_well = WorklistGenerator.index_to_well(rxn_idx)
+            if isinstance(protocol, dict):
+                num_reactions = protocol.get("num_reactions", 1)
+                rr = protocol.get("reaction_ratio", {})
+                mm_vol = rr.get("master_mix_volume_ul", 0.0)
+                water_vol = rr.get("water_volume_ul", 0.0)
+                v_spec = rr.get("vector_spec", {})
+                v_vol = v_spec.get("volume_ul", 0.0)
+                insert_specs = rr.get("insert_specs", [])
+            else:
+                num_reactions = protocol.num_reactions
                 rr = protocol.reaction_ratio
+                mm_vol = rr.master_mix_volume_ul
+                water_vol = rr.water_volume_ul
+                v_spec = rr.vector_spec
+                v_vol = v_spec.volume_ul
+                insert_specs = rr.insert_specs
+
+            for rxn_idx in range(num_reactions):
+                dest_well = WorklistGenerator.index_to_well(rxn_idx)
                 # MM
                 transfers.append(
                     (
@@ -618,19 +684,19 @@ class LaboratoryExecutionView(QWidget):
                         "A1",
                         self.txt_dest_plate.text(),
                         dest_well,
-                        f"{rr.master_mix_volume_ul:.3f}",
+                        f"{mm_vol:.3f}",
                         "MasterMix_Viscous",
                     )
                 )
                 # Water
-                if rr.water_volume_ul > 0:
+                if water_vol > 0:
                     transfers.append(
                         (
                             self.txt_source_plate.text(),
                             "B1",
                             self.txt_dest_plate.text(),
                             dest_well,
-                            f"{rr.water_volume_ul:.3f}",
+                            f"{water_vol:.3f}",
                             "Water_FreeSingle",
                         )
                     )
@@ -641,20 +707,21 @@ class LaboratoryExecutionView(QWidget):
                         "A1",
                         self.txt_dest_plate.text(),
                         dest_well,
-                        f"{rr.vector_spec.volume_ul:.3f}",
+                        f"{v_vol:.3f}",
                         "DNA_LowVolume",
                     )
                 )
                 # Inserts
-                for ins_idx, ins in enumerate(rr.insert_specs):
+                for ins_idx, ins in enumerate(insert_specs):
                     src_w = WorklistGenerator.index_to_well(ins_idx)
+                    ins_vol = ins.get("volume_ul", 0.0) if isinstance(ins, dict) else ins.volume_ul
                     transfers.append(
                         (
                             "INSERT_PLATE_1",
                             src_w,
                             self.txt_dest_plate.text(),
                             dest_well,
-                            f"{ins.volume_ul:.3f}",
+                            f"{ins_vol:.3f}",
                             "DNA_LowVolume",
                         )
                     )
@@ -688,9 +755,14 @@ class LaboratoryExecutionView(QWidget):
 
         if filepath:
             try:
-                reactions = [
-                    self.current_protocol.reaction_ratio
-                ] * self.current_protocol.num_reactions
+                if isinstance(self.current_protocol, dict):
+                    num_reactions = self.current_protocol.get("num_reactions", 1)
+                    rr = self.current_protocol.get("reaction_ratio", {})
+                else:
+                    num_reactions = self.current_protocol.num_reactions
+                    rr = self.current_protocol.reaction_ratio
+
+                reactions = [rr] * num_reactions
                 out_file = WorklistGenerator.export_to_tecan_csv(
                     reactions_list=reactions,
                     filepath=filepath,

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import pyqtgraph as pg
 from karcytics_sdk.plugin.components import (
-    BioButton,
     BioHeaderLabel,
     BioLineEdit,
     BioSplitter,
@@ -21,12 +20,10 @@ from karcytics_sdk.plugin.components import (
     PrimaryButton,
     SecondaryButton,
 )
-from karcytics_sdk.plugin.dialogs import show_error, show_info, show_warning
-from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-from karcytics_sdk.plugin.toast import show_toast
-from PyQt6.QtCore import Qt, pyqtSlot, pyqtSlot as Slot
-from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import (
+from karcytics_sdk.plugin.dialogs import show_error
+from karcytics_sdk.plugin.theme_fallback import Colors
+from PySide6.QtCore import Qt, Slot
+from PySide6.QtWidgets import (
     QFileDialog,
     QFormLayout,
     QGroupBox,

@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 
 from karcytics_sdk.plugin.components import (
-    BioButton,
     BioDoubleSpinBox,
     BioLineEdit,
     BioListWidget,
@@ -24,9 +23,9 @@ from karcytics_sdk.plugin.components import (
 from karcytics_sdk.plugin.dialogs import show_error, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from karcytics_sdk.plugin.toast import show_toast
-from PyQt6.QtCore import QMimeData, Qt, pyqtSignal, pyqtSlot, pyqtSignal as Signal, pyqtSlot as Slot
-from PyQt6.QtGui import QDrag
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QMimeData, Qt, Signal, Slot
+from PySide6.QtGui import QDrag
+from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
     QFileDialog,

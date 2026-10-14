@@ -1,13 +1,13 @@
 # Karcytics Synthetic Biology — Executive Product Presentation & Demo Guide
 
-**Target Audience:** Potential Enterprise Customers, Academic Bio-Labs, SynBio Startups, Bio-Foundries, and Pharma R&D Teams  
-**Author:** Senior Product Marketing Manager, Karcytics Platform  
+**Target Audience:** Potential Enterprise Customers, Academic Bio-Labs, SynBio Startups, Bio-Foundries, and Pharma R&D Teams
+**Author:** Senior Product Marketing Manager, Karcytics Platform
 
 ---
 
 ## Executive Summary & Value Proposition
 
-**Karcytics Synthetic Biology** is an enterprise-grade computational biology workspace designed to bridge the gap between **in-silico genetic circuit design** and **automated wet-lab execution**. 
+**Karcytics Synthetic Biology** is an enterprise-grade computational biology workspace designed to bridge the gap between **in-silico genetic circuit design** and **automated wet-lab execution**.
 
 While traditional bio-design tools force scientists to juggle disconnected applications for plasmid mapping, CRISPR guide design, ODE kinetic modeling, and liquid handling scripts, Karcytics unifies the entire bio-engineering lifecycle into a single, cohesive interface:
 

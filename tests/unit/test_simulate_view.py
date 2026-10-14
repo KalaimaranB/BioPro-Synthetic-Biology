@@ -15,7 +15,7 @@ from PySide6.QtWidgets import QApplication, QListWidget, QListWidgetItem, QSplit
 
 from karcytics_plugins.synthetic_biology.ui.views.simulate_view import SimulateView
 
-# Ensure QApplication instance exists for PyQt widget tests
+# Ensure QApplication instance exists for PySide6 widget tests
 app = QApplication.instance() or QApplication([])
 
 

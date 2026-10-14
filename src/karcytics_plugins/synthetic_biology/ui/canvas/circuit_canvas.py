@@ -4,9 +4,9 @@ import hashlib
 
 from karcytics_sdk.plugin import DirtyTrackingGraphicsScene, DirtyTrackingGraphicsView
 from karcytics_sdk.plugin.theme_fallback import Colors
-from PyQt6.QtCore import QPointF, Qt
-from PyQt6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen, QPolygonF
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QPointF, Qt
+from PySide6.QtGui import QBrush, QColor, QFont, QPainterPath, QPen, QPolygonF
+from PySide6.QtWidgets import (
     QGraphicsPathItem,
     QGraphicsPolygonItem,
     QGraphicsView,
@@ -89,7 +89,7 @@ class CircuitCanvas(DirtyTrackingGraphicsView):
         self._parts.append(part)
         self.render_circuit()
 
-    def render_circuit(self):
+    def render_circuit(self):  # noqa: PLR0915
         """Render all parts along the DNA strand with SBOLv compliant graphics."""
         self._scene.clear()
 
@@ -141,7 +141,7 @@ class CircuitCanvas(DirtyTrackingGraphicsView):
                 seq = getattr(part, "sequence", "") or ""
                 if seq:
                     seq_font = QFont("Courier New", 7)
-                    display_seq = seq if len(seq) <= 14 else f"{seq[:12]}.."
+                    display_seq = seq if len(seq) <= 14 else f"{seq[:12]}.."  # noqa: PLR2004
                     seq_item = self._scene.addText(display_seq, seq_font)
                     seq_item.setDefaultTextColor(QColor("#888888"))
                     sw = seq_item.boundingRect().width()

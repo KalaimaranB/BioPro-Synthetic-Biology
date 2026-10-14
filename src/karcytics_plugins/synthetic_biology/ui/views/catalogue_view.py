@@ -1,7 +1,6 @@
 from karcytics_sdk.plugin.components import BioScrollArea, BioSplitter
-from karcytics_sdk.plugin.theme_fallback import Colors
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QVBoxLayout, QWidget
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from ...analysis.catalogue.service import PartsCatalogueService
 from ...ui.widgets.flow_layout import FlowLayout

@@ -160,6 +160,55 @@ class TestProtocolEngine(unittest.TestCase):
         self.assertIn("reaction_ratio", d)
         self.assertIn("thermal_program", d)
 
+    def test_robotic_pipetting_threshold_relaxation(self):
+        # Default engine should have min_pipetting_ul = 0.01 uL
+        robotic_engine = ProtocolEngine()
+        self.assertEqual(robotic_engine.min_pipetting_ul, 0.01)
+
+        # Vector with 50 ng / 1000 ng/uL = 0.05 uL (allowed under 0.01 uL, was blocked under 0.5 uL)
+        inserts = [
+            {
+                "name": "Ins",
+                "length_bp": 1000,
+                "concentration_ng_ul": 50.0,
+                "molar_ratio": 3.0,
+            }
+        ]
+        result = robotic_engine.calculate_insert_to_vector_ratio(
+            vector_bp=3000,
+            vector_conc_ng_ul=1000.0,
+            inserts=inserts,
+        )
+        self.assertAlmostEqual(result.vector_spec.volume_ul, 0.05)
+
+    def test_generate_bench_protocol_relaxed_capacity(self):
+        # Dilute insert requiring huge volume (> 10 uL)
+        inserts = [
+            {
+                "name": "Dilute_Ins",
+                "length_bp": 2000,
+                "concentration_ng_ul": 1.0,
+                "molar_ratio": 5.0,
+            }
+        ]
+        # generate_bench_protocol should NOT raise AssemblyProtocolError,
+        # but return a valid BenchProtocol worklist with warnings attached
+        protocol = self.engine.generate_bench_protocol(
+            num_reactions=1,
+            vector_bp=3000,
+            vector_conc_ng_ul=50.0,
+            inserts=inserts,
+            reaction_volume_ul=20.0,
+        )
+        self.assertIsInstance(protocol, BenchProtocol)
+        self.assertGreater(len(protocol.reaction_ratio.pipetting_warnings), 0)
+        self.assertTrue(
+            any(
+                "exceeds reaction capacity" in w for w in protocol.reaction_ratio.pipetting_warnings
+            )
+        )
+        self.assertEqual(protocol.reaction_ratio.water_volume_ul, 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
+import contextlib
+
 from karcytics_sdk.plugin import AnalysisWorker
 from karcytics_sdk.plugin.runtime_services import AnalysisRunnable
-from PyQt6.QtCore import QObject, QThreadPool, pyqtSignal
+from PySide6.QtCore import QObject, QThreadPool, Signal  # noqa: TID251
 
 
 class BaseSDKWorker(AnalysisWorker):
     """SDK AnalysisWorker compliant background task with graceful cancellation."""
 
-    cancelled = pyqtSignal()
-    finished_ok = pyqtSignal(object)
-    finished_err = pyqtSignal(str)
+    cancelled = Signal()
+    finished_ok = Signal(object)
+    finished_err = Signal(str)
 
     def __init__(self, parent: QObject | None = None) -> None:
         super(AnalysisWorker, self).__init__(parent)
@@ -23,20 +25,18 @@ class BaseSDKWorker(AnalysisWorker):
         """Signal graceful cancellation."""
         self._is_cancelled = True
         self._is_running = False
-        try:
+        with contextlib.suppress(Exception):
             self.cancelled.emit()
-        except Exception:
-            pass
 
     def is_cancelled(self) -> bool:
         """Check if task cancellation was requested."""
         return getattr(self, "_is_cancelled", False)
 
-    def isRunning(self) -> bool:
+    def isRunning(self) -> bool:  # noqa: N802
         """Check if worker is actively running in background."""
         return getattr(self, "_is_running", False)
 
-    def requestInterruption(self) -> None:
+    def requestInterruption(self) -> None:  # noqa: N802
         """Compatibility method for QThread API."""
         self.cancel()
 
@@ -44,7 +44,7 @@ class BaseSDKWorker(AnalysisWorker):
         """Compatibility method for QThread API."""
         self.cancel()
 
-    def wait(self, msecs: int = 0) -> bool:
+    def wait(self, msecs: int = 0) -> bool:  # noqa: ARG002
         """Wait for worker completion."""
         return True
 

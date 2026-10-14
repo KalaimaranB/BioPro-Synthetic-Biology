@@ -11,7 +11,6 @@ import numpy as np
 import pyqtgraph as pg
 from karcytics_sdk.plugin import get_logger
 from karcytics_sdk.plugin.components import (
-    BioButton,
     BioListWidget,
     BioProgressDialog,
     BioSplitter,
@@ -19,8 +18,8 @@ from karcytics_sdk.plugin.components import (
 )
 from karcytics_sdk.plugin.theme_fallback import Colors
 from karcytics_sdk.plugin.toast import show_toast
-from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, pyqtSignal as Signal, pyqtSlot as Slot  # noqa: TID251
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QListWidgetItem,
@@ -37,8 +36,8 @@ try:
 except ImportError:
     te = None
 
-from ...analysis.parts.components import CDS, Promoter, sgRNA
 from ...analysis.base_worker import BaseSDKWorker
+from ...analysis.parts.components import CDS, Promoter, sgRNA
 from ...analysis.prediction.graphing_utils import apply_standard_axes  # noqa: F401
 
 # stdout carries the Hub wire protocol in an isolated plugin, so timing
@@ -577,7 +576,7 @@ class SimulateView(QWidget):
             return
 
         promoters = [p for p in self._parts if isinstance(p, Promoter)]
-        cdss = [c for c in self._parts if isinstance(c, (CDS, sgRNA))]
+        cdss = [c for c in self._parts if isinstance(c, CDS | sgRNA)]
 
         if not promoters or not cdss:
             self.plot_widget.clear()
@@ -598,7 +597,7 @@ class SimulateView(QWidget):
         for part in self._parts:
             if isinstance(part, Promoter):
                 current_promoter = part
-            elif isinstance(part, (CDS, sgRNA)) and current_promoter:
+            elif isinstance(part, CDS | sgRNA) and current_promoter:
                 product_name = getattr(
                     part, "product", part.name.replace(" ", "_").replace("-", "_")
                 )
@@ -649,9 +648,7 @@ class SimulateView(QWidget):
         )
         if hasattr(self, "progress_dialog") and self.progress_dialog is not None:
             self.progress_dialog.close()
-        self.progress_dialog = BioProgressDialog(
-            "Computing simulation...", "Cancel", 0, 0, self
-        )
+        self.progress_dialog = BioProgressDialog("Computing simulation...", "Cancel", 0, 0, self)
         self.progress_dialog.show()
 
         t_prep_end = time.perf_counter()

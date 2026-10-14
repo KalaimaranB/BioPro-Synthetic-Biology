@@ -14,10 +14,10 @@ from typing import Any
 
 class PipettingVolumeError(ValueError):
     """Custom exception raised when a calculated pipetting volume is below the physical
-    manual pipetting limit (0.5 uL).
+    pipetting limit (0.01 uL).
     """
 
-    def __init__(self, component_name: str, volume_ul: float, min_threshold_ul: float = 0.5):
+    def __init__(self, component_name: str, volume_ul: float, min_threshold_ul: float = 0.01):
         self.component_name = component_name
         self.volume_ul = volume_ul
         self.min_threshold_ul = min_threshold_ul
@@ -37,8 +37,8 @@ class AssemblyProtocolError(ValueError):
     pass
 
 
-# Minimum physical volume for standard manual micropipettes (P2 / P10)
-MIN_PIPETTING_VOLUME_UL: float = 0.5
+# Minimum physical volume for robotic / automated liquid handling (e.g., Echo acoustic / digital dispensing)
+MIN_PIPETTING_VOLUME_UL: float = 0.01
 
 
 @dataclass
@@ -190,21 +190,31 @@ class ProtocolEngine:
         "Nuclease-Free Water": 6.0,
     }
 
-    def __init__(self, min_pipetting_ul: float = MIN_PIPETTING_VOLUME_UL) -> None:
+    def __init__(
+        self,
+        min_pipetting_ul: float = MIN_PIPETTING_VOLUME_UL,
+        strict_capacity: bool = False,
+        strict_pipetting: bool = True,
+    ) -> None:
         """Initializes the ProtocolEngine.
 
         Args:
-            min_pipetting_ul: Minimum allowable manual pipetting threshold in uL.
+            min_pipetting_ul: Minimum allowable manual/robotic pipetting threshold in uL.
+            strict_capacity: If True, enforce total DNA capacity strictly.
+            strict_pipetting: If True, raise exception when volume is below min_pipetting_ul.
         """
         self.min_pipetting_ul = min_pipetting_ul
+        self.strict_capacity = strict_capacity
+        self.strict_pipetting = strict_pipetting
 
-    def calculate_master_mix(
+    def calculate_master_mix(  # noqa: C901
         self,
         num_reactions: int,
         overage_pct: float = 10.0,
         assembly_type: str = "Gibson",
         reaction_volume_ul: float = 20.0,
         custom_recipe: dict[str, float] | None = None,
+        strict_pipetting: bool | None = None,
     ) -> MasterMixResult:
         """Calculates exact master mix component volumes including overage percentage.
 
@@ -214,13 +224,14 @@ class ProtocolEngine:
             assembly_type: 'Gibson' or 'GoldenGate' (case-insensitive).
             reaction_volume_ul: Total reaction volume in uL (default 20.0 uL).
             custom_recipe: Optional custom recipe dict specifying component -> uL.
+            strict_pipetting: Optional override for strict minimum pipetting volume enforcement.
 
         Returns:
             MasterMixResult object containing per-reaction and total volumes.
 
         Raises:
             AssemblyProtocolError: If inputs are non-positive or invalid.
-            PipettingVolumeError: If calculated volume is below physical threshold.
+            PipettingVolumeError: If calculated volume is below physical threshold and strict.
         """
         if num_reactions <= 0:
             raise AssemblyProtocolError(
@@ -234,6 +245,10 @@ class ProtocolEngine:
             raise AssemblyProtocolError(
                 f"Reaction volume must be positive (got {reaction_volume_ul})."
             )
+
+        use_strict_pipetting = (
+            self.strict_pipetting if strict_pipetting is None else strict_pipetting
+        )
 
         norm_type = assembly_type.strip().lower()
         if custom_recipe is not None:
@@ -251,18 +266,28 @@ class ProtocolEngine:
             if vol_per_rxn < 0:
                 raise AssemblyProtocolError(f"Component '{component}' volume cannot be negative.")
             if vol_per_rxn < self.min_pipetting_ul and vol_per_rxn > 0:
-                raise PipettingVolumeError(
-                    component_name=f"{component} (per rxn)",
-                    volume_ul=vol_per_rxn,
-                    min_threshold_ul=self.min_pipetting_ul,
+                if use_strict_pipetting:
+                    raise PipettingVolumeError(
+                        component_name=f"{component} (per rxn)",
+                        volume_ul=vol_per_rxn,
+                        min_threshold_ul=self.min_pipetting_ul,
+                    )
+                warnings.append(
+                    f"Master mix component '{component}' volume ({vol_per_rxn:.3f} µL) is below "
+                    f"minimum threshold of {self.min_pipetting_ul:.2f} µL."
                 )
 
             tot_vol = vol_per_rxn * multiplier
             if tot_vol < self.min_pipetting_ul and tot_vol > 0:
-                raise PipettingVolumeError(
-                    component_name=f"{component} (total master mix)",
-                    volume_ul=tot_vol,
-                    min_threshold_ul=self.min_pipetting_ul,
+                if use_strict_pipetting:
+                    raise PipettingVolumeError(
+                        component_name=f"{component} (total master mix)",
+                        volume_ul=tot_vol,
+                        min_threshold_ul=self.min_pipetting_ul,
+                    )
+                warnings.append(
+                    f"Master mix component '{component}' total volume ({tot_vol:.3f} µL) is below "
+                    f"minimum threshold of {self.min_pipetting_ul:.2f} µL."
                 )
             total_volumes[component] = tot_vol
 
@@ -286,7 +311,7 @@ class ProtocolEngine:
             pipetting_warnings=warnings,
         )
 
-    def calculate_insert_to_vector_ratio(  # noqa: C901, PLR0913, PLR0917
+    def calculate_insert_to_vector_ratio(  # noqa: C901, PLR0912, PLR0913, PLR0917
         self,
         vector_bp: int,
         vector_conc_ng_ul: float,
@@ -297,6 +322,8 @@ class ProtocolEngine:
         master_mix_volume_ul: float = 10.0,
         vector_name: str = "Destination Vector",
         assembly_type: str = "Gibson",
+        strict_capacity: bool | None = None,
+        strict_pipetting: bool | None = None,
     ) -> ReactionRatioResult:
         """Calculates molar ratios and exact pipetting volumes for vector and insert
         DNA fragments.
@@ -315,14 +342,16 @@ class ProtocolEngine:
             master_mix_volume_ul: Volume of master mix per reaction (default 10.0 uL).
             vector_name: Display label for vector fragment.
             assembly_type: 'Gibson' or 'GoldenGate'.
+            strict_capacity: Enforce strict total DNA capacity limit (default True if standalone).
+            strict_pipetting: Enforce strict minimum pipetting volume limit.
 
         Returns:
             ReactionRatioResult containing FragmentPipettingSpec for vector & inserts,
             total DNA volume, and required water balance.
 
         Raises:
-            AssemblyProtocolError: If inputs invalid or total DNA exceeds capacity.
-            PipettingVolumeError: If calculated volume of vector or insert is < 0.5 uL.
+            AssemblyProtocolError: If inputs invalid or total DNA exceeds capacity (when strict).
+            PipettingVolumeError: If calculated volume of vector or insert is < min_pipetting_ul (when strict).
         """
         # Validate Vector inputs
         if vector_bp <= 0:
@@ -340,13 +369,25 @@ class ProtocolEngine:
         if not inserts:
             raise AssemblyProtocolError("At least one insert DNA fragment must be provided.")
 
+        use_strict_capacity = True if strict_capacity is None else strict_capacity
+        use_strict_pipetting = (
+            self.strict_pipetting if strict_pipetting is None else strict_pipetting
+        )
+
+        warnings: list[str] = []
+
         # Calculate Vector Volume
         vector_vol = vector_mass_ng / vector_conc_ng_ul
         if vector_vol < self.min_pipetting_ul:
-            raise PipettingVolumeError(
-                component_name=f"Vector '{vector_name}'",
-                volume_ul=vector_vol,
-                min_threshold_ul=self.min_pipetting_ul,
+            if use_strict_pipetting:
+                raise PipettingVolumeError(
+                    component_name=f"Vector '{vector_name}'",
+                    volume_ul=vector_vol,
+                    min_threshold_ul=self.min_pipetting_ul,
+                )
+            warnings.append(
+                f"Calculated volume for Vector '{vector_name}' ({vector_vol:.3f} µL) is below "
+                f"the minimum pipetting threshold of {self.min_pipetting_ul:.2f} µL."
             )
 
         vector_spec = FragmentPipettingSpec(
@@ -360,7 +401,6 @@ class ProtocolEngine:
         )
 
         insert_specs: list[FragmentPipettingSpec] = []
-        warnings: list[str] = []
 
         # Process Inserts
         for idx, ins in enumerate(inserts):
@@ -387,10 +427,15 @@ class ProtocolEngine:
             ins_vol = target_mass / ins_conc
 
             if ins_vol < self.min_pipetting_ul:
-                raise PipettingVolumeError(
-                    component_name=f"Insert '{name}'",
-                    volume_ul=ins_vol,
-                    min_threshold_ul=self.min_pipetting_ul,
+                if use_strict_pipetting:
+                    raise PipettingVolumeError(
+                        component_name=f"Insert '{name}'",
+                        volume_ul=ins_vol,
+                        min_threshold_ul=self.min_pipetting_ul,
+                    )
+                warnings.append(
+                    f"Calculated volume for Insert '{name}' ({ins_vol:.3f} µL) is below "
+                    f"the minimum pipetting threshold of {self.min_pipetting_ul:.2f} µL."
                 )
 
             insert_specs.append(
@@ -409,17 +454,24 @@ class ProtocolEngine:
         available_vol = reaction_volume_ul - master_mix_volume_ul
 
         if total_dna_vol > available_vol:
-            raise AssemblyProtocolError(
+            if use_strict_capacity:
+                raise AssemblyProtocolError(
+                    f"Total calculated DNA volume ({total_dna_vol:.2f} µL) exceeds "
+                    f"reaction capacity ({available_vol:.2f} µL available in a "
+                    f"{reaction_volume_ul:.1f} µL reaction with {master_mix_volume_ul:.1f} "
+                    "µL master mix). Please concentrate your DNA stocks."
+                )
+            warnings.append(
                 f"Total calculated DNA volume ({total_dna_vol:.2f} µL) exceeds "
                 f"reaction capacity ({available_vol:.2f} µL available in a "
                 f"{reaction_volume_ul:.1f} µL reaction with {master_mix_volume_ul:.1f} "
-                "µL master mix). Please concentrate your DNA stocks."
+                "µL master mix). DNA stocks should be concentrated."
             )
 
-        water_vol = available_vol - total_dna_vol
-        if water_vol < self.min_pipetting_ul and water_vol > 0:
+        water_vol = max(0.0, available_vol - total_dna_vol)
+        if 0 < water_vol < self.min_pipetting_ul:
             warnings.append(
-                f"Water volume ({water_vol:.3f} µL) is under 0.5 µL. Consider omitting water."
+                f"Water volume ({water_vol:.3f} µL) is under {self.min_pipetting_ul:.2f} µL. Consider omitting water."
             )
             water_vol = 0.0
 
@@ -429,6 +481,8 @@ class ProtocolEngine:
             else "Gibson Assembly"
         )
 
+        actual_rxn_vol = max(reaction_volume_ul, total_dna_vol + master_mix_volume_ul)
+
         return ReactionRatioResult(
             assembly_type=norm_type,
             vector_spec=vector_spec,
@@ -436,7 +490,7 @@ class ProtocolEngine:
             total_dna_volume_ul=total_dna_vol,
             master_mix_volume_ul=master_mix_volume_ul,
             water_volume_ul=water_vol,
-            total_reaction_volume_ul=reaction_volume_ul,
+            total_reaction_volume_ul=actual_rxn_vol,
             pipetting_warnings=warnings,
         )
 
@@ -451,11 +505,14 @@ class ProtocolEngine:
         vector_mass_ng: float = 50.0,
         default_molar_ratio: float = 3.0,
         reaction_volume_ul: float = 20.0,
+        strict_capacity: bool = False,
+        strict_pipetting: bool | None = None,
     ) -> BenchProtocol:
         """Generates a complete, step-by-step laboratory bench protocol payload.
 
         Combines Master Mix preparation, insert:vector pipetting tables, thermal
-        cycler programs, and bench execution instructions.
+        cycler programs, and bench execution instructions. Relaxed capacity validation
+        ensures protocol generation is not halted by edge-case bench math.
 
         Args:
             num_reactions: Number of assembly reactions to prepare.
@@ -467,6 +524,8 @@ class ProtocolEngine:
             vector_mass_ng: Vector target mass in ng.
             default_molar_ratio: Default insert:vector molar ratio.
             reaction_volume_ul: Reaction volume in uL.
+            strict_capacity: If True, fail on DNA volume overflow; if False (default), emit warning.
+            strict_pipetting: Optional override for strict minimum pipetting volume enforcement.
 
         Returns:
             BenchProtocol object serialized and ready for PySide6 GUI layout rendering.
@@ -480,6 +539,7 @@ class ProtocolEngine:
             overage_pct=overage_pct,
             assembly_type=disp_type,
             reaction_volume_ul=reaction_volume_ul,
+            strict_pipetting=strict_pipetting,
         )
 
         # 2. Reaction Ratio
@@ -498,6 +558,8 @@ class ProtocolEngine:
             reaction_volume_ul=reaction_volume_ul,
             master_mix_volume_ul=mm_vol_per_rxn,
             assembly_type=disp_type,
+            strict_capacity=strict_capacity,
+            strict_pipetting=strict_pipetting,
         )
 
         # 3. Thermal Program
@@ -524,7 +586,7 @@ class ProtocolEngine:
         # 4. Instructions
         v_vol_str = f"{ratio_result.vector_spec.volume_ul:.2f}"
         w_vol_str = f"{ratio_result.water_volume_ul:.2f}"
-        rxn_vol_str = f"{reaction_volume_ul:.1f}"
+        rxn_vol_str = f"{ratio_result.total_reaction_volume_ul:.1f}"
 
         instructions = [
             "1. Thaw all reagents on ice and vortex gently before use.",

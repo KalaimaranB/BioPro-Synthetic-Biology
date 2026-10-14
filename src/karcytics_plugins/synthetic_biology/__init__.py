@@ -11,43 +11,7 @@ __plugin_id__ = "synthetic_biology"
 
 
 from karcytics_sdk.plugin import PluginBase
-try:
-    from PySide6.QtWidgets import QWidget
-except ImportError:
-    import sys
-    import types
-    import PyQt6.QtCore
-    import PyQt6.QtGui
-    import PyQt6.QtWidgets
-
-    pyside6 = types.ModuleType("PySide6")
-    _qtcore = types.ModuleType("PySide6.QtCore")
-    for _k, _v in PyQt6.QtCore.__dict__.items():
-        setattr(_qtcore, _k, _v)
-    _qtcore.Signal = PyQt6.QtCore.pyqtSignal
-    _qtcore.Slot = PyQt6.QtCore.pyqtSlot
-    _qtcore.Property = PyQt6.QtCore.pyqtProperty
-    _qtcore.__version__ = PyQt6.QtCore.PYQT_VERSION_STR
-
-    _qtgui = types.ModuleType("PySide6.QtGui")
-    for _k, _v in PyQt6.QtGui.__dict__.items():
-        setattr(_qtgui, _k, _v)
-
-    _qtwidgets = types.ModuleType("PySide6.QtWidgets")
-    for _k, _v in PyQt6.QtWidgets.__dict__.items():
-        setattr(_qtwidgets, _k, _v)
-
-    pyside6.QtCore = _qtcore
-    pyside6.QtGui = _qtgui
-    pyside6.QtWidgets = _qtwidgets
-    pyside6.__version__ = PyQt6.QtCore.PYQT_VERSION_STR
-    pyside6.__path__ = []
-
-    sys.modules["PySide6"] = pyside6
-    sys.modules["PySide6.QtCore"] = _qtcore
-    sys.modules["PySide6.QtGui"] = _qtgui
-    sys.modules["PySide6.QtWidgets"] = _qtwidgets
-    from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QWidget
 
 try:
     import karcytics_sdk.plugin.toast as _toast_mod
@@ -79,7 +43,7 @@ try:
             def _make_safe_dialog(orig):
                 def _safe_dialog(*args, **kwargs):
                     # If called as fn(parent, message, title="...")
-                    if len(args) == 2 and "title" in kwargs and "message" not in kwargs:
+                    if len(args) == 2 and "title" in kwargs and "message" not in kwargs:  # noqa: PLR2004
                         return orig(args[0], title=kwargs["title"], message=args[1])
                     return orig(*args, **kwargs)
 

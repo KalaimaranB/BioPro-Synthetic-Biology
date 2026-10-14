@@ -17,50 +17,25 @@ sys.path.insert(0, str(src_dir))
 sys.path.insert(0, str(root_dir))
 
 import pytest  # noqa: E402
-from PyQt6.QtCore import QObject  # noqa: E402
-from PyQt6.QtWidgets import QApplication, QLabel, QPushButton, QSplitter, QWidget  # noqa: E402
-
-try:
-    import PySide6  # noqa: F401
-except ImportError:
-    import PyQt6.QtCore
-    import PyQt6.QtGui
-    import PyQt6.QtWidgets
-    import PyQt6.QtTest
-
-    pyside6 = types.ModuleType("PySide6")
-    _qtcore = types.ModuleType("PySide6.QtCore")
-    for _k, _v in PyQt6.QtCore.__dict__.items():
-        setattr(_qtcore, _k, _v)
-    _qtcore.Signal = PyQt6.QtCore.pyqtSignal
-    _qtcore.Slot = PyQt6.QtCore.pyqtSlot
-    _qtcore.Property = PyQt6.QtCore.pyqtProperty
-
-    _qtgui = types.ModuleType("PySide6.QtGui")
-    for _k, _v in PyQt6.QtGui.__dict__.items():
-        setattr(_qtgui, _k, _v)
-
-    _qtwidgets = types.ModuleType("PySide6.QtWidgets")
-    for _k, _v in PyQt6.QtWidgets.__dict__.items():
-        setattr(_qtwidgets, _k, _v)
-
-    _qttest = types.ModuleType("PySide6.QtTest")
-    for _k, _v in PyQt6.QtTest.__dict__.items():
-        setattr(_qttest, _k, _v)
-
-    pyside6.QtCore = _qtcore
-    pyside6.QtGui = _qtgui
-    pyside6.QtWidgets = _qtwidgets
-    pyside6.QtTest = _qttest
-    pyside6.__version__ = PyQt6.QtCore.PYQT_VERSION_STR
-    _qtcore.__version__ = PyQt6.QtCore.PYQT_VERSION_STR
-    pyside6.__path__ = []
-
-    sys.modules["PySide6"] = pyside6
-    sys.modules["PySide6.QtCore"] = _qtcore
-    sys.modules["PySide6.QtGui"] = _qtgui
-    sys.modules["PySide6.QtWidgets"] = _qtwidgets
-    sys.modules["PySide6.QtTest"] = _qttest
+from PySide6.QtCore import QObject, Signal  # noqa: E402
+from PySide6.QtWidgets import (  # noqa: E402
+    QApplication,
+    QComboBox,
+    QDoubleSpinBox,
+    QGraphicsScene,
+    QGraphicsView,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QProgressDialog,
+    QPushButton,
+    QScrollArea,
+    QSpinBox,
+    QSplitter,
+    QTableWidget,
+    QWidget,
+)
 
 _qapp = QApplication.instance() or QApplication(["pytest", "-platform", "offscreen"])
 
@@ -73,11 +48,8 @@ class DummyTaskBase:
         pass
 
 
-from PyQt6.QtCore import pyqtSignal  # noqa: E402
-
-
 class DummyPluginBase(QWidget):
-    status_message = pyqtSignal(str)
+    status_message = Signal(str)
 
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -99,18 +71,6 @@ class DummySplitter(QSplitter):
 
 class DummyLabel(QLabel):
     pass
-
-
-from PyQt6.QtWidgets import (
-    QComboBox,
-    QDoubleSpinBox,
-    QLineEdit,
-    QListWidget,
-    QProgressDialog,
-    QScrollArea,
-    QSpinBox,
-    QTableWidget,
-)
 
 
 class DummyComboBox(QComboBox):
@@ -143,9 +103,6 @@ class DummyScrollArea(QScrollArea):
 
 class DummyProgressDialog(QProgressDialog):
     pass
-
-
-from PyQt6.QtWidgets import QGraphicsScene, QGraphicsView, QHBoxLayout
 
 
 class DummyDirtyTrackingGraphicsScene(QGraphicsScene):
@@ -195,10 +152,10 @@ mock_karcytics_sdk_plugin.DirtyTrackingGraphicsView = DummyDirtyTrackingGraphics
 
 
 class DummyAnalysisWorker(QWidget):
-    finished = pyqtSignal(object)
-    error = pyqtSignal(str)
-    progress = pyqtSignal(int)
-    cancelled = pyqtSignal()
+    finished = Signal(object)
+    error = Signal(str)
+    progress = Signal(int)
+    cancelled = Signal()
 
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -286,7 +243,7 @@ class MockComponents:
     BioScrollArea = DummyScrollArea
     BioProgressDialog = DummyProgressDialog
 
-    def __getattr__(self, name: str) -> Any:
+    def __getattr__(self, name: str) -> Any:  # noqa: C901, PLR0911
         if "Button" in name:
             return DummyButton
         if "Table" in name:
@@ -332,7 +289,7 @@ class DummyColors(metaclass=DummyThemeMeta):
 
 
 class DummyThemeManager(QObject):
-    theme_changed = pyqtSignal(str)
+    theme_changed = Signal(str)
     _theme = "dark"
 
     def set_theme(self, theme: str):
@@ -354,12 +311,12 @@ dummy_theme_manager = DummyThemeManager()
 
 
 class DummyOneShotWorkerThread(DummyAnalysisWorker):
-    finished_ok = pyqtSignal(object)
-    finished_err = pyqtSignal(str)
-    finished = pyqtSignal(object)
-    error = pyqtSignal(str)
-    progress = pyqtSignal(int)
-    cancelled = pyqtSignal()
+    finished_ok = Signal(object)
+    finished_err = Signal(str)
+    finished = Signal(object)
+    error = Signal(str)
+    progress = Signal(int)
+    cancelled = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -407,8 +364,12 @@ mock_sdk.plugin = mock_karcytics_sdk_plugin
 sys.modules["karcytics_sdk"] = mock_sdk
 
 mock_testing = types.ModuleType("karcytics_sdk.testing")
+
+
 class DummyContractTestBase:
     PLUGIN_DIR = None
+
+
 mock_testing.ContractTestBase = DummyContractTestBase
 mock_sdk.testing = mock_testing
 sys.modules["karcytics_sdk.testing"] = mock_testing

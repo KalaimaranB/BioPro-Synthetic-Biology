@@ -1,6 +1,6 @@
 from karcytics_sdk.plugin.ribbon import BioRibbon
 from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
-from PyQt6.QtWidgets import QLabel
+from PySide6.QtWidgets import QLabel
 
 
 class CatalogueRibbon(BioRibbon):

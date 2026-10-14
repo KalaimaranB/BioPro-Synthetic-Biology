@@ -4,8 +4,8 @@ from karcytics_sdk.plugin.components import BioComboBox, PrimaryButton
 from karcytics_sdk.plugin.dialogs import show_warning
 from karcytics_sdk.plugin.ribbon import BioRibbon
 from karcytics_sdk.plugin.theme_fallback import Colors
-from PyQt6.QtCore import pyqtSignal as Signal
-from PyQt6.QtWidgets import QLabel
+from PySide6.QtCore import Signal
+from PySide6.QtWidgets import QLabel
 
 from ...analysis.parts.components import BiologicalPart
 
@@ -85,7 +85,6 @@ class DesignRibbon(BioRibbon):
         self.update_part_selector(self.role_combo.currentText())
 
     def _apply_theme(self):
-
         hover_color = Colors.ACCENT_PRIMARY_HOVER
         fetch_btn_style = f"""
             QPushButton {{

@@ -6,8 +6,8 @@ from karcytics_sdk.plugin.components import (
     BioScrollArea,
 )
 from karcytics_sdk.plugin.theme_fallback import Colors
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
@@ -21,8 +21,8 @@ from ...analysis.parts.components import CDS, RBS, Promoter, Terminator
 class PropertiesView(QWidget):
     """An inspector view for viewing and editing kinetic properties of components."""
 
-    state_changed = pyqtSignal()
-    param_changed = pyqtSignal(str, float)
+    state_changed = Signal()
+    param_changed = Signal(str, float)
 
     def __init__(self, state=None, parent=None):
         super().__init__(parent)

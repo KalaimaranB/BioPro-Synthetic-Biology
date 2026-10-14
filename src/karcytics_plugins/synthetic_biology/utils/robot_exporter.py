@@ -303,12 +303,11 @@ class WorklistGenerator:
         return cls.export_transfers_to_tecan_csv(transfers, filepath)
 
     @classmethod
-    def export_to_opentrons(cls, *args: Any, **kwargs: Any) -> None:
+    def export_to_opentrons(cls, *args: Any, **kwargs: Any) -> None:  # noqa: ARG003
         """Placeholder for Opentrons OT-2 Python script generator."""
         from karcytics_sdk.plugin.toast import show_toast
 
         show_toast("Opentrons OT-2 export coming in v2.1", level="info")
-
 
     @staticmethod
     def _resolve_source(
@@ -320,7 +319,7 @@ class WorklistGenerator:
         """Resolves source plate and well for a given component name from plate map."""
         if component_name in plate_map:
             val = plate_map[component_name]
-            if isinstance(val, (tuple, list)) and len(val) >= 2:  # noqa: PLR2004
+            if isinstance(val, tuple | list) and len(val) >= 2:  # noqa: PLR2004
                 return str(val[0]), str(val[1])
             if isinstance(val, str):
                 return default_plate, val

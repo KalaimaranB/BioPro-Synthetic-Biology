@@ -21,7 +21,7 @@ Instead of just typing numbers into a vacuum, researchers create "Parameter Prof
 When a user drags two parts onto the Canvas that have parameters sourced from different papers, Karcytics will **not** automatically assume they are compatible.
 * **The Flag:** The UI will flag the connection with a "Context Mismatch" warning icon.
 * **Side-by-Side Review:** Clicking the warning opens a comparison window showing the experimental context of Paper A next to Paper B.
-* **Researcher Approval:** The software defers to the researcher's expertise. The researcher must review the differences and explicitly click **"Approve Compatibility"** to allow the simulation engine to combine the math. 
+* **Researcher Approval:** The software defers to the researcher's expertise. The researcher must review the differences and explicitly click **"Approve Compatibility"** to allow the simulation engine to combine the math.
 
 > [!NOTE]
 > This ensures that all simulations are built on rigorous, researcher-verified assumptions rather than hidden software defaults.

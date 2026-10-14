@@ -118,7 +118,7 @@ class SynBioPanel(PluginBase):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        from PySide6.QtWidgets import QStackedWidget, QTabBar, QWidget
+        from PySide6.QtWidgets import QStackedWidget, QTabBar
 
         from .canvas import CircuitCanvas
         from .controllers import (

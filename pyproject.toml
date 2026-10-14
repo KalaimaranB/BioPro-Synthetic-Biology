@@ -10,6 +10,7 @@ authors = [
 ]
 dependencies = [
     "karcytics-sdk>=3.0.0",
+    "PySide6>=6.6",
     "PySide6-Essentials>=6.6",
     "numpy>=1.26",
     "scipy>=1.11",
@@ -116,5 +117,7 @@ karcytics-sdk = { path = "../Karcytics-SDK", editable = true }
 
 [dependency-groups]
 dev = [
+    "pre-commit>=3.8.0",
+    "ruff>=0.16.10",
     "types-requests>=2.33.0.20261006",
 ]

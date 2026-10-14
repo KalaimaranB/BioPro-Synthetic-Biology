@@ -2,8 +2,8 @@
 
 from karcytics_sdk.plugin.components import BioComboBox, BioSpinBox, PrimaryButton
 from karcytics_sdk.plugin.ribbon import BioRibbon
-from PyQt6.QtCore import pyqtSignal as Signal
-from PyQt6.QtWidgets import QLabel
+from PySide6.QtCore import Signal
+from PySide6.QtWidgets import QLabel
 
 
 class SimulateRibbon(BioRibbon):

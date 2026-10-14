@@ -7,12 +7,12 @@ from karcytics_sdk.plugin.components import (
     PrimaryButton,
     SecondaryButton,
 )
-from karcytics_sdk.plugin.dialogs import ask_yes_no, show_error, show_warning
+from karcytics_sdk.plugin.dialogs import ask_yes_no, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors
 from karcytics_sdk.plugin.toast import show_toast
-from PyQt6.QtCore import Qt, pyqtSignal, pyqtSignal as Signal
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import (
     QDialog,
     QFormLayout,
     QHBoxLayout,
