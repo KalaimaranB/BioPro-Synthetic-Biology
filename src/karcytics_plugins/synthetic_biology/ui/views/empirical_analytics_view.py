@@ -390,7 +390,7 @@ class EmpiricalAnalyticsView(QWidget):
 
     @Slot(str)
     def _on_error(self, err_msg: str) -> None:
-        show_error(self, err_msg, title="Empirical Analytics Error")
+        show_error(self, title="Empirical Analytics Error", message=err_msg)
 
     # ── Teardown & Hot-swapping ───────────────────────────────────────
 

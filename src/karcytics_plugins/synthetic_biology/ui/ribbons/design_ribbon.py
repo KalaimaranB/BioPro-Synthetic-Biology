@@ -211,8 +211,8 @@ class DesignRibbon(BioRibbon):
             else:
                 show_warning(
                     self,
-                    f"Could not find or instantiate part '{part_id}'.",
                     title="Fetch Failed",
+                    message=f"Could not find or instantiate part '{part_id}'.",
                 )
         finally:
             self.fetch_btn.setEnabled(True)

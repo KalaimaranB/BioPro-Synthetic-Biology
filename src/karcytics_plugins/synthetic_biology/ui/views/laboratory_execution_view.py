@@ -524,8 +524,8 @@ class LaboratoryExecutionView(QWidget):
         )
         show_error(
             self,
-            f"Failed to calculate assembly protocol:\n\n{error_message}",
             title="Bench Protocol Error",
+            message=f"Failed to calculate assembly protocol:\n\n{error_message}",
         )
 
     def _populate_results_tables(self, protocol: BenchProtocol) -> None:
@@ -674,8 +674,8 @@ class LaboratoryExecutionView(QWidget):
         if not self.current_protocol:
             show_warning(
                 self,
-                "Please generate a bench assembly protocol first before exporting to CSV.",
                 title="No Protocol Available",
+                message="Please generate a bench assembly protocol first before exporting to CSV.",
             )
             return
 
@@ -699,12 +699,14 @@ class LaboratoryExecutionView(QWidget):
                 show_toast("Successfully exported Tecan worklist")
                 show_info(
                     self,
-                    f"Successfully exported Tecan worklist to:\n{out_file}",
                     title="Export Successful",
+                    message=f"Successfully exported Tecan worklist to:\n{out_file}",
                 )
             except RobotExportError as e:
                 show_error(
-                    self, f"Failed to export Tecan CSV:\n{e}", title="Robot Export Error"
+                    self,
+                    title="Robot Export Error",
+                    message=f"Failed to export Tecan CSV:\n{e}",
                 )
 
     def _on_export_opentrons_clicked(self) -> None:

@@ -740,8 +740,8 @@ class PartInspector(QWidget):
         if not seq:
             show_warning(
                 self,
-                "Missing Sequence",
-                "Please enter a DNA sequence before generating the comparative graph.",
+                title="Missing Sequence",
+                message="Please enter a DNA sequence before generating the comparative graph.",
             )
             return
 
@@ -818,6 +818,6 @@ class PartInspector(QWidget):
         except Exception as e:
             show_warning(
                 self,
-                "Wild Type Reverse Lookup Error",
-                f"Failed to generate comparative graph:\n{str(e)}",
+                title="Wild Type Reverse Lookup Error",
+                message=f"Failed to generate comparative graph:\n{str(e)}",
             )

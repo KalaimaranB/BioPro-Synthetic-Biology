@@ -396,8 +396,8 @@ class PlasmidAssemblyView(QWidget):
         if not parts:
             show_warning(
                 self,
-                "Please drag at least one part into the canvas.",
                 title="Assembly Warning",
+                message="Please drag at least one part into the canvas.",
             )
             return
 
@@ -427,7 +427,9 @@ class PlasmidAssemblyView(QWidget):
         plasmid = self.state.get_active_plasmid()
         if not plasmid or not plasmid.sequence:
             show_warning(
-                self, "Assemble or import a plasmid vector first.", title="Primer Warning"
+                self,
+                title="Primer Warning",
+                message="Assemble or import a plasmid vector first.",
             )
             return
 
@@ -466,4 +468,4 @@ class PlasmidAssemblyView(QWidget):
 
     @Slot(str)
     def _show_error(self, message: str):
-        show_error(self, message, title="Assembly Error")
+        show_error(self, title="Assembly Error", message=message)

@@ -69,6 +69,27 @@ try:
 except Exception:
     pass
 
+try:
+    import karcytics_sdk.plugin.dialogs as _dialogs_mod
+
+    for _fn_name in ("show_error", "show_warning", "show_info"):
+        _orig_fn = getattr(_dialogs_mod, _fn_name, None)
+        if callable(_orig_fn) and not getattr(_orig_fn, "_is_safe_wrapper", False):
+
+            def _make_safe_dialog(orig):
+                def _safe_dialog(*args, **kwargs):
+                    # If called as fn(parent, message, title="...")
+                    if len(args) == 2 and "title" in kwargs and "message" not in kwargs:
+                        return orig(args[0], title=kwargs["title"], message=args[1])
+                    return orig(*args, **kwargs)
+
+                _safe_dialog._is_safe_wrapper = True
+                return _safe_dialog
+
+            setattr(_dialogs_mod, _fn_name, _make_safe_dialog(_orig_fn))
+except Exception:
+    pass
+
 
 def initialize(context=None):
     """Karcytics SDK entry point — called by ModuleManager on plugin load.

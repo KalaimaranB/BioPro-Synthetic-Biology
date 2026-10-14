@@ -182,7 +182,7 @@ class CRISPRDesignView(QWidget):
     def _on_scan_clicked(self):
         seq = self.target_seq_edit.toPlainText().strip()
         if not seq:
-            show_warning(self, "Target sequence cannot be empty.", title="Input Error")
+            show_warning(self, title="Input Error", message="Target sequence cannot be empty.")
             return
 
         pam_type = self.pam_combo.currentText()
@@ -265,4 +265,4 @@ class CRISPRDesignView(QWidget):
 
     @Slot(str)
     def _show_error(self, message: str):
-        show_error(self, message, title="CRISPR Engine Error")
+        show_error(self, title="CRISPR Engine Error", message=message)
