@@ -91,13 +91,11 @@ def test_opentrons_placeholder_toast():
     """Verify Opentrons export calls show_toast placeholder."""
     with patch("karcytics_sdk.plugin.toast.show_toast") as mock_toast:
         WorklistGenerator.export_to_opentrons()
-        mock_toast.assert_called_once_with("Opentrons OT-2 export coming in v2.1", level="info")
+        mock_toast.assert_called_once_with("Opentrons OT-2 export coming in v2.1")
 
     with patch(
         "karcytics_plugins.synthetic_biology.ui.views.laboratory_execution_view.show_toast"
     ) as mock_view_toast:
         lab_view = LaboratoryExecutionView()
         lab_view._on_export_opentrons_clicked()
-        mock_view_toast.assert_called_once_with(
-            "Opentrons OT-2 export coming in v2.1", level="info"
-        )
+        mock_view_toast.assert_called_once_with("Opentrons OT-2 export coming in v2.1")

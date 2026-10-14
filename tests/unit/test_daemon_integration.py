@@ -53,50 +53,73 @@ def send_frame(proc: subprocess.Popen, data: dict[str, Any]) -> None:
     proc.stdin.flush()
 
 
-def recv_frame(proc: subprocess.Popen, timeout: float = 10.0) -> dict[str, Any] | None:  # noqa: C901, PLR0911
+def _read_exact(  # noqa: C901
+    proc: subprocess.Popen, num_bytes: int, timeout: float
+) -> bytes | None:
+    """Read exactly num_bytes from proc.stdout with a timeout, cross-platform."""
+    if proc.stdout is None:
+        return None
+
+    fd = proc.stdout.fileno()
+    buf = bytearray()
+    deadline = time.monotonic() + timeout
+
+    while len(buf) < num_bytes:
+        if proc.poll() is not None:
+            # Drain remaining bytes if process exited
+            try:
+                chunk = os.read(fd, num_bytes - len(buf))
+                if chunk:
+                    buf.extend(chunk)
+            except (OSError, ValueError):
+                pass
+            return bytes(buf) if len(buf) == num_bytes else None
+
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None
+
+        if sys.platform != "win32":
+            import select
+
+            rlist, _, _ = select.select([fd], [], [], min(0.05, remaining))
+            if not rlist:
+                continue
+        else:
+            time.sleep(0.01)
+
+        try:
+            chunk = os.read(fd, num_bytes - len(buf))
+            if not chunk:
+                return None
+            buf.extend(chunk)
+        except (OSError, ValueError):
+            return None
+
+    return bytes(buf)
+
+
+def recv_frame(proc: subprocess.Popen, timeout: float = 10.0) -> dict[str, Any] | None:
     """Read one length-prefixed msgpack frame from the worker's stdout.
 
     Returns None on EOF or timeout.
     """
-    import select
-
-    fd = proc.stdout.fileno()
-    # Read 4-byte header
-    header = bytearray()
     deadline = time.monotonic() + timeout
-    while len(header) < 4:
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            return None
-        rlist, _, _ = select.select([fd], [], [], min(0.1, remaining))
-        if not rlist:
-            if proc.poll() is not None:
-                return None
-            continue
-        chunk = os.read(fd, 4 - len(header))
-        if not chunk:
-            return None
-        header.extend(chunk)
 
-    length = struct.unpack(">I", bytes(header))[0]
+    header = _read_exact(proc, 4, timeout)
+    if not header or len(header) < 4:
+        return None
 
-    # Read payload
-    buf = bytearray()
-    while len(buf) < length:
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            return None
-        rlist, _, _ = select.select([fd], [], [], min(0.1, remaining))
-        if not rlist:
-            if proc.poll() is not None:
-                return None
-            continue
-        chunk = os.read(fd, length - len(buf))
-        if not chunk:
-            return None
-        buf.extend(chunk)
+    length = struct.unpack(">I", header)[0]
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        return None
 
-    return msgpack.unpackb(bytes(buf), raw=False)
+    payload = _read_exact(proc, length, remaining)
+    if not payload or len(payload) < length:
+        return None
+
+    return msgpack.unpackb(payload, raw=False)
 
 
 def drain_events_until(proc: subprocess.Popen, topic: str, timeout: float) -> dict | None:
@@ -244,17 +267,40 @@ class TestDaemonSubprocessSmoke:
         # Give a moment for stderr to flush
         time.sleep(0.2)
         # Non-blocking read of stderr
-        import select
-
         stderr_text = ""
-        while True:
-            rlist, _, _ = select.select([worker.stderr.fileno()], [], [], 0.1)
-            if not rlist:
-                break
-            chunk = os.read(worker.stderr.fileno(), 8192)
-            if not chunk:
-                break
-            stderr_text += chunk.decode("utf-8", errors="replace")
+        fd = worker.stderr.fileno()
+        if sys.platform != "win32":
+            import select
+
+            while True:
+                rlist, _, _ = select.select([fd], [], [], 0.1)
+                if not rlist:
+                    break
+                chunk = os.read(fd, 8192)
+                if not chunk:
+                    break
+                stderr_text += chunk.decode("utf-8", errors="replace")
+        else:
+            try:
+                import ctypes
+                import msvcrt
+                from ctypes import wintypes
+
+                handle = msvcrt.get_osfhandle(fd)
+                avail = wintypes.DWORD()
+                for _ in range(10):
+                    success = ctypes.windll.kernel32.PeekNamedPipe(
+                        handle, None, 0, None, ctypes.byref(avail), None
+                    )
+                    if not success or avail.value == 0:
+                        time.sleep(0.01)
+                        continue
+                    chunk = os.read(fd, min(avail.value, 8192))
+                    if not chunk:
+                        break
+                    stderr_text += chunk.decode("utf-8", errors="replace")
+            except Exception:
+                pass
         assert "CRITICAL ERROR CAUGHT BY QT HOOK" not in stderr_text, (
             f"Critical error on stderr:\n{stderr_text}"
         )
