@@ -28,7 +28,7 @@ try:
                 return _orig_show_toast(msg, *rest, window=window, **kwargs)
             return _orig_show_toast(*args, **kwargs)
 
-        _safe_show_toast._is_safe_wrapper = True
+        _safe_show_toast._is_safe_wrapper = True  # type: ignore[attr-defined]
         _toast_mod.show_toast = _safe_show_toast
 except Exception:
     pass

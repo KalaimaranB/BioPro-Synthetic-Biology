@@ -307,7 +307,7 @@ class WorklistGenerator:
         """Placeholder for Opentrons OT-2 Python script generator."""
         from karcytics_sdk.plugin.toast import show_toast
 
-        show_toast("Opentrons OT-2 export coming in v2.1", level="info")
+        show_toast("Opentrons OT-2 export coming in v2.1")
 
     @staticmethod
     def _resolve_source(

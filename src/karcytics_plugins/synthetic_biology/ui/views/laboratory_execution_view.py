@@ -783,7 +783,7 @@ class LaboratoryExecutionView(QWidget):
 
     def _on_export_opentrons_clicked(self) -> None:
         """Placeholder notification for upcoming Opentrons OT-2 liquid handler export."""
-        show_toast("Opentrons OT-2 export coming in v2.1", level="info")
+        show_toast("Opentrons OT-2 export coming in v2.1")
 
     def _load_sample_inventory(self) -> None:
         """Populates the LIMS inventory table with Phase 2 data models."""

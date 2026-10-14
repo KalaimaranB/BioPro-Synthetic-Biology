@@ -4,6 +4,7 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
+        exclude: ^(security\.json|trust_chain\.json|signature\.bin)$
       - id: check-yaml
         args: [--unsafe]
       - id: check-toml
