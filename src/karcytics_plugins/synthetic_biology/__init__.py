@@ -49,6 +49,26 @@ except ImportError:
     sys.modules["PySide6.QtWidgets"] = _qtwidgets
     from PySide6.QtWidgets import QWidget
 
+try:
+    import karcytics_sdk.plugin.toast as _toast_mod
+
+    _orig_show_toast = getattr(_toast_mod, "show_toast", None)
+    if callable(_orig_show_toast) and not getattr(_orig_show_toast, "_is_safe_wrapper", False):
+
+        def _safe_show_toast(*args, **kwargs):
+            kwargs.pop("level", None)
+            if args and not isinstance(args[0], str):
+                window = args[0]
+                msg = args[1] if len(args) > 1 else ""
+                rest = args[2:]
+                return _orig_show_toast(msg, *rest, window=window, **kwargs)
+            return _orig_show_toast(*args, **kwargs)
+
+        _safe_show_toast._is_safe_wrapper = True
+        _toast_mod.show_toast = _safe_show_toast
+except Exception:
+    pass
+
 
 def initialize(context=None):
     """Karcytics SDK entry point — called by ModuleManager on plugin load.

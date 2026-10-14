@@ -462,7 +462,7 @@ class PlasmidAssemblyView(QWidget):
             [vector.sequence[i : i + 60] for i in range(0, len(vector.sequence), 60)]
         )
         self.seq_display.setText(header + formatted_seq)
-        show_toast("Plasmid construct assembled successfully", level="info")
+        show_toast("Plasmid construct assembled successfully")
 
     @Slot(str)
     def _show_error(self, message: str):

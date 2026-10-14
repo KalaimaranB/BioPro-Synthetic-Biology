@@ -226,7 +226,7 @@ class CRISPRDesignView(QWidget):
                 poly_t_item.setForeground(Qt.GlobalColor.red)
             self.grna_table.setItem(row, 7, poly_t_item)
 
-        show_toast(f"Found {len(candidates)} gRNA candidate(s)", level="info")
+        show_toast(f"Found {len(candidates)} gRNA candidate(s)")
 
     def _on_table_selection_changed(self):
         selected_rows = self.grna_table.selectedItems()

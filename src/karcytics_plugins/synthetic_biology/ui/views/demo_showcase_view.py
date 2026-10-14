@@ -475,7 +475,7 @@ class DemoShowcaseView(QWidget):
             if hasattr(self.main_panel, "_tab_bar"):
                 self.main_panel._tab_bar.setCurrentIndex(0)
 
-        show_toast("Demo showcase loaded into workspace", level="info")
+        show_toast("Demo showcase loaded into workspace")
         self.demo_loaded.emit()
 
     def _apply_theme_styles(self) -> None:

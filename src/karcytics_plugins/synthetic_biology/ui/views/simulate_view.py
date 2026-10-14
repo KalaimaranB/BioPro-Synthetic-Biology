@@ -538,7 +538,7 @@ class SimulateView(QWidget):
 
         # Render selected traces on pyqtgraph plot widget
         self.update_plot()
-        show_toast("Simulation completed successfully", level="info")
+        show_toast("Simulation completed successfully")
 
     @Slot(str)
     def _on_simulation_error(self, err_msg: str) -> None:

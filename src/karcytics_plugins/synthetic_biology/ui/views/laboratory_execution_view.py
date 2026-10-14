@@ -508,7 +508,7 @@ class LaboratoryExecutionView(QWidget):
 
         self._populate_results_tables(protocol)
         self._populate_worklist_table(protocol)
-        show_toast("Assembly protocol generated successfully", level="info")
+        show_toast("Assembly protocol generated successfully")
 
     @Slot(str)
     def _on_protocol_error(self, error_message: str) -> None:
@@ -696,7 +696,7 @@ class LaboratoryExecutionView(QWidget):
                     filepath=filepath,
                     default_dest_plate=self.txt_dest_plate.text(),
                 )
-                show_toast("Successfully exported Tecan worklist", level="info")
+                show_toast("Successfully exported Tecan worklist")
                 show_info(
                     self,
                     f"Successfully exported Tecan worklist to:\n{out_file}",

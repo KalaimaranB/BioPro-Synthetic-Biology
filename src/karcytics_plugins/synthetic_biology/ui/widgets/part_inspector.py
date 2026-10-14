@@ -587,7 +587,7 @@ class PartInspector(QWidget):
             part.translation_initiation_rate = _parse_float(self.rbs_init_rate_edit.text())
 
         self.part_saved.emit(part)
-        show_toast(self, "Part saved successfully.", "success")
+        show_toast("Part saved successfully.", window=self)
 
     def _on_sequence_changed(self):
         """Auto-trigger parameter prediction if in New Theoretical Part mode
@@ -724,7 +724,7 @@ class PartInspector(QWidget):
             if self.catalogue_service:
                 self.catalogue_service.delete_part(part_id)
             self.part_deleted.emit(part_id)
-            show_toast(self, "Part deleted.", "info")
+            show_toast("Part deleted.", window=self)
 
     def _open_model_details_dialog(self, link_str: str = ""):
         """Open the detailed mathematical & biological model breakdown popup dialog."""

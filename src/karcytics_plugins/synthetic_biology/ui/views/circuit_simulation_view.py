@@ -334,7 +334,7 @@ class CircuitSimulationView(QWidget):
             pen = pg.mkPen(color=color, width=2.5)
             self.plot_widget.plot(t_points, conc_values, name=species_name, pen=pen)
 
-        show_toast(self, "Predictive simulation completed.", "success")
+        show_toast("Predictive simulation completed.", window=self)
 
     @pyqtSlot(str)
     def _show_error(self, message: str):
