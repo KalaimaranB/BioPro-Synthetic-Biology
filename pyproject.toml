@@ -24,6 +24,8 @@ dependencies = [
     "tellurium>=2.2",
     "urllib3>=2.8.0",
     "tornado>=6.5.9",
+    "certifi>=2026.10.19",
+    "pillow>=13.0.0",
 ]
 
 [project.optional-dependencies]
