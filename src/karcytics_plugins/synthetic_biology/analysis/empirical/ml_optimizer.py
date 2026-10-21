@@ -153,7 +153,7 @@ class CircuitMLOptimizationEngine:
             x0=initial_params,
             method="L-BFGS-B",
             bounds=bounds,
-            options={"maxiter": 35, "disp": False},
+            options={"maxiter": 35},
         )
 
         opt_params = res_opt.x if res_opt.success else initial_params

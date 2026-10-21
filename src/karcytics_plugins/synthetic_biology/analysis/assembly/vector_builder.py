@@ -14,6 +14,7 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqFeature import FeatureLocation, SeqFeature
 from Bio.SeqRecord import SeqRecord
+from Bio.SeqUtils import MeltingTemp
 
 from ..models.domain import GeneticFeature, PlasmidVector, Primer
 from ..parts.base import BiologicalPart
@@ -201,29 +202,54 @@ class VectorAssemblyEngine:
         )
 
     @staticmethod
-    def calculate_tm(sequence: str) -> float:
-        """Calculates nearest-neighbor melting temperature (Tm) for primer
-        sequences.
+    def calculate_tm(
+        sequence: str,
+        na_conc_mm: float = 50.0,
+        mg_conc_mm: float = 1.5,
+        primer_conc_nm: float = 250.0,
+    ) -> float:
+        """Calculates nearest-neighbor melting temperature (Tm) for primer sequences
+        using SantaLucia (1998) unified thermodynamic parameters and salt corrections.
 
-        Formula (Wallace / Marmur GC-based for short oligos
-        & nearest-neighbor approximation):
-        For oligos <= 14 bp: Tm = (A+T)*2 + (G+C)*4
-        For oligos > 14 bp: Tm = 64.9 + 41.0 * (nG + nC - 16.4) / N
+        Args:
+            sequence: Primer DNA sequence string.
+            na_conc_mm: Monovalent sodium concentration in mM (default 50.0 mM).
+            mg_conc_mm: Divalent magnesium concentration in mM (default 1.5 mM).
+            primer_conc_nm: Total primer concentration in nM (default 250.0 nM).
+
+        Returns:
+            Calculated melting temperature in degrees Celsius (°C).
         """
-        seq = sequence.upper()
-        n_a = seq.count("A")
-        n_t = seq.count("T")
-        n_g = seq.count("G")
-        n_c = seq.count("C")
-        n_total = len(seq)
-
-        if n_total == 0:
+        seq = sequence.upper().strip()
+        if not seq:
             return 0.0
 
-        if n_total <= 14:  # noqa: PLR2004
-            return float((n_a + n_t) * 2 + (n_g + n_c) * 4)
+        # For very short oligos (< 6 bp), nearest-neighbor models are non-physical;
+        # return basic Wallace approximation
+        if len(seq) < 6:  # noqa: PLR2004
+            n_at = seq.count("A") + seq.count("T")
+            n_gc = seq.count("G") + seq.count("C")
+            return float(n_at * 2 + n_gc * 4)
 
-        return float(64.9 + 41.0 * ((n_g + n_c) - 16.4) / n_total)
+        try:
+            tm_val = MeltingTemp.Tm_NN(
+                seq,
+                nn_table=MeltingTemp.DNA_NN3,  # SantaLucia (1998) unified parameters
+                Na=na_conc_mm,
+                Mg=mg_conc_mm,
+                dnac1=primer_conc_nm,
+                dnac2=primer_conc_nm,
+                saltcorr=7,  # Owczarzy et al. (2008) salt correction
+            )
+            return round(float(tm_val), 2)
+        except Exception:
+            # Fallback for degenerate/unusual sequences
+            n_at = seq.count("A") + seq.count("T")
+            n_gc = seq.count("G") + seq.count("C")
+            n_total = len(seq)
+            if n_total <= 14:  # noqa: PLR2004
+                return float(n_at * 2 + n_gc * 4)
+            return round(float(64.9 + 41.0 * (n_gc - 16.4) / n_total), 2)
 
     @classmethod
     def design_primers(

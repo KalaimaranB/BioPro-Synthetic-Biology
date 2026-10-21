@@ -169,7 +169,7 @@ class CRISPRDesignEngine:
         return max(0.0, min(100.0, score))
 
     @classmethod
-    def score_off_targets(
+    def score_off_targets(  # noqa: C901
         cls,
         candidate: gRNACandidate,
         reference_genome: str,
@@ -190,46 +190,72 @@ class CRISPRDesignEngine:
         protospacer = candidate.protospacer
         off_target_hits: list[dict[str, Any]] = []
         total_cfd_mult = 1.0
+        spacer_len = len(protospacer)
 
-        # Scan reference for potential 1-3 bp mismatch off-target sites
-        ref_len = len(reference_genome)
-        for i in range(0, ref_len - len(protospacer) - 3):
-            sub_seq = reference_genome[i : i + len(protospacer)]
-            if sub_seq == protospacer:
-                continue  # Exact on-target match
+        ref_fwd = reference_genome.upper()
+        ref_rev = str(Seq(ref_fwd).reverse_complement())
+        ref_len = len(ref_fwd)
 
-            mismatches = 0
-            mismatch_positions = []
-            for pos in range(len(protospacer)):
-                if sub_seq[pos] != protospacer[pos]:
-                    mismatches += 1
-                    mismatch_positions.append(pos)
+        def scan_strand_off_targets(seq: str, strand_dir: int) -> None:  # noqa: C901
+            nonlocal total_cfd_mult
+            pam_len = 3
+            max_mismatches = 3
+            max_idx = len(seq) - spacer_len - pam_len
+            if max_idx < 0:
+                return
 
-            if 1 <= mismatches <= 3:  # noqa: PLR2004
-                # Compute CFD mismatch penalty
-                hit_score = 1.0
-                for p in mismatch_positions:
-                    dist_from_pam = len(protospacer) - 1 - p
-                    if dist_from_pam < len(cls.SEED_WEIGHTS):
-                        hit_score *= cls.SEED_WEIGHTS[dist_from_pam]
-                    else:
-                        idx = min(
-                            dist_from_pam - len(cls.SEED_WEIGHTS),
-                            len(cls.NON_SEED_WEIGHTS) - 1,
-                        )
-                        hit_score *= cls.NON_SEED_WEIGHTS[idx]
+            for i in range(0, max_idx + 1):
+                sub_seq = seq[i : i + spacer_len]
+                adjacent_pam = seq[i + spacer_len : i + spacer_len + pam_len]
 
-                off_target_hits.append(
-                    {
-                        "position": i,
-                        "sequence": sub_seq,
-                        "mismatches": mismatches,
-                        "cfd_score": round(hit_score * 100.0, 1),
-                    }
-                )
-                total_cfd_mult *= 1.0 - (hit_score * 0.2)
+                # Verify adjacent PAM motif (NGG for SpCas9)
+                if len(adjacent_pam) != pam_len or adjacent_pam[1:3] != "GG":
+                    continue
 
-        final_cfd = round(total_cfd_mult * 100.0, 1)
+                if sub_seq == protospacer:
+                    continue  # Exact on-target match
+
+                mismatches = 0
+                mismatch_positions = []
+                for pos in range(spacer_len):
+                    if sub_seq[pos] != protospacer[pos]:
+                        mismatches += 1
+                        mismatch_positions.append(pos)
+                        if mismatches > max_mismatches:
+                            break
+
+                if 1 <= mismatches <= max_mismatches:
+                    # Compute CFD mismatch penalty
+                    hit_score = 1.0
+                    for p in mismatch_positions:
+                        dist_from_pam = spacer_len - 1 - p
+                        if dist_from_pam < len(cls.SEED_WEIGHTS):
+                            hit_score *= cls.SEED_WEIGHTS[dist_from_pam]
+                        else:
+                            idx = min(
+                                dist_from_pam - len(cls.SEED_WEIGHTS),
+                                len(cls.NON_SEED_WEIGHTS) - 1,
+                            )
+                            hit_score *= cls.NON_SEED_WEIGHTS[idx]
+
+                    gen_pos = i if strand_dir == 1 else ref_len - (i + spacer_len + 3)
+                    off_target_hits.append(
+                        {
+                            "position": gen_pos,
+                            "strand": strand_dir,
+                            "sequence": sub_seq,
+                            "pam": adjacent_pam,
+                            "mismatches": mismatches,
+                            "cfd_score": round(hit_score * 100.0, 1),
+                        }
+                    )
+                    total_cfd_mult *= 1.0 - (hit_score * 0.2)
+
+        # Scan both forward and reverse complement strands
+        scan_strand_off_targets(ref_fwd, strand_dir=1)
+        scan_strand_off_targets(ref_rev, strand_dir=-1)
+
+        final_cfd = round(max(0.0, total_cfd_mult * 100.0), 1)
         candidate.off_target_score = final_cfd
         candidate.off_target_hits = off_target_hits[:10]  # Top 10 hits
         return final_cfd

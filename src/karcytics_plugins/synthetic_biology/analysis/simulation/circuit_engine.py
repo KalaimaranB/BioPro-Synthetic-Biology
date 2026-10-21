@@ -56,6 +56,8 @@ class CircuitSimulationEngine:
                 edge.target_id,
                 interaction_type=edge.interaction_type,
                 strength=edge.strength,
+                K_d=edge.K_d,
+                n=edge.n,
             )
 
         return graph
@@ -102,9 +104,27 @@ class CircuitSimulationEngine:
         )
 
         edges = [
-            CircuitEdge(source_id="TetR", target_id="LacI", interaction_type="repression"),
-            CircuitEdge(source_id="LacI", target_id="cI", interaction_type="repression"),
-            CircuitEdge(source_id="cI", target_id="TetR", interaction_type="repression"),
+            CircuitEdge(
+                source_id="TetR",
+                target_id="LacI",
+                interaction_type="repression",
+                K_d=1.0,
+                n=2.1,
+            ),
+            CircuitEdge(
+                source_id="LacI",
+                target_id="cI",
+                interaction_type="repression",
+                K_d=1.0,
+                n=2.1,
+            ),
+            CircuitEdge(
+                source_id="cI",
+                target_id="TetR",
+                interaction_type="repression",
+                K_d=1.0,
+                n=2.1,
+            ),
         ]
 
         return [tetR, lacI, cI], edges
@@ -156,8 +176,12 @@ class CircuitSimulationEngine:
                     src_idx = node_index_map[src_id]
                     src_conc = y[src_idx]
                     itype = edge_data["interaction_type"].lower()
-                    K_d = node_data["K_d"]  # noqa: N806
-                    n = node_data["n"]
+                    # Determine binding affinity (K_d) and Hill coefficient (n)
+                    # prioritizing edge/operator-specific parameters over target node defaults
+                    edge_kd = edge_data.get("K_d")
+                    edge_n = edge_data.get("n")
+                    K_d = edge_kd if edge_kd is not None else node_data["K_d"]  # noqa: N806
+                    n = edge_n if edge_n is not None else node_data["n"]
 
                     if itype == "repression":
                         # Negative Hill function: 1 / (1 + (R / K_d)^n)

@@ -259,6 +259,8 @@ class CircuitEdge:
     target_id: str
     interaction_type: str  # 'activation' or 'repression'
     strength: float = 1.0
+    K_d: float | None = None  # Regulatory edge dissociation constant
+    n: float | None = None  # Regulatory edge Hill coefficient
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -266,6 +268,8 @@ class CircuitEdge:
             "target_id": self.target_id,
             "interaction_type": self.interaction_type,
             "strength": self.strength,
+            "K_d": self.K_d,
+            "n": self.n,
         }
 
     @classmethod
@@ -279,6 +283,8 @@ class CircuitEdge:
             target_id=data.get("target_id", ""),
             interaction_type=data.get("interaction_type", "repression"),
             strength=data.get("strength", 1.0),
+            K_d=data.get("K_d"),
+            n=data.get("n"),
         )
 
 

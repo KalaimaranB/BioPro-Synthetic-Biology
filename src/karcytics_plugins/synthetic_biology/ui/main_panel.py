@@ -14,7 +14,7 @@ from typing import Any
 
 from karcytics_sdk.plugin import PluginBase, get_logger
 from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import (
     QLabel,
     QSizePolicy,
@@ -61,6 +61,8 @@ class SynBioPanel(PluginBase):
     # ── Karcytics-required signals ────────────────────────────────────
     # state_changed and status_message are provided by PluginBase
     results_ready = Signal(object)
+    panel_ready = Signal()
+    data_ready = Signal()
 
     def __init__(
         self,
@@ -256,6 +258,17 @@ class SynBioPanel(PluginBase):
         # ── Theme Sync ────────────────────────────────────────────────
         self._apply_theme_styles()
         theme_manager.theme_changed.connect(self._apply_theme_styles)
+
+    def begin_async_init(self) -> None:
+        """Chain Phase 2 async initialization to satisfy the Hub's Ready Gate protocol."""
+        self.logger.info("[phase2] begin_async_init: initializing SynBio panel")
+
+        def _complete_init() -> None:
+            self.logger.info("[phase2] SynBioPanel panel_ready and data_ready emitting")
+            self.panel_ready.emit()
+            self.data_ready.emit()
+
+        QTimer.singleShot(50, _complete_init)
 
     def _on_part_added(self, part):
         """Handle a new part fetched from the ribbon."""
