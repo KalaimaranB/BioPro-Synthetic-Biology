@@ -39,7 +39,6 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QTableWidgetItem,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -48,7 +47,6 @@ from ...analysis.assembly.protocol_engine import (
     BenchProtocol,
     ProtocolEngine,
 )
-from ...analysis.base_worker import BaseSDKWorker
 from ...models.inventory_models import (
     Oligo,
     PlasmidInventoryItem,
@@ -56,6 +54,8 @@ from ...models.inventory_models import (
     StorageLocation,
 )
 from ...utils.robot_exporter import RobotExportError, WorklistGenerator
+from ..widgets.bio_tab_widget import BioTabWidget
+from ..workers.base_worker import BaseSDKWorker
 
 
 class ProtocolWorker(BaseSDKWorker):
@@ -206,7 +206,7 @@ class LaboratoryExecutionView(QWidget):
         main_layout.addWidget(header)
 
         # Main Tab Widget
-        self.tabs = QTabWidget()
+        self.tabs = BioTabWidget()
 
         # Tab 1: Master Mix & Ratio Calculator
         tab_calculator = QWidget()

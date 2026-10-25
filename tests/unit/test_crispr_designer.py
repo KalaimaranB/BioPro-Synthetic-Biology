@@ -30,6 +30,25 @@ def test_find_grna_candidates():
 
 
 @pytest.mark.unit
+def test_find_grna_candidates_ascas12a():
+    """Test AsCas12a (TTTV) 5' PAM scanner on target DNA."""
+    # Contains TTTA (valid TTTV PAM) followed by a 20 bp protospacer
+    target_dna = "GGGGGTTTAACGTACGTACGTACGTACGTCCCCC"
+    candidates = CRISPRDesignEngine.find_grna_candidates(
+        target_sequence=target_dna,
+        pam_type="AsCas12a (TTTV)",
+        spacer_length=20,
+    )
+
+    assert len(candidates) > 0
+    ascas_cand = next((c for c in candidates if c.pam.startswith("TTT")), None)
+    assert ascas_cand is not None
+    assert len(ascas_cand.protospacer) == 20
+    assert ascas_cand.protospacer == "ACGTACGTACGTACGTACGT"
+    assert ascas_cand.pam == "TTTA"
+
+
+@pytest.mark.unit
 def test_cfd_off_target_scoring():
     """Test CFD mismatch penalty calculation."""
     cand = gRNACandidate(

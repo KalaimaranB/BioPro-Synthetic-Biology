@@ -91,6 +91,7 @@ class SynBioPanel(PluginBase):
         self.context = raw_context
 
         super().__init__(actual_plugin_id, qt_parent)
+        self.logger = getattr(self, "logger", None) or logger
 
         # ── State ─────────────────────────────────────────────────────
         self.state = SynBioState()
@@ -173,18 +174,48 @@ class SynBioPanel(PluginBase):
         self._tab_bar = QTabBar()
         self._tab_bar.setExpanding(False)
         self._tab_bar.setDocumentMode(True)
-        self._tab_bar.addTab("Design")
-        self._tab_bar.addTab("Biological View")
-        self._tab_bar.addTab("Plasmid Assembly")
-        self._tab_bar.addTab("CRISPR Design")
-        self._tab_bar.addTab("Circuit Simulation")
-        self._tab_bar.addTab("Empirical Analytics")
-        self._tab_bar.addTab("Laboratory Execution")
-        self._tab_bar.addTab("Simulate")
-        self._tab_bar.addTab("Quantitative Data")
-        self._tab_bar.addTab("Parts Catalogue")
-        self._tab_bar.addTab("Demo Showcase")
+        self._tab_bar.addTab("🎨 Design")
+        self._tab_bar.addTab("🔬 Biological View")
+        self._tab_bar.addTab("🧬 Plasmid Assembly")
+        self._tab_bar.addTab("✂️ CRISPR Design")
+        self._tab_bar.addTab("⚡ Circuit Simulation")
+        self._tab_bar.addTab("📊 Empirical Analytics")
+        self._tab_bar.addTab("🧫 Laboratory Execution")
+        self._tab_bar.addTab("📈 Simulate")
+        self._tab_bar.addTab("🔢 Quantitative Data")
+        self._tab_bar.addTab("📦 Parts Catalogue")
+        self._tab_bar.addTab("🚀 Demo Showcase")
         self._tab_bar.currentChanged.connect(self._on_tab_changed)
+        if hasattr(theme_manager, "apply_style"):
+            theme_manager.apply_style(
+                self._tab_bar,
+                """
+                QTabBar {
+                    background: {BG_DARKEST};
+                    border: none;
+                    border-bottom: 1px solid {BORDER};
+                }
+                QTabBar::tab {
+                    background: {BG_DARKEST};
+                    color: {FG_SECONDARY};
+                    padding: 10px 18px;
+                    border: none;
+                    border-bottom: 2px solid transparent;
+                    font-size: 13px;
+                    font-weight: 500;
+                }
+                QTabBar::tab:selected {
+                    color: {ACCENT_PRIMARY};
+                    border-bottom: 2px solid {ACCENT_PRIMARY};
+                    background: {BG_DARKEST};
+                    font-weight: 600;
+                }
+                QTabBar::tab:hover {
+                    color: {FG_PRIMARY};
+                    background: {BG_MEDIUM};
+                }
+                """,
+            )
         layout.addWidget(self._tab_bar)
 
         # ── Ribbon Stack ──────────────────────────────────────────────
@@ -263,7 +294,21 @@ class SynBioPanel(PluginBase):
         """Chain Phase 2 async initialization to satisfy the Hub's Ready Gate protocol."""
         self.logger.info("[phase2] begin_async_init: initializing SynBio panel")
 
+        # Asynchronously verify module updates and surface standard notification toast
+        if hasattr(self, "check_for_updates"):
+            self.check_for_updates(
+                repo_url="https://github.com/KalaimaranB/Karcytics-SyntheticBiology",
+                display_name="Synthetic Biology",
+            )
+
         def _complete_init() -> None:
+            try:
+                import shiboken6
+
+                if not shiboken6.isValid(self):
+                    return
+            except Exception:
+                pass
             self.logger.info("[phase2] SynBioPanel panel_ready and data_ready emitting")
             self.panel_ready.emit()
             self.data_ready.emit()
@@ -385,20 +430,6 @@ class SynBioPanel(PluginBase):
             }}
         """
         self.setStyleSheet(global_qss)
-
-        if hasattr(self, "_tab_bar"):
-            self._tab_bar.setStyleSheet(
-                f"QTabBar {{ background: {Colors.BG_DARKEST}; border: none; }}"
-                f"QTabBar::tab {{ background: {Colors.BG_DARKEST}; "
-                f"color: {Colors.FG_SECONDARY}; padding: 10px 20px; border: none; "
-                f"border-bottom: 2px solid transparent; "
-                f"font-size: {Fonts.SIZE_SMALL}px; font-weight: 600; }}"
-                f"QTabBar::tab:selected {{ color: {Colors.ACCENT_PRIMARY}; "
-                f"border-bottom: 2px solid {Colors.ACCENT_PRIMARY}; "
-                f"background: {Colors.BG_DARKEST}; }}"
-                f"QTabBar::tab:hover {{ color: {Colors.FG_PRIMARY}; "
-                f"background: {Colors.BG_MEDIUM}; }}"
-            )
 
         if hasattr(self, "_ribbon_stack"):
             self._ribbon_stack.setStyleSheet(

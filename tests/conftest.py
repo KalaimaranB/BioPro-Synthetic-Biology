@@ -55,6 +55,23 @@ class DummyPluginBase(QWidget):
         super().__init__()
         self.plugin_id = kwargs.get("plugin_id", args[0] if args else "")
 
+    def check_for_updates(
+        self,
+        repo_url: str,
+        current_version: str | None = None,
+        display_name: str | None = None,
+    ) -> None:
+        pass
+
+    def show_toast(
+        self,
+        message: str,
+        icon: str = "ℹ️",
+        color: str = "#5C9EE5",
+        duration_ms: int = 4000,
+    ) -> None:
+        pass
+
 
 class DummyAnalysisBase:
     def __init__(self, *args, **kwargs):
@@ -291,6 +308,12 @@ class DummyColors(metaclass=DummyThemeMeta):
 class DummyThemeManager(QObject):
     theme_changed = Signal(str)
     _theme = "dark"
+
+    def apply_style(self, widget, style_template: str):
+        pass
+
+    def connect(self, slot):
+        self.theme_changed.connect(slot)
 
     def set_theme(self, theme: str):
         self._theme = theme

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal
 
-from ...analysis.base_worker import BaseSDKWorker
 from ...analysis.empirical.fcs_ingestion import (
     FCSDataIngestionService,
     FCSEventData,
@@ -23,6 +22,7 @@ from ...analysis.models.domain import (
     PlasmidVector,
 )
 from ...analysis.state import SynBioState
+from ..workers.base_worker import BaseSDKWorker
 
 
 class EmpiricalWorker(BaseSDKWorker):

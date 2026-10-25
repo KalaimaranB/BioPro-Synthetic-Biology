@@ -36,9 +36,9 @@ try:
 except ImportError:
     te = None
 
-from ...analysis.base_worker import BaseSDKWorker
 from ...analysis.parts.components import CDS, Promoter, sgRNA
 from ...analysis.prediction.graphing_utils import apply_standard_axes  # noqa: F401
+from ..workers.base_worker import BaseSDKWorker
 
 # stdout carries the Hub wire protocol in an isolated plugin, so timing
 # output goes through the logger, never print().

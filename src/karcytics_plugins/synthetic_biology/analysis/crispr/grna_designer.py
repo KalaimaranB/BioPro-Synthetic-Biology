@@ -83,6 +83,31 @@ class CRISPRDesignEngine:
         return candidates
 
     @classmethod
+    def _resolve_pam_pattern(cls, pam_type: str) -> tuple[re.Pattern, bool]:
+        """Resolves PAM pattern regex and 5' vs 3' orientation."""
+        is_5prime = "Cas12a" in pam_type or "TTTV" in pam_type
+
+        if pam_type in cls.PAM_PATTERNS:
+            return re.compile(cls.PAM_PATTERNS[pam_type]), is_5prime
+
+        matched_key = next(
+            (
+                k
+                for k in cls.PAM_PATTERNS
+                if pam_type.lower() in k.lower() or k.lower().startswith(pam_type.lower())
+            ),
+            None,
+        )
+        if matched_key:
+            is_5prime = "Cas12a" in matched_key or "TTTV" in matched_key
+            return re.compile(cls.PAM_PATTERNS[matched_key]), is_5prime
+
+        try:
+            return re.compile(pam_type), is_5prime
+        except re.error:
+            return re.compile(cls.PAM_PATTERNS["SpCas9 (NGG)"]), False
+
+    @classmethod
     def _scan_strand(
         cls,
         sequence: str,
@@ -93,16 +118,28 @@ class CRISPRDesignEngine:
         original_len: int = 0,
     ) -> None:
         """Internal scanner for a single DNA strand."""
-        # Simple NGG regex scanner for robust matching
-        if "NGG" in pam_type or pam_type not in cls.PAM_PATTERNS:
-            pattern = re.compile(r"(?=([ATCG]{20})[ATCG]GG)")
-        else:
-            pattern = re.compile(cls.PAM_PATTERNS[pam_type])
+        pattern, is_5prime_pam = cls._resolve_pam_pattern(pam_type)
 
         for match in pattern.finditer(sequence):
             start = match.start()
-            protospacer = sequence[start : start + spacer_length]
-            pam_seq = sequence[start + spacer_length : start + spacer_length + 3]
+            has_subgroup = bool(match.lastindex and match.lastindex >= 2)  # noqa: PLR2004
+            if is_5prime_pam:
+                # 5' PAM (e.g. AsCas12a: 4 bp TTTV PAM followed by protospacer)
+                pam_len = 4
+                pam_seq = sequence[start : start + pam_len]
+                protospacer = (
+                    match.group(2)
+                    if has_subgroup
+                    else sequence[start + pam_len : start + pam_len + spacer_length]
+                )
+            else:
+                # 3' PAM (e.g. SpCas9: protospacer followed by PAM)
+                protospacer = sequence[start : start + spacer_length]
+                pam_seq = (
+                    match.group(2)
+                    if has_subgroup
+                    else sequence[start + spacer_length : start + spacer_length + 3]
+                )
 
             if len(protospacer) != spacer_length:
                 continue
@@ -120,9 +157,9 @@ class CRISPRDesignEngine:
             # Map genomic coordinates
             if strand == 1:
                 gen_start = start
-                gen_end = start + spacer_length + len(pam_seq)
+                gen_end = start + len(protospacer) + len(pam_seq)
             else:
-                gen_start = original_len - (start + spacer_length + len(pam_seq))
+                gen_start = original_len - (start + len(protospacer) + len(pam_seq))
                 gen_end = original_len - start
 
             candidates.append(

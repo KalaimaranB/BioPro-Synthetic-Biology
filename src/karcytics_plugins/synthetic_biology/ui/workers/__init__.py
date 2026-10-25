@@ -4,7 +4,8 @@ These live under ui/ because they are Qt objects; analysis/ stays free of Qt.
 """
 
 from .assembly_worker import AssemblyWorker
+from .base_worker import BaseSDKWorker
 from .crispr_worker import CRISPRWorker
 from .simulation_worker import CircuitSimWorker
 
-__all__ = ["AssemblyWorker", "CRISPRWorker", "CircuitSimWorker"]
+__all__ = ["AssemblyWorker", "BaseSDKWorker", "CRISPRWorker", "CircuitSimWorker"]

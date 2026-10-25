@@ -5,11 +5,11 @@ from __future__ import annotations
 import pytest
 from karcytics_sdk.plugin.task_scheduler import AnalysisWorker
 
-from karcytics_plugins.synthetic_biology.analysis.base_worker import BaseSDKWorker
 from karcytics_plugins.synthetic_biology.ui.controllers.empirical_controller import EmpiricalWorker
 from karcytics_plugins.synthetic_biology.ui.views.laboratory_execution_view import ProtocolWorker
 from karcytics_plugins.synthetic_biology.ui.views.simulate_view import SimulateWorker
 from karcytics_plugins.synthetic_biology.ui.workers.assembly_worker import AssemblyWorker
+from karcytics_plugins.synthetic_biology.ui.workers.base_worker import BaseSDKWorker
 from karcytics_plugins.synthetic_biology.ui.workers.crispr_worker import CRISPRWorker
 from karcytics_plugins.synthetic_biology.ui.workers.simulation_worker import CircuitSimWorker
 

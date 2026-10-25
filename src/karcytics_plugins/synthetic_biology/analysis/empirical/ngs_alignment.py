@@ -6,11 +6,14 @@ theoretical plasmid maps to flag unexpected mutations and CRISPR off-target edit
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from typing import Any
 
 from ..models.domain import PlasmidVector
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -55,6 +58,7 @@ class NGSAlignmentResult:
     variants: list[VariantFlag] = field(default_factory=list)
     status_message: str = "Alignment complete"
     success: bool = True
+    is_mock: bool = True
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -66,6 +70,7 @@ class NGSAlignmentResult:
             "variants": [v.to_dict() for v in self.variants],
             "status_message": self.status_message,
             "success": self.success,
+            "is_mock": self.is_mock,
         }
 
 
@@ -86,6 +91,12 @@ class NGSAlignmentService:
         Identifies point mutations, frame-shifts, and potential CRISPR off-target
         cleavage sites.
         """
+        logger.warning(
+            "NGSAlignmentService: Returning hardcoded mock alignment variants for '%s'. "
+            "Real NGS read alignment requires external aligner (BWA/Bowtie2) integration.",
+            ngs_file_path,
+        )
+
         sample_name = os.path.basename(ngs_file_path) if ngs_file_path else "NGS_Sample_01"
         plasmid_id = reference_plasmid.id if reference_plasmid else "Unknown_Plasmid"
         ref_seq = reference_plasmid.sequence if reference_plasmid else ""
@@ -155,6 +166,10 @@ class NGSAlignmentService:
             mean_coverage=450.2,
             mapped_percentage=98.4,
             variants=variants,
-            status_message="Alignment and variant calling completed successfully",
+            status_message=(
+                "⚠️ MOCK DEMO DATA: Outputs are simulated variants. "
+                "Real NGS read alignment requires external aligner (BWA/Bowtie2) integration."
+            ),
             success=True,
+            is_mock=True,
         )

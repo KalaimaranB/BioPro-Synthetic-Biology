@@ -7,11 +7,14 @@ parsing capabilities.
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -130,6 +133,22 @@ class FCSDataIngestionService:
     def _local_fcs_parser(self, file_path: str) -> FCSEventData:
         """Fallback lightweight FCS parser and statistics generator."""
         filename = os.path.basename(file_path)
+
+        # Check for binary FCS 3.1/3.0 header and raise error if true parsing unavailable
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as f:
+                header = f.read(6)
+            if header.startswith(b"FCS3.1") or header.startswith(b"FCS3.0"):
+                raise ValueError(
+                    f"FCS 3.1 binary format detected with header '{header.decode('ascii', errors='replace')}'. "
+                    "Direct binary FCS parsing is unavailable without the FlowCytometry plugin or fcsparser library."
+                )
+
+        logger.warning(
+            "FCSDataIngestionService: Generating synthetic fallback data for '%s'. "
+            "Real FCS parsing requires the FlowCytometry plugin.",
+            file_path,
+        )
         channels = ["FSC-A", "SSC-A", "FITC-A (GFP)", "PE-A (mCherry)"]
 
         # Generate representative statistical metrics based on file properties
@@ -176,6 +195,10 @@ class FCSDataIngestionService:
             channels=channels,
             channel_stats=stats,
             time_series_expression=time_series,
-            metadata={"source": "FCSDataIngestionService", "filename": filename},
+            metadata={
+                "source": "FCSDataIngestionService (synthetic demo)",
+                "filename": filename,
+                "is_synthetic": True,
+            },
             is_valid=True,
         )

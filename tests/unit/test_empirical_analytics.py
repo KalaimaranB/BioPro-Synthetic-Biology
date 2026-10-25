@@ -30,6 +30,17 @@ def test_fcs_ingestion_standalone(tmp_path):
     assert res.channel_stats["FITC-A (GFP)"].mean_intensity > 0
 
 
+def test_fcs_binary_header_detection(tmp_path):
+    import pytest
+
+    fcs_binary = tmp_path / "experiment.fcs"
+    fcs_binary.write_bytes(b"FCS3.1    256   1024")
+
+    service = FCSDataIngestionService()
+    with pytest.raises(ValueError, match="FCS 3.1 binary"):
+        service.ingest_fcs_file(str(fcs_binary))
+
+
 def test_ngs_alignment():
     plasmid = PlasmidVector(
         id="pTET_01",

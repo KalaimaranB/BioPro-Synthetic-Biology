@@ -18,7 +18,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QSizePolicy,
-    QTabWidget,
     QTextBrowser,
     QTextEdit,
     QVBoxLayout,
@@ -28,6 +27,7 @@ from PySide6.QtWidgets import (
 from ...analysis.parts.base import BiologicalPart
 from ...analysis.parts.components import CDS, RBS, Promoter, Terminator
 from ..views.simulate_view import SafeFigureCanvasQTAgg
+from .bio_tab_widget import BioTabWidget
 
 
 class WTGraphDialog(QDialog):
@@ -219,7 +219,7 @@ class PartInspector(QWidget):
         )
         self.layout.addWidget(self.header_lbl)
 
-        self.tabs = QTabWidget()
+        self.tabs = BioTabWidget()
         self.layout.addWidget(self.tabs)
 
         # Properties Tab

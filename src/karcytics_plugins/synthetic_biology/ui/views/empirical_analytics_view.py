@@ -31,7 +31,6 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QTableWidgetItem,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -41,6 +40,7 @@ from ...analysis.empirical.ml_optimizer import HillOptimizationResult
 from ...analysis.empirical.ngs_alignment import NGSAlignmentResult
 from ...analysis.state import SynBioState
 from ...ui.controllers.empirical_controller import EmpiricalAnalyticsController
+from ..widgets.bio_tab_widget import BioTabWidget
 
 
 class EmpiricalAnalyticsView(QWidget):
@@ -79,8 +79,7 @@ class EmpiricalAnalyticsView(QWidget):
         main_layout.addWidget(title_label)
 
         # Main Tab Widget
-        self.tabs = QTabWidget(self)
-        self.tabs.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.tabs = BioTabWidget(self)
 
         # Tab 1: FCS Flow Cytometry Ingestion
         self.fcs_tab = self._build_fcs_tab()

@@ -6,7 +6,7 @@ import contextlib
 
 from karcytics_sdk.plugin import AnalysisWorker
 from karcytics_sdk.plugin.runtime_services import AnalysisRunnable
-from PySide6.QtCore import QObject, QThreadPool, Signal  # noqa: TID251
+from PySide6.QtCore import QObject, QThreadPool, Signal
 
 
 class BaseSDKWorker(AnalysisWorker):
