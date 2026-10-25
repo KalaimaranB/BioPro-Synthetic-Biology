@@ -24,7 +24,7 @@ class CircuitSimulationController(QObject):
     simulation_ready = Signal(SimulationResult)
     error_raised = Signal(str)
 
-    def __init__(self, state: SynBioState, parent=None):
+    def __init__(self, state: SynBioState | None = None, parent=None):
         super().__init__(parent)
         self.state = state
         self._active_worker: CircuitSimWorker | None = None
@@ -66,7 +66,8 @@ class CircuitSimulationController(QObject):
         else:
             result = result_or_bytes  # type: ignore
 
-        self.state.set_simulation_result(result)
+        if self.state is not None:
+            self.state.set_simulation_result(result)
         self.simulation_ready.emit(result)
 
     def build_simulation_payload(

@@ -201,10 +201,10 @@ class SimulateView(QWidget):
         super().__init__(parent)
         self.state = state
         self.controller = controller
-        self._parts = []
-        self._last_simulation_result = None
-        self._last_simulation_method = None
-        self._last_simulation_title = None
+        self._parts: list[Any] = []
+        self._last_simulation_result: Any = None
+        self._last_simulation_method: str | None = None
+        self._last_simulation_title: str | None = None
         self._active_worker: SimulateWorker | None = None
         self.progress_dialog: BioProgressDialog | None = None
         self._setup_ui()

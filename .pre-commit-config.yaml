@@ -21,6 +21,13 @@ repos:
 
   - repo: local
     hooks:
+      - id: mypy
+        name: Mypy Type Check
+        entry: uv run mypy src/
+        language: system
+        pass_filenames: false
+        always_run: true
+
       - id: pip-audit
         name: Dependency Security Audit
         entry: bash -c 'uv export --format requirements-txt --no-emit-project | grep -v "^-e " | grep -v "Karcytics-SDK" > reqs.txt && uv run --with pip-audit pip-audit -r reqs.txt --no-deps --disable-pip'
