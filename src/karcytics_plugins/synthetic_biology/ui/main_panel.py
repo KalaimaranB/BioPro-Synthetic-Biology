@@ -251,7 +251,7 @@ class SynBioPanel(PluginBase):
 
         self._circuit_canvas = CircuitCanvas()
         self._properties_view = PropertiesView(state=self.state)
-        self._simulate_view = SimulateView()
+        self._simulate_view = SimulateView(state=self.state, controller=self._circuit_controller)
         self._catalogue_view = CatalogueView(self._factory.get("parts_catalogue"))
 
         self._central_stack.addWidget(self._circuit_canvas)
@@ -330,12 +330,6 @@ class SynBioPanel(PluginBase):
 
     def _on_run_simulation(self, max_time: int, method: str) -> None:
         """Route simulation run request based on selected method."""
-        if not self._parts_cache:
-            catalogue = self._factory.get("parts_catalogue")
-            if catalogue:
-                self._parts_cache = catalogue.get_all_parts()
-            self._simulate_view.set_parts(self._parts_cache)
-
         self._simulate_view.plot_time_series(max_time=max_time, method=method)
 
     def _on_tab_changed(self, index: int) -> None:
@@ -357,12 +351,10 @@ class SynBioPanel(PluginBase):
             self._central_stack.setCurrentWidget(self.lab_execution_view)
         elif index == 7:  # noqa: PLR2004
             self._central_stack.setCurrentWidget(self._simulate_view)
-            if not self._parts_cache:
-                catalogue = self._factory.get("parts_catalogue")
-                if catalogue:
-                    self._parts_cache = catalogue.get_all_parts()
-                self._simulate_view.set_parts(self._parts_cache)
-            if self._simulate_view._last_simulation_result is None:
+            if (
+                not self._simulate_view.is_circuit_empty()
+                and self._simulate_view._last_simulation_result is None
+            ):
                 self._simulate_view.plot_time_series(max_time=100, method="ode")
         elif index == 8:  # noqa: PLR2004
             self._central_stack.setCurrentWidget(self._properties_view)

@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import matplotlib
 import msgpack  # type: ignore[import-untyped]
 import numpy as np
+
+if TYPE_CHECKING:
+    from ...analysis.state import SynBioState
+    from ..controllers.circuit_controller import CircuitSimulationController
 import pyqtgraph as pg
 from karcytics_sdk.plugin import get_logger
 from karcytics_sdk.plugin.components import (
@@ -16,6 +20,7 @@ from karcytics_sdk.plugin.components import (
     BioSplitter,
     SecondaryButton,
 )
+from karcytics_sdk.plugin.dialogs import show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors
 from karcytics_sdk.plugin.toast import show_toast
 from PySide6.QtCore import Qt, Signal, Slot
@@ -187,8 +192,15 @@ class SafeFigureCanvasQTAgg(FigureCanvasQTAgg):
 class SimulateView(QWidget):
     """Central view for running and plotting mathematical simulations using PyQtGraph."""
 
-    def __init__(self, parent=None):
+    def __init__(
+        self,
+        state: SynBioState | None = None,
+        controller: CircuitSimulationController | None = None,
+        parent=None,
+    ):
         super().__init__(parent)
+        self.state = state
+        self.controller = controller
         self._parts = []
         self._last_simulation_result = None
         self._last_simulation_method = None
@@ -196,6 +208,15 @@ class SimulateView(QWidget):
         self._active_worker: SimulateWorker | None = None
         self.progress_dialog: BioProgressDialog | None = None
         self._setup_ui()
+
+    def is_circuit_empty(self) -> bool:
+        """Check whether the active circuit state contains any nodes or parts."""
+        if self.state is not None:
+            if self.state.circuit_components:
+                return False
+            if self.state.data.parts:
+                return False
+        return len(self._parts) == 0
 
     def _setup_ui(self):  # noqa: PLR0915
         t0 = time.perf_counter()
@@ -553,6 +574,60 @@ class SimulateView(QWidget):
             f"Simulation Error:<br/>{err_msg}</span>"
         )
 
+    def _generate_antimony_from_parts(self, parts: list, method: str = "ode") -> str:
+        """Generate Antimony Model string dynamically from parts."""
+        promoters = [p for p in parts if isinstance(p, Promoter)]
+        cdss = [c for c in parts if isinstance(c, CDS | sgRNA)]
+
+        if not promoters or not cdss:
+            return ""
+
+        antimony_lines = ["model circuit()"]
+        current_promoter = None
+        products = set()
+        is_first_product = True
+
+        for part in parts:
+            if isinstance(part, Promoter):
+                current_promoter = part
+            elif isinstance(part, CDS | sgRNA) and current_promoter:
+                product_name = getattr(
+                    part, "product", part.name.replace(" ", "_").replace("-", "_")
+                )
+                if not product_name:
+                    product_name = f"Protein_{part.id}"
+
+                products.add(product_name)
+
+                # Determine Promoter Equation
+                reps = getattr(current_promoter, "repressors", [])
+                y_min = current_promoter.y_min if current_promoter.y_min is not None else 0.0
+                y_max = current_promoter.y_max if current_promoter.y_max is not None else 1.0
+                k_d = current_promoter.K_d if current_promoter.K_d is not None else 0.1
+                n = current_promoter.n if current_promoter.n is not None else 2.0
+
+                if reps:
+                    rep_name = reps[0]
+                    equation = f"{y_min} + ({y_max} - {y_min}) / (1 + ({rep_name} / {k_d})^{n})"
+                else:
+                    equation = f"{y_max}"
+
+                deg_rate = part.degradation_rate if part.degradation_rate is not None else 0.01
+
+                init_val = 10 if is_first_product else 0
+                if method == "gillespie":
+                    init_val = init_val * 10
+                antimony_lines.append(f"  species {product_name} = {init_val};")
+                is_first_product = False
+
+                antimony_lines.append(f"  J_prod_{product_name}: => {product_name}; {equation};")
+                antimony_lines.append(
+                    f"  J_deg_{product_name}: {product_name} => ; {deg_rate} * {product_name};"
+                )
+
+        antimony_lines.append("end")
+        return "\n".join(antimony_lines)
+
     def plot_time_series(self, max_time: int = 1000, method: str = "ode"):  # noqa: PLR0915
         """Run and plot a dynamic ODE or Stochastic simulation using Tellurium."""
         t_click_start = time.perf_counter()
@@ -575,65 +650,41 @@ class SimulateView(QWidget):
             )
             return
 
-        promoters = [p for p in self._parts if isinstance(p, Promoter)]
-        cdss = [c for c in self._parts if isinstance(c, CDS | sgRNA)]
-
-        if not promoters or not cdss:
-            self.plot_widget.clear()
-            self.plot_widget.setTitle(
-                f"<span style='color: {Colors.FG_PRIMARY}; font-size: 13px;'>"
-                "Circuit requires at least one Promoter and one CDS.</span>"
+        # Abort dispatch and show warning if the active circuit state is empty
+        if self.is_circuit_empty():
+            show_warning(
+                self,
+                title="Empty Circuit",
+                message="Please design or load a circuit before running a simulation.",
             )
             return
 
-        # Generate Antimony Model string dynamically
-        antimony_lines = ["model circuit()"]
+        components = self.state.circuit_components if self.state is not None else []
+        edges = self.state.circuit_edges if self.state is not None else []
 
-        current_promoter = None
-        products = set()
-
-        is_first_product = True
-
-        for part in self._parts:
-            if isinstance(part, Promoter):
-                current_promoter = part
-            elif isinstance(part, CDS | sgRNA) and current_promoter:
-                product_name = getattr(
-                    part, "product", part.name.replace(" ", "_").replace("-", "_")
+        if components:
+            if self.controller is not None and hasattr(self.controller, "build_simulation_payload"):
+                model_str = self.controller.build_simulation_payload(
+                    components=components, edges=edges, method=method
                 )
-                if not product_name:
-                    product_name = f"Protein_{part.id}"
+            else:
+                from ..controllers.circuit_controller import CircuitSimulationController
 
-                products.add(product_name)
-
-                # Determine Promoter Equation
-                reps = getattr(current_promoter, "repressors", [])
-                y_min = current_promoter.y_min if current_promoter.y_min is not None else 0.0
-                y_max = current_promoter.y_max if current_promoter.y_max is not None else 1.0
-                K_d = current_promoter.K_d if current_promoter.K_d is not None else 0.1
-                n = current_promoter.n if current_promoter.n is not None else 2.0
-
-                if reps:
-                    rep_name = reps[0]
-                    equation = f"{y_min} + ({y_max} - {y_min}) / (1 + ({rep_name} / {K_d})^{n})"
-                else:
-                    equation = f"{y_max}"
-
-                deg_rate = part.degradation_rate if part.degradation_rate is not None else 0.01
-
-                init_val = 10 if is_first_product else 0
-                if method == "gillespie":
-                    init_val = init_val * 10
-                antimony_lines.append(f"  species {product_name} = {init_val};")
-                is_first_product = False
-
-                antimony_lines.append(f"  J_prod_{product_name}: => {product_name}; {equation};")
-                antimony_lines.append(
-                    f"  J_deg_{product_name}: {product_name} => ; {deg_rate} * {product_name};"
+                ctrl = self.controller or CircuitSimulationController(self.state)
+                model_str = ctrl.build_simulation_payload(
+                    components=components, edges=edges, method=method
                 )
+        else:
+            model_str = self._generate_antimony_from_parts(self._parts, method=method)
 
-        antimony_lines.append("end")
-        model_str = "\n".join(antimony_lines)
+        if not model_str or not model_str.strip():
+            show_warning(
+                self,
+                title="Empty Circuit",
+                message="Please design or load a circuit before running a simulation.",
+            )
+            return
+
         title = (
             "Dynamic Circuit Simulation (Stochastic Gillespie)"
             if method == "gillespie"

@@ -215,3 +215,110 @@ def test_simulate_worker_thread_decoupling():
         assert "result" in received_payload
         assert received_payload["method"] == "ode"
         assert received_payload["title"] == "Test Thread Decoupling"
+
+
+def test_empty_circuit_aborts_simulation_with_warning(monkeypatch):
+    """Test that an empty circuit aborts worker dispatch and triggers show_warning."""
+    from karcytics_plugins.synthetic_biology.analysis.state import SynBioState
+
+    state = SynBioState()
+    view = SimulateView(state=state)
+
+    warning_called = {}
+
+    def mock_show_warning(parent, title, message):
+        warning_called["title"] = title
+        warning_called["message"] = message
+
+    monkeypatch.setattr(
+        "karcytics_plugins.synthetic_biology.ui.views.simulate_view.show_warning",
+        mock_show_warning,
+    )
+
+    view.plot_time_series(max_time=50, method="ode")
+
+    assert warning_called.get("title") == "Empty Circuit"
+    assert "Please design or load a circuit before running a simulation." in warning_called.get(
+        "message", ""
+    )
+    assert view._active_worker is None
+
+
+def test_live_circuit_state_dynamically_generates_payload(monkeypatch):
+    """Test that SimulateView parses nodes, edges, and parameters from active SynBioState."""
+    from karcytics_plugins.synthetic_biology.analysis.models.domain import (
+        CircuitComponent,
+        CircuitEdge,
+    )
+    from karcytics_plugins.synthetic_biology.analysis.state import SynBioState
+    from karcytics_plugins.synthetic_biology.ui.controllers.circuit_controller import (
+        CircuitSimulationController,
+    )
+
+    state = SynBioState()
+    comp_a = CircuitComponent(
+        id="NodeA",
+        name="Repressor A",
+        component_type="repressor",
+        initial_concentration=2.5,
+        y_min=0.05,
+        y_max=8.0,
+        degradation_rate=0.15,
+        K_d=1.2,
+        n=2.0,
+    )
+    comp_b = CircuitComponent(
+        id="NodeB",
+        name="Reporter B",
+        component_type="reporter",
+        initial_concentration=0.0,
+        y_min=0.01,
+        y_max=12.0,
+        degradation_rate=0.3,
+        K_d=0.8,
+        n=3.0,
+    )
+    edge = CircuitEdge(
+        source_id="NodeA",
+        target_id="NodeB",
+        interaction_type="repression",
+        K_d=1.2,
+        n=2.0,
+    )
+    state.set_circuit_components([comp_a, comp_b])
+    state.data.circuit_edges = [edge.to_dict()]
+
+    controller = CircuitSimulationController(state)
+    view = SimulateView(state=state, controller=controller)
+
+    # Intercept worker creation to inspect model_str passed to SimulateWorker
+    captured_model = {}
+
+    class MockWorker:
+        def __init__(self, model_str, method, max_time, title, parent=None):
+            captured_model["model_str"] = model_str
+            captured_model["method"] = method
+            captured_model["max_time"] = max_time
+            self.simulation_finished = MagicMock()
+            self.simulation_error = MagicMock()
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr(
+        "karcytics_plugins.synthetic_biology.ui.views.simulate_view.SimulateWorker",
+        MockWorker,
+    )
+
+    view.plot_time_series(max_time=150, method="ode")
+
+    assert "model_str" in captured_model
+    model_str = captured_model["model_str"]
+    assert "species NodeA = 2.5;" in model_str
+    assert "species NodeB = 0.0;" in model_str
+    assert "J_prod_NodeA: => NodeA; 8.0;" in model_str
+    # NodeB has repression from NodeA
+    assert "J_prod_NodeB" in model_str
+    assert "NodeA" in model_str
+    assert "J_deg_NodeA: NodeA => ; 0.15 * NodeA;" in model_str
+    assert "J_deg_NodeB: NodeB => ; 0.3 * NodeB;" in model_str
