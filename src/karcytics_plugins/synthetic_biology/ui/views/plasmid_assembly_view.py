@@ -42,7 +42,7 @@ from PySide6.QtWidgets import (
 
 from ...analysis.models.domain import PlasmidVector
 from ...analysis.parts.base import BiologicalPart
-from ...analysis.parts.components import CDS, RBS, Promoter, Terminator
+from ...analysis.parts.components import CDS, RBS, Promoter, Terminator, part_from_dict
 from ...analysis.state import SynBioState
 from ...ui.controllers.plasmid_controller import PlasmidAssemblyController
 
@@ -179,11 +179,18 @@ class PlasmidAssemblyView(QWidget):
     file_parse_requested = Signal(str, str)
     primer_requested = Signal(str, float, str, str)
 
-    def __init__(self, state: SynBioState, controller: PlasmidAssemblyController, parent=None):
+    def __init__(
+        self,
+        state: SynBioState,
+        controller: PlasmidAssemblyController,
+        parent=None,
+        catalogue=None,
+    ):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.state = state
         self.controller = controller
+        self.catalogue = catalogue
 
         self._init_ui()
         self._connect_signals()
@@ -318,7 +325,57 @@ class PlasmidAssemblyView(QWidget):
         self.controller.assembly_ready.connect(self.render_plasmid)
         self.controller.error_raised.connect(self._show_error)
 
+    def reload_from_state(self) -> None:
+        """Re-read the design parts and catalogue into the palette."""
+        self._populate_part_library()
+
     def _populate_part_library(self):
+        """Fill the palette from the design strand and the parts catalogue.
+
+        Parts the user placed on the Design canvas come first, then everything
+        in the catalogue. The hardcoded samples below are only a last resort
+        for a session with no state and no catalogue.
+        """
+        self.part_palette.clear()
+
+        library: list[BiologicalPart] = []
+        seen: set[str] = set()
+
+        for source in (
+            self.state.design_parts if self.state is not None else [],
+            self.catalogue.get_all_parts()
+            if self.catalogue is not None and hasattr(self.catalogue, "get_all_parts")
+            else [],
+        ):
+            for part in source:
+                if part is None or part.id in seen:
+                    continue
+                seen.add(part.id)
+                library.append(part)
+
+        if library:
+            for p in library:
+                self._add_palette_item(p)
+            return
+
+        self._populate_sample_parts()
+
+    def _add_palette_item(self, part: BiologicalPart) -> None:
+        """Add one part to the palette, carrying its full serialized form.
+
+        The whole ``to_dict`` goes on the item so assembly keeps the kinetic
+        parameters instead of rebuilding a bare id/name/sequence part.
+        """
+        label = f"📌 {part.name} ({part.part_type.upper()})"
+        if not part.sequence:
+            label = f"⚠️ {part.name} ({part.part_type.upper()}) — no sequence"
+        item = QListWidgetItem(label)
+        item.setData(Qt.ItemDataRole.UserRole, part.to_dict())
+        if not part.sequence:
+            item.setToolTip("This part has no DNA sequence and cannot be assembled.")
+        self.part_palette.addItem(item)
+
+    def _populate_sample_parts(self):
         sample_parts = [
             Promoter(
                 id="pTac",
@@ -348,49 +405,29 @@ class PlasmidAssemblyView(QWidget):
         ]
 
         for p in sample_parts:
-            item = QListWidgetItem(f"📌 {p.name} ({p.part_type.upper()})")
-            item.setData(Qt.ItemDataRole.UserRole, p.to_dict())
-            self.part_palette.addItem(item)
+            self._add_palette_item(p)
 
     def _on_assemble_clicked(self):
+        # Rebuild from the full serialized dict so kinetic parameters
+        # (y_min/y_max/K_d/n/product/repressors) survive into the construct.
         parts: list[BiologicalPart] = []
         for i in range(self.assembly_canvas.count()):
             item = self.assembly_canvas.item(i)
-            p_dict = item.data(Qt.ItemDataRole.UserRole)
-            ptype = p_dict.get("part_type", "cds")
+            part = part_from_dict(item.data(Qt.ItemDataRole.UserRole))
+            if part is not None:
+                parts.append(part)
 
-            if ptype == "promoter":
-                parts.append(
-                    Promoter(
-                        id=p_dict["id"],
-                        name=p_dict["name"],
-                        sequence=p_dict.get("sequence", ""),
-                    )
-                )
-            elif ptype == "rbs":
-                parts.append(
-                    RBS(
-                        id=p_dict["id"],
-                        name=p_dict["name"],
-                        sequence=p_dict.get("sequence", ""),
-                    )
-                )
-            elif ptype == "cds":
-                parts.append(
-                    CDS(
-                        id=p_dict["id"],
-                        name=p_dict["name"],
-                        sequence=p_dict.get("sequence", ""),
-                    )
-                )
-            elif ptype == "terminator":
-                parts.append(
-                    Terminator(
-                        id=p_dict["id"],
-                        name=p_dict["name"],
-                        sequence=p_dict.get("sequence", ""),
-                    )
-                )
+        missing = [p.name for p in parts if not p.sequence]
+        if missing:
+            show_warning(
+                self,
+                title="Missing Sequence",
+                message=(
+                    "These parts have no DNA sequence and cannot be assembled:\n"
+                    + "\n".join(f"• {name}" for name in missing)
+                ),
+            )
+            return
 
         if not parts:
             show_warning(

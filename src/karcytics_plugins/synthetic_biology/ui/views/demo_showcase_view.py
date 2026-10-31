@@ -450,20 +450,15 @@ class DemoShowcaseView(QWidget):
         )
         self.state.set_simulation_result(sim_res)
 
-        # 5. Populate Main Panel Parts Cache & Canvas Render
+        # 5. Load the demo strand into shared state; views re-read from there.
+        demo_parts_list = [p_tac, rbs_strong, cds_laci, term_b1006, p_tet, cds_tetr]
+        self.state.design_parts = demo_parts_list
+
         if self.main_panel:
-            demo_parts_list = [p_tac, rbs_strong, cds_laci, term_b1006, p_tet, cds_tetr]
-            self.main_panel._parts_cache = demo_parts_list
-
-            if hasattr(self.main_panel, "_circuit_canvas"):
-                self.main_panel._circuit_canvas._parts = list(demo_parts_list)
-                self.main_panel._circuit_canvas.render_circuit()
-
-            if hasattr(self.main_panel, "_properties_view"):
-                self.main_panel._properties_view.set_parts(demo_parts_list)
+            if hasattr(self.main_panel, "_refresh_views_from_state"):
+                self.main_panel._refresh_views_from_state()
 
             if hasattr(self.main_panel, "_simulate_view"):
-                self.main_panel._simulate_view.set_parts(demo_parts_list)
                 self.main_panel._simulate_view.plot_time_series(max_time=100, method="ode")
 
             if hasattr(self.main_panel, "_status_label"):

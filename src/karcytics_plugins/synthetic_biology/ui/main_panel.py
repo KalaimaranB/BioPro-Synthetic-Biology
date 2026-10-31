@@ -22,8 +22,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..analysis.parts.base import BiologicalPart
-
 # Relative imports — all within this plugin
 from ..analysis.state import SynBioState
 
@@ -147,15 +145,17 @@ class SynBioPanel(PluginBase):
         from .views.properties_view import PropertiesView
         from .views.simulate_view import SimulateView
 
-        self._parts_cache: list[BiologicalPart] = []
-
         # ── Controllers & Attached Views ──────────────────────────────
         self._plasmid_controller = PlasmidAssemblyController(self.state)
         self._crispr_controller = CRISPRDesignController(self.state)
         self._circuit_controller = CircuitSimulationController(self.state)
         self._empirical_controller = EmpiricalAnalyticsController(self.state, self)
 
-        self.plasmid_view = PlasmidAssemblyView(self.state, self._plasmid_controller)
+        self.plasmid_view = PlasmidAssemblyView(
+            self.state,
+            self._plasmid_controller,
+            catalogue=self._factory.get("parts_catalogue"),
+        )
         self.crispr_view = CRISPRDesignView(self.state, self._crispr_controller)
         self.circuit_view = CircuitSimulationView(self.state, self._circuit_controller)
         self.empirical_analytics_view = EmpiricalAnalyticsView(
@@ -249,7 +249,7 @@ class SynBioPanel(PluginBase):
         # ── Central Views Stack ───────────────────────────────────────
         self._central_stack = QStackedWidget()
 
-        self._circuit_canvas = CircuitCanvas()
+        self._circuit_canvas = CircuitCanvas(state=self.state)
         self._properties_view = PropertiesView(state=self.state)
         self._simulate_view = SimulateView(state=self.state, controller=self._circuit_controller)
         self._catalogue_view = CatalogueView(self._factory.get("parts_catalogue"))
@@ -316,17 +316,24 @@ class SynBioPanel(PluginBase):
         QTimer.singleShot(50, _complete_init)
 
     def _on_part_added(self, part):
-        """Handle a new part fetched from the ribbon."""
-        self._parts_cache.append(part)
-        self._circuit_canvas.add_part(part)
-        self._properties_view.set_parts(self._parts_cache)
-        self._simulate_view.set_parts(self._parts_cache)
+        """Handle a new part fetched from the ribbon.
+
+        The part goes into the shared state first; every view then re-reads it
+        from there, so the Design, Properties, Assembly and Simulate tabs all
+        show the same construct.
+        """
+        self.state.add_design_part(part)
+        self._refresh_views_from_state()
 
         # Save to local catalogue and refresh view
         catalogue = self._factory.get("parts_catalogue")
         if catalogue:
             catalogue.add_part(part)
             self._catalogue_view.refresh_table()
+
+        self.state.state_changed()
+        if hasattr(self, "state_changed"):
+            self.state_changed.emit()
 
     def _on_run_simulation(self, max_time: int, method: str) -> None:
         """Route simulation run request based on selected method."""
@@ -453,7 +460,8 @@ class SynBioPanel(PluginBase):
         """Restore the workspace from an SDK state object."""
         if not state:
             return
-        self.state = state
+        self.state.copy_from(state)
+        self._refresh_views_from_state()
 
     def export_state(self) -> dict:
         """Package the workspace state for serialization."""
@@ -466,7 +474,30 @@ class SynBioPanel(PluginBase):
         if not state_dict:
             return
         synbio_data = state_dict.get("synbio_state", {})
-        self.state = SynBioState.from_dict(synbio_data)
+        self.state.load_from_dict(synbio_data)
+        self._refresh_views_from_state()
+
+    def _refresh_views_from_state(self) -> None:
+        """Re-read the shared state into every view after a session restore.
+
+        ``self.state`` is mutated in place rather than rebound, so the
+        controllers and views still point at the right object; they just need
+        to be told the contents changed.
+        """
+        for view_attr in (
+            "_circuit_canvas",
+            "_properties_view",
+            "_simulate_view",
+            "plasmid_view",
+            "crispr_view",
+            "circuit_view",
+        ):
+            view = getattr(self, view_attr, None)
+            if view is not None and hasattr(view, "reload_from_state"):
+                try:
+                    view.reload_from_state()
+                except Exception as ex:
+                    self.logger.warning(f"Error refreshing {view_attr} from state: {ex}")
 
     # ── Resource Lifecycle ────────────────────────────────────────────
 
@@ -478,7 +509,7 @@ class SynBioPanel(PluginBase):
         for view_attr in (
             "empirical_analytics_view",
             "lab_execution_view",
-            "simulate_view",
+            "_simulate_view",
             "crispr_view",
             "plasmid_view",
             "circuit_view",

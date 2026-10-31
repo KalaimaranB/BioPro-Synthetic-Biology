@@ -9,6 +9,7 @@ notification.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -22,6 +23,8 @@ from .models.domain import (
     SimulationResult,
     gRNACandidate,
 )
+from .parts.base import BiologicalPart
+from .parts.components import part_from_dict
 
 logger = get_logger(__name__, "synthetic_biology")
 
@@ -157,6 +160,29 @@ class SynBioState(PluginState):
             self.data.active_plasmid = {}
 
     @property
+    def design_parts(self) -> list[BiologicalPart]:
+        """Biological parts placed on the design canvas, in strand order.
+
+        This is the one place the Design, Biological View, Plasmid Assembly,
+        Properties and Simulate tabs read the user's construct from.
+        """
+        parts = [part_from_dict(p) for p in self.data.parts]
+        return [p for p in parts if p is not None]
+
+    @design_parts.setter
+    def design_parts(self, parts: Sequence[BiologicalPart]) -> None:
+        self.data.parts = [p.to_dict() for p in parts]
+
+    def add_design_part(self, part: BiologicalPart) -> None:
+        """Append a part to the design strand."""
+        self.data.parts.append(part.to_dict())
+        logger.info(f"SynBioState added design part: {part.id} ({part.part_type})")
+
+    def clear_design_parts(self) -> None:
+        """Remove every part from the design strand."""
+        self.data.parts = []
+
+    @property
     def circuit_components(self) -> list[CircuitComponent]:
         """Retrieve list of circuit component domain models from state."""
         return [CircuitComponent.from_dict(c) for c in self.data.circuit_nodes]
@@ -191,6 +217,28 @@ class SynBioState(PluginState):
     def get_circuit_edges(self) -> list[CircuitEdge]:
         """Retrieve list of circuit edges."""
         return self.circuit_edges
+
+    def load_from_dict(self, data: dict) -> None:
+        """Replace this instance's contents in place from a serialized snapshot.
+
+        Controllers and views each hold a reference to the one ``SynBioState``
+        built at panel construction, so restoring a session has to mutate that
+        object rather than rebind it — otherwise the loaded data never reaches
+        the UI.
+        """
+        if not data:
+            return
+        if "data" in data:
+            self.data = CircuitState.from_dict(data["data"])
+        if "view" in data:
+            self.view = ViewState.from_dict(data["view"])
+
+    def copy_from(self, other: SynBioState) -> None:
+        """Adopt another state object's contents in place (see ``load_from_dict``)."""
+        if other is None or other is self:
+            return
+        self.data = other.data
+        self.view = other.view
 
     def state_changed(self) -> None:
         """Explicit state change notification hook for Karcytics ecosystem."""

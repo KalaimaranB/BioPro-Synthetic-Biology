@@ -43,6 +43,7 @@ except ImportError:
 
 from ...analysis.parts.components import CDS, Promoter, sgRNA
 from ...analysis.prediction.graphing_utils import apply_standard_axes  # noqa: F401
+from ...analysis.simulation.topology import circuit_from_parts
 from ..workers.base_worker import BaseSDKWorker
 
 # stdout carries the Hub wire protocol in an isolated plugin, so timing
@@ -329,6 +330,11 @@ class SimulateView(QWidget):
     def set_parts(self, parts: list):
         """Update the active parts available for simulation."""
         self._parts = parts
+
+    def reload_from_state(self) -> None:
+        """Re-read the design parts from the shared state."""
+        if self.state is not None:
+            self.set_parts(self.state.design_parts)
 
     def _on_species_item_changed(self, item):
         """Redraw plot instantly when a user checks/unchecks a species item."""
@@ -661,6 +667,12 @@ class SimulateView(QWidget):
 
         components = self.state.circuit_components if self.state is not None else []
         edges = self.state.circuit_edges if self.state is not None else []
+
+        # No explicit circuit topology: compile one from the designed strand so
+        # the plot reflects what the user actually drew, regulation included.
+        if not components:
+            design_parts = self.state.design_parts if self.state is not None else self._parts
+            components, edges = circuit_from_parts(design_parts or self._parts)
 
         if components:
             if self.controller is not None and hasattr(self.controller, "build_simulation_payload"):

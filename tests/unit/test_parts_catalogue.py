@@ -72,3 +72,19 @@ def test_service_delete_part(tmp_path):
     assert service.get_part("custom_p1") is not None
     service.delete_part("custom_p1")
     assert service.get_part("custom_p1") is None
+
+
+def test_json_part_repository_writes_trailing_newline(tmp_path):
+    """The shipped catalogue.json is tracked in git and checked by end-of-file-fixer.
+
+    Every save from the running app rewrites it; without a final newline each
+    rewrite makes the pre-commit hook fail.
+    """
+    repo_path = tmp_path / "catalogue.json"
+    repo = JsonPartRepository(str(repo_path))
+
+    repo.save(Promoter(id="p1", name="P1"))
+
+    content = repo_path.read_text(encoding="utf-8")
+    assert content.endswith("]\n")
+    assert not content.endswith("\n\n")

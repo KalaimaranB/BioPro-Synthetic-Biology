@@ -50,12 +50,18 @@ class UCFParser:
             if resp:
                 params = {p["name"]: p["value"] for p in resp.get("parameters", [])}
 
-                # Assign to Promoter
+                # Assign to Promoter. The gate's regulator represses its own
+                # cognate output promoter (AmtR represses pAmtR), and the UCF
+                # response function is the corresponding negative Hill — so
+                # carrying the link here is what lets the circuit compiler
+                # wire up regulation instead of treating every promoter as
+                # constitutive.
                 self.parameters[promoter] = {
                     "y_max": params.get("ymax", 1.0),
                     "y_min": params.get("ymin", 0.01),
                     "K_d": params.get("K", 0.1),
                     "n": params.get("n", 2.0),
+                    "repressors": [repressor] if repressor else [],
                 }
 
                 # Assign to Repressor CDS

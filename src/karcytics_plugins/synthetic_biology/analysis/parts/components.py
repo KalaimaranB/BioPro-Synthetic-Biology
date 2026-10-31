@@ -1,6 +1,7 @@
 """Concrete biological part implementations (Promoter, CDS, Terminator, RBS)."""
 
 from dataclasses import dataclass, field
+from dataclasses import fields as dataclass_fields
 
 from .base import BiologicalPart
 
@@ -131,3 +132,33 @@ class sgRNA(BiologicalPart):  # noqa: N801 — standard molecular-biology nomenc
             }
         )
         return data
+
+
+_PART_TYPES: dict[str, type[BiologicalPart]] = {
+    "promoter": Promoter,
+    "cds": CDS,
+    "terminator": Terminator,
+    "rbs": RBS,
+    "insulator": Insulator,
+    "sgrna": sgRNA,
+}
+
+
+def part_from_dict(data: dict) -> BiologicalPart | None:
+    """Rebuild a concrete part from its ``to_dict`` form.
+
+    Returns ``None`` for an unknown ``part_type``. The input dict is left
+    untouched, so the same dict can be deserialized more than once.
+    """
+    if not data:
+        return None
+    part_cls = _PART_TYPES.get(str(data.get("part_type", "")).lower())
+    if part_cls is None:
+        return None
+    fields = {k: v for k, v in data.items() if k != "part_type"}
+    try:
+        return part_cls(**fields)
+    except TypeError:
+        # Tolerate snapshots written by a newer schema with extra keys.
+        known = {f.name for f in dataclass_fields(part_cls)}
+        return part_cls(**{k: v for k, v in fields.items() if k in known})

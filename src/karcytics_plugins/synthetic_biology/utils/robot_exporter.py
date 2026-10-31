@@ -304,10 +304,15 @@ class WorklistGenerator:
 
     @classmethod
     def export_to_opentrons(cls, *args: Any, **kwargs: Any) -> None:  # noqa: ARG003
-        """Placeholder for Opentrons OT-2 Python script generator."""
-        from karcytics_sdk.plugin.toast import show_toast
+        """Opentrons OT-2 script generation — not implemented.
 
-        show_toast("Opentrons OT-2 export coming in v2.1")
+        Raises rather than showing a toast, so a caller cannot mistake this
+        for a completed export.
+        """
+        raise NotImplementedError(
+            "Opentrons OT-2 export is not implemented yet. "
+            "Use export_to_tecan_csv for robotic worklists."
+        )
 
     @staticmethod
     def _resolve_source(

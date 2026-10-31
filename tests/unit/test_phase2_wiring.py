@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from karcytics_sdk.plugin import DirtyTrackingGraphicsScene, DirtyTrackingGraphicsView
 from karcytics_sdk.plugin.ribbon import BioRibbon
 
@@ -87,15 +88,19 @@ def test_properties_view_state_sync():
     assert len(signal_received) == 1
 
 
-def test_opentrons_placeholder_toast():
-    """Verify Opentrons export calls show_toast placeholder."""
-    with patch("karcytics_sdk.plugin.toast.show_toast") as mock_toast:
+def test_opentrons_export_is_reported_as_unimplemented():
+    """Opentrons export must not look like it succeeded.
+
+    The generator raises rather than emitting a reassuring toast, and the
+    button stays disabled so it cannot be mistaken for a working export.
+    """
+    with pytest.raises(NotImplementedError, match="not implemented"):
         WorklistGenerator.export_to_opentrons()
-        mock_toast.assert_called_once_with("Opentrons OT-2 export coming in v2.1")
 
     with patch(
         "karcytics_plugins.synthetic_biology.ui.views.laboratory_execution_view.show_toast"
     ) as mock_view_toast:
         lab_view = LaboratoryExecutionView()
+        assert not lab_view.btn_export_opentrons.isEnabled()
         lab_view._on_export_opentrons_clicked()
-        mock_view_toast.assert_called_once_with("Opentrons OT-2 export coming in v2.1")
+        mock_view_toast.assert_called_once_with("Opentrons OT-2 export is not implemented yet.")

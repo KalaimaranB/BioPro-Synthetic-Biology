@@ -396,8 +396,14 @@ class LaboratoryExecutionView(QWidget):
         self.btn_export_csv.clicked.connect(self._on_export_csv_clicked)
         ctrl_layout.addWidget(self.btn_export_csv)
 
+        # Not implemented yet: disabled rather than offering a button that
+        # looks like it exports and only shows a toast.
         self.btn_export_opentrons = SecondaryButton("🤖 Export to Opentrons OT-2")
         self.btn_export_opentrons.clicked.connect(self._on_export_opentrons_clicked)
+        self.btn_export_opentrons.setEnabled(False)
+        self.btn_export_opentrons.setToolTip(
+            "Opentrons OT-2 export is not implemented yet. Use Tecan CSV export."
+        )
         ctrl_layout.addWidget(self.btn_export_opentrons)
 
         layout.addWidget(ctrl_box)
@@ -782,8 +788,8 @@ class LaboratoryExecutionView(QWidget):
                 )
 
     def _on_export_opentrons_clicked(self) -> None:
-        """Placeholder notification for upcoming Opentrons OT-2 liquid handler export."""
-        show_toast("Opentrons OT-2 export coming in v2.1")
+        """Opentrons OT-2 export is not implemented; the button stays disabled."""
+        show_toast("Opentrons OT-2 export is not implemented yet.")
 
     def _load_sample_inventory(self) -> None:
         """Populates the LIMS inventory table with Phase 2 data models."""

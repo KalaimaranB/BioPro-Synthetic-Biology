@@ -16,6 +16,8 @@ from ..models.domain import (
     SimulationParameters,
     SimulationResult,
 )
+from .kinetics import regulation_factor as regulation_factor_term
+from .kinetics import resolve_edge_params
 
 
 class CircuitSimulationEngine:
@@ -51,6 +53,11 @@ class CircuitSimulationEngine:
             )
 
         for edge in edges:
+            # Skip dangling edges: adding one would make NetworkX create an
+            # attribute-less node and the ODE assembly would then fail with a
+            # bare KeyError instead of a usable message.
+            if edge.source_id not in graph or edge.target_id not in graph:
+                continue
             graph.add_edge(
                 edge.source_id,
                 edge.target_id,
@@ -154,6 +161,7 @@ class CircuitSimulationEngine:
         graph = cls.build_circuit_graph(components, edges)
         node_ids = list(graph.nodes())
         node_index_map = {nid: idx for idx, nid in enumerate(node_ids)}
+        target_components = {c.id: c for c in components}
 
         y0 = np.array([graph.nodes[nid]["initial_concentration"] for nid in node_ids], dtype=float)
 
@@ -175,22 +183,23 @@ class CircuitSimulationEngine:
                 for src_id, _, edge_data in in_edges:
                     src_idx = node_index_map[src_id]
                     src_conc = y[src_idx]
-                    itype = edge_data["interaction_type"].lower()
-                    # Determine binding affinity (K_d) and Hill coefficient (n)
-                    # prioritizing edge/operator-specific parameters over target node defaults
-                    edge_kd = edge_data.get("K_d")
-                    edge_n = edge_data.get("n")
-                    K_d = edge_kd if edge_kd is not None else node_data["K_d"]  # noqa: N806
-                    n = edge_n if edge_n is not None else node_data["n"]
 
-                    if itype == "repression":
-                        # Negative Hill function: 1 / (1 + (R / K_d)^n)
-                        hill = 1.0 / (1.0 + (src_conc / max(1e-6, K_d)) ** n)
-                        regulation_factor *= hill
-                    elif itype == "activation":
-                        # Positive Hill function: (A / K_d)^n / (1 + (A / K_d)^n)
-                        ratio = (src_conc / max(1e-6, K_d)) ** n
-                        hill = ratio / (1.0 + ratio)
+                    # Parameter resolution is shared with the Antimony compiler
+                    # so both simulators agree on the same circuit.
+                    k_d, hill_n = resolve_edge_params(
+                        CircuitEdge(
+                            source_id=src_id,
+                            target_id=nid,
+                            interaction_type=edge_data["interaction_type"],
+                            K_d=edge_data.get("K_d"),
+                            n=edge_data.get("n"),
+                        ),
+                        target=target_components.get(nid),
+                    )
+                    hill = regulation_factor_term(
+                        edge_data["interaction_type"], src_conc, k_d, hill_n
+                    )
+                    if hill is not None:
                         regulation_factor *= hill
 
                 production_rate = y_min + (y_max - y_min) * regulation_factor
@@ -218,10 +227,19 @@ class CircuitSimulationEngine:
                     status_message=f"ODE Solver failed: {sol.message}", success=False
                 )
 
+            # Label traces by component name, but fall back to the id where two
+            # components share a name — otherwise one trace silently overwrites
+            # the other.
+            name_counts: dict[str, int] = {}
+            for nid in node_ids:
+                nm = graph.nodes[nid]["name"]
+                name_counts[nm] = name_counts.get(nm, 0) + 1
+
             species_dict: dict[str, list[float]] = {}
             for idx, nid in enumerate(node_ids):
                 comp_name = graph.nodes[nid]["name"]
-                species_dict[comp_name] = sol.y[idx].tolist()
+                label = comp_name if name_counts.get(comp_name, 0) == 1 else f"{comp_name} ({nid})"
+                species_dict[label] = sol.y[idx].tolist()
 
             return SimulationResult(
                 time_points=sol.t.tolist(),

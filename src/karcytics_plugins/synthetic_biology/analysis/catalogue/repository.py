@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Protocol
 
 from ..parts.base import BiologicalPart
-from ..parts.components import CDS, RBS, Insulator, Promoter, Terminator, sgRNA
+from ..parts.components import part_from_dict
 
 
 class PartRepository(Protocol):
@@ -75,22 +75,12 @@ class JsonPartRepository:
         os.makedirs(os.path.dirname(self.file_path) or ".", exist_ok=True)
         with open(self.file_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
+            # The shipped catalogue.json is tracked in git; without a final
+            # newline every save from the running app trips end-of-file-fixer.
+            f.write("\n")
 
-    def _deserialize_part(self, data: dict) -> BiologicalPart | None:  # noqa: PLR0911
-        part_type = data.pop("part_type", "").lower()
-        if part_type == "promoter":
-            return Promoter(**data)
-        if part_type == "cds":
-            return CDS(**data)
-        if part_type == "terminator":
-            return Terminator(**data)
-        if part_type == "rbs":
-            return RBS(**data)
-        if part_type == "insulator":
-            return Insulator(**data)
-        if part_type == "sgrna":
-            return sgRNA(**data)
-        return None
+    def _deserialize_part(self, data: dict) -> BiologicalPart | None:
+        return part_from_dict(data)
 
     def save(self, part: BiologicalPart) -> None:
         self._cache[part.id] = part

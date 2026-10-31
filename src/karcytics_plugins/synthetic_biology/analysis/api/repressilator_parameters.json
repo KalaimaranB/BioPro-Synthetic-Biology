@@ -1,5 +1,5 @@
 {
-  "citation": "Elowitz, M., Leibler, S. A synthetic oscillatory network of transcriptional regulators. Nature 403, 335–338 (2000). https://doi.org/10.1038/35002125",
+  "citation": "Elowitz, M., Leibler, S. A synthetic oscillatory network of transcriptional regulators. Nature 403, 335\u2013338 (2000). https://doi.org/10.1038/35002125",
   "notes": "Parameters adapted from the original Elowitz & Leibler deterministic ODE model. Values are in approximate molecules per cell or scaled units, rather than Cello's RPU.",
   "parts": {
     "BBa_R0010": {
@@ -8,7 +8,10 @@
       "y_min": 0.5,
       "y_max": 250.0,
       "K_d": 40.0,
-      "n": 2.0
+      "n": 2.0,
+      "repressors": [
+        "LacI"
+      ]
     },
     "BBa_R0040": {
       "description": "TetR repressible promoter",
@@ -16,7 +19,10 @@
       "y_min": 0.5,
       "y_max": 250.0,
       "K_d": 40.0,
-      "n": 2.0
+      "n": 2.0,
+      "repressors": [
+        "TetR"
+      ]
     },
     "BBa_R0051": {
       "description": "lambda cI repressible promoter",
@@ -24,7 +30,10 @@
       "y_min": 0.5,
       "y_max": 250.0,
       "K_d": 40.0,
-      "n": 2.0
+      "n": 2.0,
+      "repressors": [
+        "cI"
+      ]
     },
     "BBa_C0012": {
       "description": "lacI repressor from E. coli (+LVA)",

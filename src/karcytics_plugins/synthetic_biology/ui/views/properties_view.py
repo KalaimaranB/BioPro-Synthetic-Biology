@@ -71,6 +71,11 @@ class PropertiesView(QWidget):
             f"background: {Colors.BG_DARK}; color: {Colors.FG_PRIMARY};"
         )
 
+    def reload_from_state(self) -> None:
+        """Re-read the design parts from the shared state."""
+        if self.state is not None:
+            self.set_parts(self.state.design_parts)
+
     def set_parts(self, parts: list):
         """Update the list with a new list of parts."""
         self._parts = parts

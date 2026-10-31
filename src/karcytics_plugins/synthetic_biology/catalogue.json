@@ -11,7 +11,9 @@
     "y_max": 250.0,
     "K_d": 40.0,
     "n": 2.0,
-    "repressors": [],
+    "repressors": [
+      "LacI"
+    ],
     "activators": []
   },
   {
@@ -26,7 +28,9 @@
     "y_max": 250.0,
     "K_d": 40.0,
     "n": 2.0,
-    "repressors": [],
+    "repressors": [
+      "TetR"
+    ],
     "activators": []
   },
   {
@@ -41,7 +45,9 @@
     "y_max": 250.0,
     "K_d": 40.0,
     "n": 2.0,
-    "repressors": [],
+    "repressors": [
+      "cI"
+    ],
     "activators": []
   },
   {
@@ -92,7 +98,9 @@
     "y_max": 3.8,
     "K_d": 0.07,
     "n": 1.6,
-    "repressors": [],
+    "repressors": [
+      "AmtR"
+    ],
     "activators": []
   },
   {
@@ -119,7 +127,9 @@
     "y_max": 0.8,
     "K_d": 0.26,
     "n": 3.4,
-    "repressors": [],
+    "repressors": [
+      "BM3R1"
+    ],
     "activators": []
   },
   {
@@ -146,7 +156,9 @@
     "y_max": 3.8,
     "K_d": 0.41,
     "n": 2.4,
-    "repressors": [],
+    "repressors": [
+      "BetI"
+    ],
     "activators": []
   },
   {
@@ -173,7 +185,9 @@
     "y_max": 3.8,
     "K_d": 0.09,
     "n": 1.4,
-    "repressors": [],
+    "repressors": [
+      "AmeR"
+    ],
     "activators": []
   },
   {
@@ -200,7 +214,9 @@
     "y_max": 2.5,
     "K_d": 0.19,
     "n": 2.6,
-    "repressors": [],
+    "repressors": [
+      "HlyIIR"
+    ],
     "activators": []
   },
   {
@@ -229,7 +245,9 @@
     "y_max": 2.2,
     "K_d": 0.1,
     "n": 1.4,
-    "repressors": [],
+    "repressors": [
+      "IcaRA"
+    ],
     "activators": []
   },
   {
@@ -256,7 +274,9 @@
     "y_max": 4.3,
     "K_d": 0.05,
     "n": 1.7,
-    "repressors": [],
+    "repressors": [
+      "LitR"
+    ],
     "activators": []
   },
   {
@@ -283,7 +303,9 @@
     "y_max": 2.2,
     "K_d": 0.18,
     "n": 2.1,
-    "repressors": [],
+    "repressors": [
+      "LmrA"
+    ],
     "activators": []
   },
   {
@@ -310,7 +332,9 @@
     "y_max": 6.8,
     "K_d": 0.23,
     "n": 4.2,
-    "repressors": [],
+    "repressors": [
+      "PhlF"
+    ],
     "activators": []
   },
   {
@@ -337,7 +361,9 @@
     "y_max": 2.8,
     "K_d": 0.21,
     "n": 2.4,
-    "repressors": [],
+    "repressors": [
+      "QacR"
+    ],
     "activators": []
   },
   {
@@ -366,7 +392,9 @@
     "y_max": 5.9,
     "K_d": 0.19,
     "n": 1.8,
-    "repressors": [],
+    "repressors": [
+      "PsrA"
+    ],
     "activators": []
   },
   {
@@ -393,7 +421,9 @@
     "y_max": 2.1,
     "K_d": 0.1,
     "n": 2.8,
-    "repressors": [],
+    "repressors": [
+      "SrpR"
+    ],
     "activators": []
   },
   {

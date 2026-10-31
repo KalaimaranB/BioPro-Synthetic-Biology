@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
+    QLabel,
     QVBoxLayout,
     QWidget,
 )
@@ -36,8 +37,12 @@ from ...analysis.models.domain import (
     SimulationResult,
 )
 from ...analysis.simulation.circuit_engine import CircuitSimulationEngine
+from ...analysis.simulation.topology import circuit_from_parts
 from ...analysis.state import SynBioState
 from ...ui.controllers.circuit_controller import CircuitSimulationController
+
+# Shown first in the circuit selector: simulate what the user actually drew.
+ACTIVE_DESIGN_CHOICE = "Active Design (from canvas)"
 
 
 class CircuitSimulationView(QWidget):
@@ -69,8 +74,8 @@ class CircuitSimulationView(QWidget):
         # Connect global theme change signal
         theme_manager.theme_changed.connect(self.refresh_styles)
 
-        # Load default Repressilator preset
-        self._load_preset("Repressilator (3-Gene Oscillator)")
+        # Default to the user's own design; presets stay one click away.
+        self._load_preset(ACTIVE_DESIGN_CHOICE)
 
     def _init_ui(self) -> None:  # noqa: PLR0915
         self.setObjectName("circuit_simulation_view")
@@ -88,13 +93,18 @@ class CircuitSimulationView(QWidget):
         self.preset_combo = BioComboBox()
         self.preset_combo.addItems(
             [
+                ACTIVE_DESIGN_CHOICE,
                 "Repressilator (3-Gene Oscillator)",
                 "Genetic Toggle Switch",
                 "Single Inverter (NOT Gate)",
             ]
         )
         self.preset_combo.currentTextChanged.connect(self._load_preset)
-        form.addRow("Circuit Preset:", self.preset_combo)
+        form.addRow("Circuit:", self.preset_combo)
+
+        self.topology_label = QLabel()
+        self.topology_label.setWordWrap(True)
+        form.addRow("Topology:", self.topology_label)
 
         self.t_end_spin = BioDoubleSpinBox()
         self.t_end_spin.setRange(10.0, 1000.0)
@@ -213,8 +223,48 @@ class CircuitSimulationView(QWidget):
         self.controller.simulation_ready.connect(self.render_simulation_results)
         self.controller.error_raised.connect(self._show_error)
 
+    def reload_from_state(self) -> None:
+        """Re-read the active design if that is what is currently selected."""
+        if self.preset_combo.currentText() == ACTIVE_DESIGN_CHOICE:
+            self._load_preset(ACTIVE_DESIGN_CHOICE)
+
+    def _load_active_design(self) -> None:
+        """Pull the circuit from shared state, compiling it from parts if needed."""
+        components = self.state.circuit_components
+        edges = self.state.circuit_edges
+
+        if not components:
+            components, edges = circuit_from_parts(self.state.design_parts)
+
+        self._active_components = components
+        self._active_edges = edges
+
+    def _describe_topology(self) -> None:
+        """Say what will actually be simulated, so the plot is never a surprise."""
+        n_nodes = len(self._active_components)
+        n_edges = len(self._active_edges)
+
+        if not n_nodes:
+            self.topology_label.setText(
+                "No circuit. Add a promoter and a coding sequence on the Design tab, "
+                "or pick a preset above."
+            )
+            self.btn_run_sim.setEnabled(False)
+            return
+
+        names = ", ".join(c.name for c in self._active_components[:4])
+        if n_nodes > 4:  # noqa: PLR2004
+            names += f", +{n_nodes - 4} more"
+        regulation = f"{n_edges} regulatory link{'s' if n_edges != 1 else ''}"
+        if not n_edges:
+            regulation = "no regulation (constitutive expression)"
+        self.topology_label.setText(f"{n_nodes} gene(s): {names} — {regulation}")
+        self.btn_run_sim.setEnabled(True)
+
     def _load_preset(self, preset_name: str):
-        if preset_name == "Repressilator (3-Gene Oscillator)":
+        if preset_name == ACTIVE_DESIGN_CHOICE:
+            self._load_active_design()
+        elif preset_name == "Repressilator (3-Gene Oscillator)":
             self._active_components, self._active_edges = (
                 CircuitSimulationEngine.create_preset_repressilator()
             )
@@ -280,7 +330,22 @@ class CircuitSimulationView(QWidget):
             self._active_components = [c1, c2]
             self._active_edges = edges
 
+        self._describe_topology()
+
     def _on_run_sim_clicked(self):
+        # Re-read the design on each run: the user may have edited the canvas
+        # since this tab was last shown.
+        if self.preset_combo.currentText() == ACTIVE_DESIGN_CHOICE:
+            self._load_active_design()
+            self._describe_topology()
+
+        if not self._active_components:
+            self._show_error(
+                "No circuit to simulate. Add a promoter and a coding sequence on the "
+                "Design tab, or choose a preset."
+            )
+            return
+
         # Update Hill n on components
         hill_n = self.hill_n_spin.value()
         for comp in self._active_components:

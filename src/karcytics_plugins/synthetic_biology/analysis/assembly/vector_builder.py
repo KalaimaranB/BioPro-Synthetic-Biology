@@ -20,6 +20,22 @@ from ..models.domain import GeneticFeature, PlasmidVector, Primer
 from ..parts.base import BiologicalPart
 
 
+class MissingPartSequenceError(ValueError):
+    """Raised when a part carries no DNA sequence and so cannot be assembled.
+
+    Substituting a placeholder would silently shift every downstream feature
+    coordinate, so assembly stops instead.
+    """
+
+    def __init__(self, part_name: str, part_id: str):
+        self.part_name = part_name
+        self.part_id = part_id
+        super().__init__(
+            f"Part '{part_name}' ({part_id}) has no DNA sequence. "
+            "Import or enter its sequence before assembling the construct."
+        )
+
+
 class VectorAssemblyEngine:
     """Core domain service for sequence file parsing, vector construction,
     and primer design.
@@ -169,7 +185,9 @@ class VectorAssemblyEngine:
             )
 
         for part in parts:
-            part_seq = part.sequence.upper() if part.sequence else "ATGC"
+            if not part.sequence:
+                raise MissingPartSequenceError(part.name, part.id)
+            part_seq = part.sequence.upper()
             seq_len = len(part_seq)
             start_pos = current_offset
             end_pos = start_pos + seq_len

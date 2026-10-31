@@ -161,6 +161,8 @@ class PartsCatalogueService:
                     y_min=params.get("y_min"),
                     K_d=params.get("K_d"),
                     n=params.get("n"),
+                    repressors=list(params.get("repressors", [])),
+                    activators=list(params.get("activators", [])),
                 )
             else:
                 part = CDS(
@@ -200,6 +202,8 @@ class PartsCatalogueService:
                     y_min=params.get("y_min"),
                     K_d=params.get("K_d"),
                     n=params.get("n"),
+                    repressors=list(params.get("repressors", [])),
+                    activators=list(params.get("activators", [])),
                 )
             else:
                 part = CDS(

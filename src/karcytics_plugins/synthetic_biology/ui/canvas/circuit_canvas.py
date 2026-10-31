@@ -31,12 +31,13 @@ class CircuitScene(DirtyTrackingGraphicsScene):
 class CircuitCanvas(DirtyTrackingGraphicsView):
     """Central workspace canvas for the biological diagram."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, state=None):
         self._scene = CircuitScene(parent)
         super().__init__(self._scene, parent)
         self.setRenderHint(self.renderHints().Antialiasing)
 
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+        self.state = state
         self._parts = []
         self._show_sequences: bool = False
         self._show_stubs: bool = True
@@ -88,6 +89,16 @@ class CircuitCanvas(DirtyTrackingGraphicsView):
         """Add a fetched part to the canvas."""
         self._parts.append(part)
         self.render_circuit()
+
+    def set_parts(self, parts):
+        """Replace the rendered strand with the given ordered parts."""
+        self._parts = list(parts)
+        self.render_circuit()
+
+    def reload_from_state(self) -> None:
+        """Re-read the design strand from the shared state and redraw."""
+        if self.state is not None:
+            self.set_parts(self.state.design_parts)
 
     def render_circuit(self):  # noqa: PLR0915
         """Render all parts along the DNA strand with SBOLv compliant graphics."""

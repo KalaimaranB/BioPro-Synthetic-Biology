@@ -12,6 +12,13 @@ from ...analysis.models.domain import (
     SimulationParameters,
     SimulationResult,
 )
+from ...analysis.simulation.kinetics import (
+    DEFAULT_DEGRADATION_RATE,
+    DEFAULT_Y_MAX,
+    DEFAULT_Y_MIN,
+    regulation_expression,
+    resolve_edge_params,
+)
 from ...analysis.state import SynBioState
 from ..workers import CircuitSimWorker
 
@@ -107,24 +114,24 @@ class CircuitSimulationController(QObject):
 
             reg_factors = []
             for e in incoming:
-                src_comp = node_map.get(e.source_id)
+                # Skip dangling edges, as the SciPy engine does.
+                if e.source_id not in node_map:
+                    continue
                 src_var = re.sub(r"[^a-zA-Z0-9_]", "_", e.source_id)
-                kd = e.K_d if e.K_d is not None else (src_comp.K_d if src_comp else comp.K_d)
-                n = e.n if e.n is not None else (src_comp.n if src_comp else comp.n)
-                kd_val = max(1e-6, kd if kd is not None else 1.0)
-                n_val = n if n is not None else 2.0
+                # Shared with the SciPy engine so both simulators resolve the
+                # same K_d / n for the same edge.
+                kd_val, n_val = resolve_edge_params(e, target=comp)
+                term = regulation_expression(e.interaction_type, src_var, kd_val, n_val)
+                if term is not None:
+                    reg_factors.append(term)
 
-                itype = (e.interaction_type or "").lower()
-                if itype == "repression":
-                    reg_factors.append(f"(1 / (1 + ({src_var} / {kd_val})^{n_val}))")
-                elif itype == "activation":
-                    reg_factors.append(
-                        f"(({src_var} / {kd_val})^{n_val} / (1 + ({src_var} / {kd_val})^{n_val}))"
-                    )
-
-            y_min = comp.y_min if comp.y_min is not None else 0.001
-            y_max = comp.y_max if comp.y_max is not None else 5.0
-            deg = comp.degradation_rate if comp.degradation_rate is not None else 0.1
+            y_min = comp.y_min if comp.y_min is not None else DEFAULT_Y_MIN
+            y_max = comp.y_max if comp.y_max is not None else DEFAULT_Y_MAX
+            deg = (
+                comp.degradation_rate
+                if comp.degradation_rate is not None
+                else DEFAULT_DEGRADATION_RATE
+            )
 
             if reg_factors:
                 prod_expr = f"{y_min} + ({y_max} - {y_min}) * " + " * ".join(reg_factors)
