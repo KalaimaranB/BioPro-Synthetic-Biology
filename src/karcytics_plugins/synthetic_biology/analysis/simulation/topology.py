@@ -91,6 +91,7 @@ def circuit_from_parts(
                 ),
                 translation_rate=_or_default(getattr(part, "translation_rate", None), 1.0),
                 initial_concentration=0.0,
+                source_organism=str(getattr(part, "source_organism", "") or ""),
             )
         )
         producers.setdefault(product, []).append(node_id)

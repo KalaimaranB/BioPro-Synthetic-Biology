@@ -5,6 +5,7 @@ from __future__ import annotations
 from PySide6.QtCore import QObject, Signal, Slot
 
 from ...analysis.assembly.vector_builder import VectorAssemblyEngine
+from ...analysis.citations import assembly_step, primer_step
 from ...analysis.models.domain import PlasmidVector, Primer
 from ...analysis.parts.base import BiologicalPart
 from ...analysis.state import SynBioState
@@ -47,6 +48,7 @@ class PlasmidAssemblyController(QObject):
         if plasmid:
             plasmid.primers.extend([fwd, rev])
             self.state.set_active_plasmid(plasmid)
+        self._record_primers(fwd, rev)
         self.primers_ready.emit(fwd, rev)
         return [fwd, rev]
 
@@ -72,7 +74,9 @@ class PlasmidAssemblyController(QObject):
             file_format=file_format,
             parent=self,
         )
-        self._active_worker.assembly_finished.connect(self._on_assembly_finished)
+        # Its own handler: an imported file was not assembled here, so it must
+        # not be written up as an in-silico assembly.
+        self._active_worker.assembly_finished.connect(self._on_parse_finished)
         self._active_worker.error_occurred.connect(self.error_raised.emit)
         self._active_worker.start()
 
@@ -97,9 +101,19 @@ class PlasmidAssemblyController(QObject):
         self._active_worker.error_occurred.connect(self.error_raised.emit)
         self._active_worker.start()
 
+    def _on_parse_finished(self, vector: PlasmidVector) -> None:
+        """State update for a vector imported from a sequence file."""
+        self.state.set_active_plasmid(vector)
+        self.assembly_ready.emit(vector)
+
     def _on_assembly_finished(self, vector: PlasmidVector) -> None:
         """Centralized state update upon vector assembly completion."""
         self.state.set_active_plasmid(vector)
+        self.state.record_method(
+            assembly_step(
+                vector.name, len(vector.sequence), len(vector.features), vector.is_circular
+            )
+        )
         self.assembly_ready.emit(vector)
 
     def _on_primer_finished(self, fwd: Primer, rev: Primer) -> None:
@@ -108,7 +122,11 @@ class PlasmidAssemblyController(QObject):
         if plasmid:
             plasmid.primers.extend([fwd, rev])
             self.state.set_active_plasmid(plasmid)
+        self._record_primers(fwd, rev)
         self.primers_ready.emit(fwd, rev)
+
+    def _record_primers(self, fwd: Primer, rev: Primer) -> None:
+        self.state.record_method(primer_step(fwd.target_tm, fwd.calculated_tm, rev.calculated_tm))
 
     def teardown(self) -> None:
         """Stops active background worker thread if running."""

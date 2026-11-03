@@ -16,6 +16,18 @@ if str(root_dir) in sys.path:
 sys.path.insert(0, str(src_dir))
 sys.path.insert(0, str(root_dir))
 
+# Where the real SDK lives, captured before this file replaces ``karcytics_sdk``
+# with mocks below — after that, find_spec can no longer see the real package.
+# Used to load the SDK modules that are safe to run for real (see further down).
+import importlib.util as _importlib_util  # noqa: E402
+
+_real_sdk_spec = _importlib_util.find_spec("karcytics_sdk")
+REAL_SDK_PLUGIN_DIR = (
+    Path(_real_sdk_spec.origin).parent / "plugin"
+    if _real_sdk_spec is not None and _real_sdk_spec.origin
+    else None
+)
+
 import pytest  # noqa: E402
 from PySide6.QtCore import QObject, Signal  # noqa: E402
 from PySide6.QtWidgets import (  # noqa: E402
@@ -72,6 +84,18 @@ class DummyPluginBase(QWidget):
     ) -> None:
         pass
 
+    def setup_workflow_autosave(
+        self, has_saved_once, save, *, interval_ms=None, has_unsaved_changes=None
+    ):
+        """Record the SDK autosave callbacks instead of starting a 15-minute timer,
+        so tests can call them directly.
+        """
+        self.autosave_callbacks = {
+            "has_saved_once": has_saved_once,
+            "save": save,
+            "has_unsaved_changes": has_unsaved_changes,
+        }
+
 
 class DummyAnalysisBase:
     def __init__(self, *args, **kwargs):
@@ -80,6 +104,24 @@ class DummyAnalysisBase:
 
 class DummyButton(QPushButton):
     pass
+
+
+class DummyWorkspaceSaveButton(QPushButton):
+    """Stand-in for the SDK's WorkspaceSaveButton: same signals and setters."""
+
+    save_requested = Signal()
+    update_requested = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.is_dirty = False
+        self.has_workflow = False
+
+    def set_dirty(self, dirty: bool) -> None:
+        self.is_dirty = bool(dirty)
+
+    def set_workflow_active(self, active: bool) -> None:
+        self.has_workflow = bool(active)
 
 
 class DummySplitter(QSplitter):
@@ -284,6 +326,7 @@ class MockComponents:
         return MagicMock
 
 
+MockComponents.WorkspaceSaveButton = DummyWorkspaceSaveButton  # type: ignore[attr-defined]
 mock_components = MockComponents()
 mock_karcytics_sdk_plugin.components = mock_components
 
@@ -431,6 +474,37 @@ mock_theme_fallback.Fonts = DummyColors  # type: ignore
 mock_theme_fallback.theme_manager = dummy_theme_manager  # type: ignore
 mock_theme_fallback.get_contrast_text_color = lambda bg: "#ffffff"  # type: ignore
 sys.modules["karcytics_sdk.plugin.theme_fallback"] = mock_theme_fallback
+
+
+# ── Real SDK citation modules ─────────────────────────────────────────────
+# Loaded from the installed SDK rather than mocked. ``citations`` is pure
+# standard library and ``citation_widgets`` needs only the theme stand-ins
+# above, so the plugin's citation tests run the SDK's actual registry,
+# formatting, BibTeX and widget rendering. A mock here would only prove the
+# plugin calls *something*.
+def _load_real_sdk_module(name: str) -> types.ModuleType:
+    if REAL_SDK_PLUGIN_DIR is None:
+        raise RuntimeError(
+            "karcytics_sdk is not installed; the citation tests need the real SDK (run `uv sync`)."
+        )
+    dotted = f"karcytics_sdk.plugin.{name}"
+    spec = _importlib_util.spec_from_file_location(dotted, REAL_SDK_PLUGIN_DIR / f"{name}.py")
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load {dotted} from {REAL_SDK_PLUGIN_DIR}")
+    module = _importlib_util.module_from_spec(spec)
+    module.__package__ = "karcytics_sdk.plugin"
+    sys.modules[dotted] = module
+    spec.loader.exec_module(module)
+    setattr(mock_karcytics_sdk_plugin, name, module)
+    return module
+
+
+real_citations = _load_real_sdk_module("citations")
+real_citation_widgets = _load_real_sdk_module("citation_widgets")
+mock_karcytics_sdk_plugin.Citation = real_citations.Citation
+mock_karcytics_sdk_plugin.MethodStep = real_citations.MethodStep
+mock_karcytics_sdk_plugin.CitationLabel = real_citation_widgets.CitationLabel
+mock_karcytics_sdk_plugin.CitationsPanel = real_citation_widgets.CitationsPanel
 
 try:
     import sbol3  # noqa: F401

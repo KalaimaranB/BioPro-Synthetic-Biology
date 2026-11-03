@@ -19,7 +19,10 @@ class SimulateRibbon(BioRibbon):
         self._setup_ui()
 
     def _setup_ui(self):
-        self.add_widget(QLabel("Max Time (s):"))
+        # Minutes, not seconds: CircuitComponent documents degradation_rate in
+        # 1/min and translation_rate in RPU/min, and both plot axes read
+        # "Time (minutes)".
+        self.add_widget(QLabel("Max Time (min):"))
         self.time_spin = BioSpinBox()
         self.time_spin.setRange(10, 10000)
         self.time_spin.setValue(100)

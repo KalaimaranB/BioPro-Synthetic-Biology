@@ -161,8 +161,8 @@ class gRNACandidate:  # noqa: N801 — standard molecular-biology nomenclature (
     start: int
     end: int
     gc_content: float
-    efficiency_score: float  # Doench/Rule 2 efficiency (0-100%)
-    off_target_score: float  # CFD score (0-100%, 100 = minimal off-target activity)
+    efficiency_score: float  # Rule-based heuristic score (0-100%); not Doench 2016
+    off_target_score: float  # Heuristic off-target score (0-100%, 100 = fewest hits); not CFD
     off_target_hits: list[dict[str, Any]] = field(default_factory=list)
     has_poly_t_term: bool = False  # True if sequence contains >3 consecutive Ts
 
@@ -214,6 +214,21 @@ class CircuitComponent:
     degradation_rate: float = 0.1  # Protein/RNA degradation rate (1/min)
     translation_rate: float = 1.0  # Protein translation rate (RPU/min)
     initial_concentration: float = 0.0
+    # Where the gene comes from, e.g. 'E. coli lac operon', 'phage lambda',
+    # 'Tn10'. Shown beside the protein name on plots so a trace says which
+    # organism the part was taken from, not just what it expresses.
+    source_organism: str = ""
+
+    @property
+    def display_label(self) -> str:
+        """How this node is named on a plot legend or species filter.
+
+        Both simulators label their traces with this, so the same design reads
+        the same way in every tab.
+        """
+        if self.source_organism:
+            return f"{self.name} ({self.source_organism})"
+        return self.name
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -227,6 +242,7 @@ class CircuitComponent:
             "degradation_rate": self.degradation_rate,
             "translation_rate": self.translation_rate,
             "initial_concentration": self.initial_concentration,
+            "source_organism": self.source_organism,
         }
 
     @classmethod
@@ -246,6 +262,7 @@ class CircuitComponent:
             degradation_rate=data.get("degradation_rate", 0.1),
             translation_rate=data.get("translation_rate", 1.0),
             initial_concentration=data.get("initial_concentration", 0.0),
+            source_organism=data.get("source_organism", ""),
         )
 
 

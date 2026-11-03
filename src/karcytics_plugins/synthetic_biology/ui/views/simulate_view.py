@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from ..controllers.circuit_controller import CircuitSimulationController
 import pyqtgraph as pg
 from karcytics_sdk.plugin import get_logger
+from karcytics_sdk.plugin.citation_widgets import CitationLabel
 from karcytics_sdk.plugin.components import (
     BioListWidget,
     BioProgressDialog,
@@ -41,6 +42,7 @@ try:
 except ImportError:
     te = None
 
+from ...analysis.citations import FEATURE_CITATIONS, tellurium_step
 from ...analysis.parts.components import CDS, Promoter, sgRNA
 from ...analysis.prediction.graphing_utils import apply_standard_axes  # noqa: F401
 from ...analysis.simulation.topology import circuit_from_parts
@@ -103,6 +105,15 @@ class SimulateWorker(BaseSDKWorker):
             t_sim_end = time.perf_counter()
             sim_ms = (t_sim_end - t_sim_start) * 1000
 
+            # Read the species names BEFORE downsampling. Slicing a Tellurium
+            # NamedArray returns a NamedArray whose ``colnames`` is empty, so
+            # decimating first silently discarded them and the view fell back to
+            # labelling the traces "Species_1", "Species_2", ... That is why a
+            # Gillespie run was unnamed while the same circuit under the ODE was
+            # not: Gillespie asks for max_time * 5 points and so crossed the
+            # decimation threshold, while the ODE's max_time * 2 did not.
+            colnames = list(result.colnames) if hasattr(result, "colnames") else []
+
             # Data Decimation (Downsampling): reduce data points if time steps exceed MAX_DOWNSAMPLE_POINTS
             if result is not None and len(result) > MAX_DOWNSAMPLE_POINTS:
                 step = len(result) // MAX_DOWNSAMPLE_POINTS
@@ -110,7 +121,6 @@ class SimulateWorker(BaseSDKWorker):
 
             # Fast Binary Serialization with Msgpack
             t_ser_start = time.perf_counter()
-            colnames = list(result.colnames) if hasattr(result, "colnames") else []
             arr = np.asarray(result, dtype=np.float64)
 
             packed_payload = msgpack.packb(
@@ -121,6 +131,10 @@ class SimulateWorker(BaseSDKWorker):
                     "dtype": str(arr.dtype),
                     "method": self.method,
                     "title": self.title,
+                    # The integrated window. The decimated array can end short of
+                    # it (keeping every 2nd of 2000 points drops t = 400), so the
+                    # methods log must not read the duration off the plotted data.
+                    "max_time": self.max_time,
                     "sim_duration_ms": sim_ms,
                 }
             )
@@ -233,6 +247,23 @@ class SimulateView(QWidget):
         self.info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.info_label)
 
+        # One credit line per method; plot_time_series shows the one in use.
+        self.citation_ode = CitationLabel(
+            "Antimony model integrated with CVODE in Tellurium",
+            FEATURE_CITATIONS["simulate_ode"],
+            prefix="Engine:",
+            parent=self,
+        )
+        self.citation_ssa = CitationLabel(
+            "Gillespie stochastic simulation in Tellurium",
+            FEATURE_CITATIONS["simulate_ssa"],
+            prefix="Engine:",
+            parent=self,
+        )
+        self.citation_ssa.setVisible(False)
+        layout.addWidget(self.citation_ode)
+        layout.addWidget(self.citation_ssa)
+
         # Main Splitter: Canvas Container on left (80%), Control Panel on right (20%)
         self.splitter = BioSplitter(Qt.Orientation.Horizontal)
         layout.addWidget(self.splitter, 1)
@@ -294,8 +325,8 @@ class SimulateView(QWidget):
             f"<span style='color: {Colors.FG_SECONDARY}; font-size: 13px;'>"
             "Run a kinetic simulation to plot time-series traces.</span>"
         )
-        self.plot_widget.setLabel("bottom", "Time (seconds)", color=Colors.FG_SECONDARY)
-        self.plot_widget.setLabel("left", "Concentration", color=Colors.FG_SECONDARY)
+        self.plot_widget.setLabel("bottom", "Time (minutes)", color=Colors.FG_SECONDARY)
+        self.plot_widget.setLabel("left", "Protein concentration (RPU)", color=Colors.FG_SECONDARY)
 
         # Matplotlib compatibility fallback attributes for tests/inspectors if referenced
         self.figure = Figure(figsize=(8, 6), dpi=100)
@@ -471,11 +502,15 @@ class SimulateView(QWidget):
                 pen=pen,
             )
 
-        y_label = "Concentration" if method == "ode" else "Molecule Count"
+        # y_max / translation_rate are documented in RPU on CircuitComponent, so
+        # the deterministic trace is in RPU. The Gillespie path multiplies the
+        # initial condition by 10 to get integer molecule counts, so it is not
+        # the same quantity and must not carry the same unit.
+        y_label = "Protein concentration (RPU)" if method == "ode" else "Molecule count"
         self.plot_widget.setTitle(
             f"<span style='color: {Colors.FG_PRIMARY}; font-weight: bold; font-size: 14px;'>{title}</span>"
         )
-        self.plot_widget.setLabel("bottom", "Time (seconds)", color=Colors.FG_SECONDARY)
+        self.plot_widget.setLabel("bottom", "Time (minutes)", color=Colors.FG_SECONDARY)
         self.plot_widget.setLabel("left", y_label, color=Colors.FG_SECONDARY)
 
         t_render_end = time.perf_counter()
@@ -502,6 +537,7 @@ class SimulateView(QWidget):
             shape = tuple(unpacked.get("shape", (0, 0)))
             dtype_str = unpacked.get("dtype", "float64")
             method = unpacked.get("method", "ode")
+            requested_duration = unpacked.get("max_time")
             title = unpacked.get("title", "Dynamic Circuit Simulation")
             sim_ms = unpacked.get("sim_duration_ms", 0.0)
 
@@ -530,6 +566,7 @@ class SimulateView(QWidget):
         else:
             result_data = payload.get("result") if isinstance(payload, dict) else payload
             method = payload.get("method", "ode") if isinstance(payload, dict) else "ode"
+            requested_duration = payload.get("max_time") if isinstance(payload, dict) else None
             title = (
                 payload.get("title", "Dynamic Circuit Simulation")
                 if isinstance(payload, dict)
@@ -540,6 +577,8 @@ class SimulateView(QWidget):
         self._last_simulation_method = str(method)
         self._last_simulation_title = str(title)
 
+        self._record_tellurium_run(result_data, str(method), requested_duration)
+
         # Populate Species Selector ListWidget
         self.control_panel.setVisible(True)
         self.species_list.blockSignals(True)
@@ -549,11 +588,25 @@ class SimulateView(QWidget):
         if not colnames and isinstance(result_data, dict):
             colnames = result_data.get("colnames", list(result_data.keys()))
 
+        # Recover the reader-facing label for each species. Antimony identifiers
+        # cannot hold spaces or parentheses, so "LacI (E. coli lac operon)"
+        # arrives as the column "[LacI]"; without this the organism never
+        # reaches the legend.
+        display_labels: dict[str, str] = {}
+        if self.state is not None:
+            try:
+                from ..controllers.circuit_controller import species_display_labels
+
+                display_labels = species_display_labels(self.state.circuit_components)
+            except Exception:
+                display_labels = {}
+
         time_col = "time"
         for col in colnames:
             if col.lower() == time_col:
                 continue
             clean_name = col.replace("[", "").replace("]", "")
+            clean_name = display_labels.get(clean_name, clean_name)
             item = QListWidgetItem(clean_name)
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
             item.setCheckState(Qt.CheckState.Checked)
@@ -565,6 +618,29 @@ class SimulateView(QWidget):
         # Render selected traces on pyqtgraph plot widget
         self.update_plot()
         show_toast("Simulation completed successfully")
+
+    def _record_tellurium_run(
+        self, result_data: Any, method: str, requested_duration: Any = None
+    ) -> None:
+        """Add this run to the workspace's methods log.
+
+        Uses the integrated window the worker reports. Only if that is missing
+        does it fall back to the last time point — which, after decimation, can
+        sit one sample short of the true end (399.8 for a 400-minute run).
+        """
+        if self.state is None or result_data is None:
+            return
+        if isinstance(requested_duration, int | float) and requested_duration > 0:
+            self.state.record_method(tellurium_step(method, float(requested_duration)))
+            return
+        try:
+            raw_t = result_data["time"]
+            t_arr = np.asarray(raw_t, dtype=float)
+        except Exception:
+            return
+        if t_arr.size == 0 or not np.all(np.isfinite(t_arr)):
+            return
+        self.state.record_method(tellurium_step(method, float(t_arr[-1])))
 
     @Slot(str)
     def _on_simulation_error(self, err_msg: str) -> None:
@@ -642,6 +718,8 @@ class SimulateView(QWidget):
             if method == "ode"
             else "Stochastic Simulation (Gillespie)"
         )
+        self.citation_ode.setVisible(method != "gillespie")
+        self.citation_ssa.setVisible(method == "gillespie")
         self.info_label.setText(
             f"<b>{method_name}:</b> Shows how the concentrations of your genetic "
             "circuit components change dynamically over time as proteins are "
@@ -705,9 +783,13 @@ class SimulateView(QWidget):
 
         # Immediate feedback and BioProgressDialog
         self.plot_widget.clear()
+        # Name the integrator that actually runs. libRoadRunner's default is CVODE
+        # (SUNDIALS); this message used to say LSODA for both methods, including
+        # the stochastic one, which uses no ODE integrator at all.
+        engine = "Gillespie SSA / Tellurium" if method == "gillespie" else "CVODE / Tellurium"
         self.plot_widget.setTitle(
             f"<span style='color: {Colors.ACCENT_PRIMARY}; font-weight: bold; font-size: 13px;'>"
-            "⚡ Computing ODE Kinetic Simulation (LSODA / Tellurium)... Please wait...</span>"
+            f"⚡ Computing simulation ({engine})... Please wait...</span>"
         )
         if hasattr(self, "progress_dialog") and self.progress_dialog is not None:
             self.progress_dialog.close()

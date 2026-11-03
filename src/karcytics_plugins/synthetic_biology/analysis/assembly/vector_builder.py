@@ -227,7 +227,8 @@ class VectorAssemblyEngine:
         primer_conc_nm: float = 250.0,
     ) -> float:
         """Calculates nearest-neighbor melting temperature (Tm) for primer sequences
-        using SantaLucia (1998) unified thermodynamic parameters and salt corrections.
+        using the Allawi & SantaLucia (1997) parameters (Biopython DNA_NN3) and the
+        Owczarzy et al. (2008) magnesium-aware salt correction.
 
         Args:
             sequence: Primer DNA sequence string.
@@ -252,7 +253,7 @@ class VectorAssemblyEngine:
         try:
             tm_val = MeltingTemp.Tm_NN(
                 seq,
-                nn_table=MeltingTemp.DNA_NN3,  # SantaLucia (1998) unified parameters
+                nn_table=MeltingTemp.DNA_NN3,  # Allawi & SantaLucia (1997), per Biopython
                 Na=na_conc_mm,
                 Mg=mg_conc_mm,
                 dnac1=primer_conc_nm,

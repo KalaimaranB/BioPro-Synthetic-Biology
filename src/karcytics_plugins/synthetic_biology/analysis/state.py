@@ -44,6 +44,11 @@ class CircuitState:
     grna_candidates: list[dict[str, Any]] = field(default_factory=list)
     circuit_nodes: list[dict[str, Any]] = field(default_factory=list)
     circuit_edges: list[dict[str, Any]] = field(default_factory=list)
+    # One entry per kind of analysis the user has run — the most recent run of
+    # each kind — with the parameters it used and the citation keys behind it.
+    # Kept in the state, not the UI, so it is saved with the workflow and a
+    # reopened workspace can still say how its results were produced.
+    methods_log: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -54,6 +59,7 @@ class CircuitState:
             "grna_candidates": self.grna_candidates,
             "circuit_nodes": self.circuit_nodes,
             "circuit_edges": self.circuit_edges,
+            "methods_log": self.methods_log,
         }
 
     @classmethod
@@ -66,6 +72,7 @@ class CircuitState:
         state.grna_candidates = data.get("grna_candidates", [])
         state.circuit_nodes = data.get("circuit_nodes", [])
         state.circuit_edges = data.get("circuit_edges", [])
+        state.methods_log = data.get("methods_log", [])
         return state
 
 
@@ -217,6 +224,28 @@ class SynBioState(PluginState):
     def get_circuit_edges(self) -> list[CircuitEdge]:
         """Retrieve list of circuit edges."""
         return self.circuit_edges
+
+    # ── Methods log ───────────────────────────────────────────────────
+
+    def record_method(self, entry: dict[str, Any]) -> None:
+        """Record that an analysis ran, replacing the previous run of its kind.
+
+        ``entry`` is built by one of the step builders in
+        ``analysis.citations`` and carries ``kind``, ``description``,
+        ``parameters`` and ``citations``. Only the latest run of each kind is
+        kept: the Methods paragraph describes how the results currently on
+        screen were produced, not every run along the way.
+        """
+        kind = entry.get("kind")
+        self.data.methods_log = [e for e in self.data.methods_log if e.get("kind") != kind]
+        self.data.methods_log.append(dict(entry))
+
+    @property
+    def methods_log(self) -> list[dict[str, Any]]:
+        return list(self.data.methods_log)
+
+    def clear_methods_log(self) -> None:
+        self.data.methods_log = []
 
     def load_from_dict(self, data: dict) -> None:
         """Replace this instance's contents in place from a serialized snapshot.

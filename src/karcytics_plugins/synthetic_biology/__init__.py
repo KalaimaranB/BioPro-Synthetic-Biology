@@ -125,9 +125,20 @@ class SyntheticBiologyPlugin(PluginBase):
         return {}
 
     def set_state(self, state: dict) -> None:  # type: ignore[override]
-        """Restore internal state from a dictionary."""
-        if self._panel and hasattr(self._panel, "state"):
-            self._panel.state.from_dict(state)
+        """Restore internal state from a dictionary.
+
+        Must mutate the panel's existing ``SynBioState`` in place. This used to
+        call ``state.from_dict(...)``, but ``from_dict`` is a classmethod that
+        builds and returns a *new* state object — the result was discarded, the
+        live state was never touched, and no view refreshed, so every restore
+        through the plugin interface silently did nothing.
+        """
+        if not state or not self._panel or not hasattr(self._panel, "state"):
+            return
+        self._panel.state.load_from_dict(state)
+        refresh = getattr(self._panel, "_refresh_views_from_state", None)
+        if callable(refresh):
+            refresh()
 
     def cleanup(self) -> None:
         """Perform plugin teardown: stop active workers and release resources."""

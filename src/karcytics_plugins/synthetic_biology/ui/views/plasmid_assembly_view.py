@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 
+from karcytics_sdk.plugin.citation_widgets import CitationLabel
 from karcytics_sdk.plugin.components import (
     BioDoubleSpinBox,
     BioLineEdit,
@@ -40,6 +41,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ...analysis.citations import FEATURE_CITATIONS
 from ...analysis.models.domain import PlasmidVector
 from ...analysis.parts.base import BiologicalPart
 from ...analysis.parts.components import CDS, RBS, Promoter, Terminator, part_from_dict
@@ -279,6 +281,14 @@ class PlasmidAssemblyView(QWidget):
         toolbar.addWidget(self.btn_primer)
 
         center_layout.addLayout(toolbar)
+        center_layout.addWidget(
+            CitationLabel(
+                "nearest-neighbour Tm with Mg2+ salt correction",
+                FEATURE_CITATIONS["primer_design"],
+                prefix="Primer design:",
+                parent=self,
+            )
+        )
 
         lbl_canvas = QLabel("Drop Parts Below to Assemble Genetic Construct (Drag to Reorder):")
         center_layout.addWidget(lbl_canvas)

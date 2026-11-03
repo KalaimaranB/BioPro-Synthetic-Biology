@@ -82,3 +82,26 @@ def test_part_inspector_uses_bio_tab_widget(destroy_after):
     inspector = destroy_after(PartInspector())
     assert isinstance(inspector.tabs, BioTabWidget)
     assert inspector.tabs.count() == 3
+
+
+def test_no_unescaped_ampersand_in_mnemonic_widget_text():
+    """Qt treats a lone "&" in tab, button, group-box and action text as a
+    keyboard-mnemonic marker: "Sequence & PAM" renders as "Sequence _PAM" and
+    "Methods & References" as "Methods_References". A literal ampersand must be
+    written "&&". Plain QLabel text is unaffected and not checked.
+    """
+    import re
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parents[2] / "src"
+    pattern = re.compile(
+        r"(QGroupBox|Button|addTab|setTitle|addAction|setTabText)\("
+        r"[^)]*?\"[^\"]*?(?<!&)&(?!&)[^\"]*?\""
+    )
+    offenders = [
+        f"{path.relative_to(src)}:{lineno}: {line.strip()}"
+        for path in src.rglob("*.py")
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
+        if pattern.search(line)
+    ]
+    assert not offenders, "Escape '&' as '&&':\n" + "\n".join(offenders)

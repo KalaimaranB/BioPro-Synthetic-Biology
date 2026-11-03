@@ -28,20 +28,36 @@ def apply_standard_axes(
     is_log_x: bool = False,
     is_log_y: bool = False,
 ) -> None:
-    """Apply centralized base formatting to Matplotlib axes and figure for Light
-    Theme aesthetics.
+    """Apply the module's standard formatting to a Matplotlib axes and figure.
 
-    Steps:
-    1. Set figure background to #ffffff and axes facecolor to #F8F9FA.
-    2. Set crisp dark text (#333333) for title, axis labels, and tick labels.
-    3. Hide top and right spines to create a clean modern look:
-       ax.spines['top'].set_visible(False).
-    4. Set bottom and left spine colors to dark gray (#333333).
-    5. Set label font size to 12 and tick label font size to 10.
-    6. Implement autoscale with protective margins (x=0.02, y=0.05).
-    7. Enable clean light dashed gridlines:
-       ax.grid(True, color='#D3D3D3', linestyle='--', alpha=0.7).
-    8. Execute fig.tight_layout() to prevent label truncation.
+    Colours are taken from the active Karcytics theme (``theme_fallback.Colors``)
+    rather than hard-coded, so a figure matches whichever theme is loaded. This
+    docstring previously described a fixed light palette (#ffffff figure, #F8F9FA
+    axes, #333333 text) that the function has never applied.
+
+    What it does:
+
+    1. Figure background from ``BG_DARKEST``, axes face from ``BG_DARK``.
+    2. Title, axis labels and tick labels in ``FG_PRIMARY``; labels at 12 pt
+       bold, ticks at 10 pt.
+    3. Hides the top and right spines; the remaining two take ``BORDER``.
+    4. Autoscales with protective margins (x=0.02, y=0.05), then repairs any
+       axis limit that came back NaN, infinite, or zero-width — an all-constant
+       trace otherwise renders as an empty panel.
+    5. Draws a dashed ``BORDER`` grid, on both major and minor ticks when either
+       axis is logarithmic.
+    6. Adds a legend only when some artist carries a label, so an unlabelled
+       figure does not get an empty legend box.
+    7. Calls ``fig.tight_layout()`` so long axis labels are not truncated.
+
+    Args:
+        ax: Axes to format.
+        fig: The figure owning ``ax``.
+        x_label: X-axis label; include the unit.
+        y_label: Y-axis label; include the unit.
+        title: Axes title.
+        is_log_x: True when the x-axis is log-scaled, for minor gridlines.
+        is_log_y: True when the y-axis is log-scaled, for minor gridlines.
     """
     bg_fig = getattr(Colors, "BG_DARKEST", "#0d1117")
     bg_ax = getattr(Colors, "BG_DARK", "#161b22")
@@ -109,13 +125,15 @@ def apply_standard_axes(
     if ax.get_legend_handles_labels()[1]:
         legend = ax.legend(
             loc="upper right",
-            facecolor="#1e1e1e",
+            facecolor=bg_ax,
             edgecolor=grid_color,
             framealpha=0.86,
         )
         if legend:
             for text in legend.get_texts():
-                text.set_color("#ffffff")
+                # Themed, not hard-coded white: on a light theme white-on-light
+                # legend text is unreadable.
+                text.set_color(text_color)
 
     # Call tight_layout to protect layout
     fig.tight_layout()

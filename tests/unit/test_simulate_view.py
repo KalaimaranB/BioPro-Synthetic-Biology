@@ -314,11 +314,127 @@ def test_live_circuit_state_dynamically_generates_payload(monkeypatch):
 
     assert "model_str" in captured_model
     model_str = captured_model["model_str"]
-    assert "species NodeA = 2.5;" in model_str
-    assert "species NodeB = 0.0;" in model_str
-    assert "J_prod_NodeA: => NodeA; 8.0;" in model_str
-    # NodeB has repression from NodeA
-    assert "J_prod_NodeB" in model_str
-    assert "NodeA" in model_str
-    assert "J_deg_NodeA: NodeA => ; 0.15 * NodeA;" in model_str
-    assert "J_deg_NodeB: NodeB => ; 0.3 * NodeB;" in model_str
+    # Species are named after the component's *name*, not its id: the Antimony
+    # variable becomes the Simulate tab's legend entry, and naming it from the
+    # id is what made that plot read "comp_1 ... comp_5" while the Circuit
+    # Simulation tab — which labels by name — showed real part names for the
+    # same design.
+    assert "species Repressor_A = 2.5;" in model_str
+    assert "species Reporter_B = 0.0;" in model_str
+    assert "J_prod_Repressor_A: => Repressor_A; 8.0;" in model_str
+    # Reporter_B has repression from Repressor_A
+    assert "J_prod_Reporter_B" in model_str
+    assert "Repressor_A" in model_str
+    assert "J_deg_Repressor_A: Repressor_A => ; 0.15 * Repressor_A;" in model_str
+    assert "J_deg_Reporter_B: Reporter_B => ; 0.3 * Reporter_B;" in model_str
+    # The ids must not leak into the model text at all.
+    assert "NodeA" not in model_str
+    assert "NodeB" not in model_str
+
+
+def test_species_names_survive_downsampling():
+    """A long run must still name its traces after the circuit's species.
+
+    Slicing a Tellurium ``NamedArray`` returns a ``NamedArray`` whose
+    ``colnames`` is empty. The worker used to decimate the result before reading
+    the names, so any run past the decimation threshold lost them and the view
+    fell back to "Species_1", "Species_2", ... A Gillespie run asks for
+    ``max_time * 5`` points and so always crossed that threshold, which is why a
+    stochastic plot was unnamed while the deterministic plot of the same circuit
+    was not.
+    """
+    import msgpack
+
+    from karcytics_plugins.synthetic_biology.ui.views import simulate_view as sv
+
+    # Stand in for Tellurium: a result that reports its colnames, and loses them
+    # on slicing exactly as a NamedArray does.
+    class FakeNamedArray:
+        def __init__(self, rows: int, named: bool = True):
+            self._rows = rows
+            self.colnames = ["time", "[LacI]", "[cI]", "[TetR]"] if named else []
+
+        def __len__(self):
+            return self._rows
+
+        def __getitem__(self, key):
+            assert isinstance(key, slice), key
+            step = key.step or 1
+            return FakeNamedArray((self._rows + step - 1) // step, named=False)
+
+        def __array__(self, dtype=None, copy=None):
+            import numpy as np
+
+            arr = np.zeros((self._rows, 4), dtype=dtype or float)
+            arr[:, 0] = np.arange(self._rows)
+            return arr
+
+    class FakeModel:
+        def setIntegrator(self, _name):  # noqa: N802 - mirrors Tellurium's API
+            pass
+
+        @property
+        def integrator(self):
+            return type("I", (), {"seed": 0})()
+
+        def simulate(self, _start, _end, points):
+            # Comfortably past MAX_DOWNSAMPLE_POINTS so decimation runs.
+            return FakeNamedArray(points)
+
+    class FakeTe:
+        @staticmethod
+        def loada(_model_str):
+            return FakeModel()
+
+    original = sv.te
+    sv.te = FakeTe()  # type: ignore[assignment]
+    try:
+        worker = sv.SimulateWorker(
+            model_str="model circuit() end",
+            method="gillespie",
+            max_time=400,
+            title="Dynamic Circuit Simulation (Stochastic Gillespie)",
+        )
+        captured: dict = {}
+        worker.simulation_finished.connect(lambda p: captured.update(payload=p))
+        worker.run()
+    finally:
+        sv.te = original  # type: ignore[assignment]
+
+    assert "payload" in captured
+    unpacked = msgpack.unpackb(captured["payload"], raw=False)
+
+    assert unpacked["colnames"] == ["time", "[LacI]", "[cI]", "[TetR]"]
+    # And the data really was decimated, so the names survived a slice.
+    assert unpacked["shape"][0] <= sv.MAX_DOWNSAMPLE_POINTS
+
+
+def test_methods_log_reports_the_integrated_duration_not_the_decimated_end():
+    """Keeping every 2nd of 2000 points ends the plotted series at t = 399.8 for a
+    400-minute run. The Methods paragraph must say 400.
+    """
+    import msgpack
+
+    from karcytics_plugins.synthetic_biology.analysis.state import SynBioState
+
+    state = SynBioState()
+    view = SimulateView(state=state)
+    time_col = np.arange(0, 400, 0.2)  # 2000 points, decimated: last = 399.8
+    arr = np.column_stack([time_col[::2], np.ones(1000)])
+    payload = msgpack.packb(
+        {
+            "colnames": ["time", "[LacI]"],
+            "arr_bytes": arr.astype(np.float64).tobytes(),
+            "shape": list(arr.shape),
+            "dtype": "float64",
+            "method": "gillespie",
+            "title": "t",
+            "sim_duration_ms": 1.0,
+            "max_time": 400,
+        }
+    )
+    view._on_simulation_finished(payload)
+
+    entry = next(e for e in state.methods_log if e["kind"] == "tellurium_ssa")
+    assert entry["parameters"]["duration"] == "400 min"
+    view.deleteLater()

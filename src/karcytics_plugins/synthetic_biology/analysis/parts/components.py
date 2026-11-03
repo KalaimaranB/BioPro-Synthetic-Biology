@@ -43,6 +43,10 @@ class CDS(BiologicalPart):
     translation_rate: float | None = None  # Translation rate (au/time)
     degradation_rate: float | None = None  # Protein degradation rate
     product: str = ""  # The specific protein molecule produced (e.g., 'TetR', 'GFP')
+    # Where the gene was taken from, e.g. 'E. coli lac operon', 'phage lambda',
+    # 'Tn10'. Carried through to the circuit so plots can name the source
+    # organism beside the protein.
+    source_organism: str = ""
 
     @property
     def part_type(self) -> str:
@@ -55,6 +59,7 @@ class CDS(BiologicalPart):
                 "translation_rate": self.translation_rate,
                 "degradation_rate": self.degradation_rate,
                 "product": self.product,
+                "source_organism": self.source_organism,
             }
         )
         return data

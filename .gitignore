@@ -68,3 +68,6 @@ mypy_errors.txt
 
 # Claude Code local settings (can contain machine-specific absolute paths)
 .claude/
+
+# Generated pitch / demo documents (large binaries; regenerate rather than commit)
+Karcytics_SynBio_Pitch.pdf

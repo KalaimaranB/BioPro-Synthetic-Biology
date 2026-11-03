@@ -4,14 +4,15 @@ from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Slot
 
+from ...analysis.citations import crispr_step
 from ...analysis.models.domain import gRNACandidate
 from ...analysis.state import SynBioState
 from ..workers import CRISPRWorker
 
 
 class CRISPRDesignController(QObject):
-    """Explicit Controller handling gRNA target discovery and CFD off-target
-    calculations.
+    """Explicit Controller handling gRNA target discovery and the module's
+    rule-based on- and off-target scoring (not the published CFD matrix).
     """
 
     grna_results_ready = Signal(list)  # Emits List[gRNACandidate]
@@ -21,6 +22,8 @@ class CRISPRDesignController(QObject):
         super().__init__(parent)
         self.state = state
         self._active_worker: CRISPRWorker | None = None
+        # (pam_type, spacer_length, target_length) of the scan in flight.
+        self._pending_scan: tuple[str, int, int] | None = None
 
     @Slot(str, str, int)
     def handle_scan_request(
@@ -30,6 +33,7 @@ class CRISPRDesignController(QObject):
         spacer_length: int = 20,
     ) -> None:
         """Launches background CRISPR scanning worker."""
+        self._pending_scan = (pam_type, spacer_length, len(target_sequence or ""))
         self._active_worker = CRISPRWorker(
             target_sequence=target_sequence,
             pam_type=pam_type,
@@ -43,6 +47,12 @@ class CRISPRDesignController(QObject):
     def _on_scan_finished(self, candidates: list[gRNACandidate]) -> None:
         """Updates SynBioState and notifies View with results."""
         self.state.set_grna_candidates(candidates)
+        if self._pending_scan is not None:
+            pam_type, spacer_length, target_length = self._pending_scan
+            self._pending_scan = None
+            self.state.record_method(
+                crispr_step(pam_type, spacer_length, target_length, len(candidates))
+            )
         self.grna_results_ready.emit(candidates)
 
     def teardown(self) -> None:

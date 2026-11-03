@@ -211,7 +211,7 @@ class LaboratoryExecutionView(QWidget):
         # Tab 1: Master Mix & Ratio Calculator
         tab_calculator = QWidget()
         self._init_calculator_tab(tab_calculator)
-        self.tabs.addTab(tab_calculator, "🧮 Master Mix & Ratio Calculator")
+        self.tabs.addTab(tab_calculator, "🧮 Master Mix && Ratio Calculator")
 
         # Tab 2: Liquid Handler Export
         tab_robot = QWidget()
@@ -221,7 +221,7 @@ class LaboratoryExecutionView(QWidget):
         # Tab 3: Inventory & Oligo Tracker
         tab_inventory = QWidget()
         self._init_inventory_tab(tab_inventory)
-        self.tabs.addTab(tab_inventory, "📦 LIMS Inventory & Oligo Tracker")
+        self.tabs.addTab(tab_inventory, "📦 LIMS Inventory && Oligo Tracker")
 
         main_layout.addWidget(self.tabs)
 
@@ -233,7 +233,7 @@ class LaboratoryExecutionView(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
 
         # Left Column: Inputs Box
-        input_box = QGroupBox("Assembly Parameters & DNA Fragments")
+        input_box = QGroupBox("Assembly Parameters && DNA Fragments")
         input_layout = QVBoxLayout(input_box)
 
         form_layout = QFormLayout()
@@ -319,7 +319,7 @@ class LaboratoryExecutionView(QWidget):
         layout.addWidget(input_box, stretch=1)
 
         # Right Column: Output Results Tables
-        output_box = QGroupBox("Calculated Master Mix & Reaction Pipetting Table")
+        output_box = QGroupBox("Calculated Master Mix && Reaction Pipetting Table")
         output_layout = QVBoxLayout(output_box)
 
         output_splitter = BioSplitter(Qt.Orientation.Vertical)
@@ -438,7 +438,7 @@ class LaboratoryExecutionView(QWidget):
         layout = QVBoxLayout(parent)
         layout.setContentsMargins(10, 10, 10, 10)
 
-        box = QGroupBox("Phase 2 LIMS Inventory Items & Purchase-Ready Oligos")
+        box = QGroupBox("Phase 2 LIMS Inventory Items && Purchase-Ready Oligos")
         box_layout = QVBoxLayout(box)
 
         self.table_inventory = BioTableWidget()

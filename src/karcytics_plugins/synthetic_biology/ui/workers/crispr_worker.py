@@ -11,7 +11,7 @@ from ...analysis.models.domain import gRNACandidate
 
 class CRISPRWorker(OneShotWorkerThread):
     """Granular QThread worker dedicated strictly to CRISPR gRNA candidate
-    discovery and CFD scoring.
+    discovery and heuristic off-target scoring.
     """
 
     scan_finished = Signal(list)  # Emits List[gRNACandidate]
@@ -33,7 +33,7 @@ class CRISPRWorker(OneShotWorkerThread):
         self.spacer_length = spacer_length
 
     def _execute(self) -> None:
-        """Executes non-blocking PAM scan and CFD off-target calculation."""
+        """Executes non-blocking PAM scan and heuristic off-target scoring."""
         candidates: list[gRNACandidate] = CRISPRDesignEngine.find_grna_candidates(
             target_sequence=self.target_sequence,
             pam_type=self.pam_type,

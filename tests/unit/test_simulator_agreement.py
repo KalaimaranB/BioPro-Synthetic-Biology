@@ -23,7 +23,7 @@ from karcytics_plugins.synthetic_biology.analysis.simulation.kinetics import (
 def _asymmetric_circuit() -> tuple[list[CircuitComponent], list[CircuitEdge]]:
     """A repressor whose K_d / n differ from the gene it regulates.
 
-    The preset repressilator shares K_d=1.0, n=2.1 across all three nodes,
+    The preset repressilator shares K_d=1.0, n=2.5 across all three nodes,
     which is exactly why it hid the disagreement.
     """
     repressor = CircuitComponent(
@@ -93,8 +93,42 @@ def test_both_simulators_resolve_identical_edge_parameters():
         components=components, edges=edges
     )
 
-    # The Hill term for the regulated gene must use the shared K_d / n.
-    assert f"(R / {k_d})^{n}" in model_str
+    # The Hill term for the regulated gene must use the shared K_d / n. The
+    # source variable is the repressor's *name*, since that is what the
+    # Simulate tab shows in its legend.
+    assert f"(Repressor / {k_d})^{n}" in model_str
+
+
+@pytest.mark.unit
+def test_both_simulators_label_the_same_species_the_same_way():
+    """A design must not be plotted under one set of names in one tab and
+    another set in the next.
+
+    The SciPy engine labels traces by component name; the Antimony compiler used
+    to name its species after the component *id*, so the same circuit appeared
+    as "comp_1 ... comp_5" on the Simulate tab and as real part names on the
+    Circuit Simulation tab.
+    """
+    from karcytics_plugins.synthetic_biology.analysis.models.domain import SimulationParameters
+    from karcytics_plugins.synthetic_biology.analysis.simulation.circuit_engine import (
+        CircuitSimulationEngine,
+    )
+    from karcytics_plugins.synthetic_biology.ui.controllers.circuit_controller import (
+        CircuitSimulationController,
+    )
+
+    components, edges = _asymmetric_circuit()
+
+    result = CircuitSimulationEngine.simulate_circuit(
+        components, edges, SimulationParameters(t_start=0.0, t_end=5.0, num_points=5)
+    )
+    model_str = CircuitSimulationController(None).build_simulation_payload(
+        components=components, edges=edges
+    )
+
+    for label in result.species_concentrations:
+        # Antimony identifiers cannot contain spaces, so compare the sanitized form.
+        assert f"species {label.replace(' ', '_')} =" in model_str
 
 
 @pytest.mark.unit

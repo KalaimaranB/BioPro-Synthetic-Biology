@@ -1,9 +1,10 @@
-"""CRISPR/Cas9 Guide RNA Design Engine & Off-Target CFD Scorer.
+"""CRISPR/Cas9 Guide RNA Design Engine & heuristic off-target scorer.
 
 Scans target DNA sequences for PAM motifs (SpCas9 NGG, AsCas12a TTTV, etc.),
 extracts protospacer candidates, computes GC%, checks poly-T termination
-motifs, and calculates cutting frequency determination (CFD) off-target
-scores. Includes an ML model hook.
+motifs, and scores off-targets with a position-weighted mismatch heuristic in
+the style of CFD — not the published Doench et al. (2016) CFD matrix. Includes
+a hook for an external scoring model.
 """
 
 from __future__ import annotations
@@ -29,9 +30,11 @@ class CRISPRDesignEngine:
         "Cas9-EQR (NGAG)": r"(?=(.{20}([ATCG]GAG)))",
     }
 
-    # CFD (Cutting Frequency Determination) position weight penalty map
-    # (Doench et al., 2016)
-    # Seed region (positions 1-12 from PAM) has heavy mismatch penalty.
+    # Position-weighted mismatch penalties in the *style* of CFD scoring: a
+    # mismatch near the PAM (the seed) costs more than one far from it, and
+    # penalties multiply. These are illustrative weights, NOT the Doench et al.
+    # (2016) CFD matrix, which is indexed by mismatch type x position and also
+    # penalises non-canonical PAMs. Results are labelled heuristic in the UI.
     SEED_WEIGHTS = [0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 0.85, 0.9, 0.95]
     NON_SEED_WEIGHTS = [0.98, 0.98, 0.99, 0.99, 1.0, 1.0, 1.0, 1.0]
 
@@ -151,7 +154,7 @@ class CRISPRDesignEngine:
             # Check Poly-T premature termination motif (TTTT)
             has_poly_t = "TTTT" in protospacer or "TTTT" in pam_seq
 
-            # Doench Rule 2 / Efficiency heuristic calculation
+            # On-target efficiency heuristic (not Doench Rule Set 2)
             eff_score = cls._calculate_on_target_efficiency(protospacer, gc_pct, has_poly_t)
 
             # Map genomic coordinates
@@ -182,7 +185,7 @@ class CRISPRDesignEngine:
     def _calculate_on_target_efficiency(
         cls, protospacer: str, gc_pct: float, has_poly_t: bool
     ) -> float:
-        """Heuristic Doench-like efficiency scoring (0 - 100%)."""
+        """Rule-based on-target efficiency heuristic (0 - 100%); not a published model."""
         score = 70.0  # Base efficiency score
 
         # Optimal GC content is 40% - 60%
@@ -212,7 +215,7 @@ class CRISPRDesignEngine:
         reference_genome: str,
         ml_model_adapter: Any | None = None,
     ) -> float:
-        """Calculates CFD (Cutting Frequency Determination) off-target score.
+        """Calculates a CFD-style, position-weighted off-target score (not the CFD matrix).
 
         Includes a pluggable Machine Learning model interface (`ml_model_adapter`).
         """
@@ -223,7 +226,7 @@ class CRISPRDesignEngine:
             candidate.off_target_score = float(ml_score)
             return float(ml_score)
 
-        # Standalone CFD scoring algorithm
+        # Standalone position-weighted scoring
         protospacer = candidate.protospacer
         off_target_hits: list[dict[str, Any]] = []
         total_cfd_mult = 1.0
@@ -262,7 +265,7 @@ class CRISPRDesignEngine:
                             break
 
                 if 1 <= mismatches <= max_mismatches:
-                    # Compute CFD mismatch penalty
+                    # Position-weighted mismatch penalty
                     hit_score = 1.0
                     for p in mismatch_positions:
                         dist_from_pam = spacer_len - 1 - p

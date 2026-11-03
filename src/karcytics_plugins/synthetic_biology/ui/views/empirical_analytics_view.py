@@ -118,7 +118,7 @@ class EmpiricalAnalyticsView(QWidget):
         file_h_layout.addWidget(self.fcs_browse_btn)
         form.addRow("FCS File:", file_h_layout)
 
-        self.fcs_ingest_btn = PrimaryButton("Ingest & Analyze FCS", group)
+        self.fcs_ingest_btn = PrimaryButton("Ingest && Analyze FCS", group)
         self.fcs_ingest_btn.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.fcs_ingest_btn.clicked.connect(self._on_ingest_fcs)
         form.addRow(self.fcs_ingest_btn)
@@ -158,7 +158,7 @@ class EmpiricalAnalyticsView(QWidget):
         layout = QVBoxLayout(container)
 
         # Controls Group
-        group = QGroupBox("NGS Alignment & Mutation Analysis", container)
+        group = QGroupBox("NGS Alignment && Mutation Analysis", container)
         group.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         form = QFormLayout(group)
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal, Slot
 
+from ...analysis.citations import circuit_ode_step
 from ...analysis.models.domain import (
     CircuitComponent,
     CircuitEdge,
@@ -23,6 +24,55 @@ from ...analysis.state import SynBioState
 from ..workers import CircuitSimWorker
 
 
+def antimony_var_names(components: list[CircuitComponent]) -> dict[str, str]:
+    """Map each component id to the Antimony species identifier it compiles to.
+
+    Derived from the component *name*, not its id: the identifier comes back as
+    a column name in the simulation result and so decides what the Simulate tab
+    plots. Deriving it from the id is what made that plot read "comp_1 ...
+    comp_5" while the Circuit Simulation tab, which labels by name, showed real
+    part names for the same design.
+
+    Antimony identifiers admit only word characters, so this is the sanitized
+    name and never carries the source organism; pair it with
+    :func:`species_display_labels` to get what a reader should see.
+    """
+    import re
+
+    var_names: dict[str, str] = {}
+    used: set[str] = set()
+    for comp in components:
+        raw = comp.name or comp.id or "species"
+        candidate = re.sub(r"[^a-zA-Z0-9_]", "_", raw).strip("_") or "species"
+        if candidate[0].isdigit():
+            candidate = f"s_{candidate}"
+        # Two components may legitimately share a name; without a suffix the
+        # second Antimony declaration would silently redefine the first.
+        unique = candidate
+        suffix = 2
+        while unique in used:
+            unique = f"{candidate}_{suffix}"
+            suffix += 1
+        used.add(unique)
+        var_names[comp.id] = unique
+    return var_names
+
+
+def species_display_labels(components: list[CircuitComponent]) -> dict[str, str]:
+    """Map each Antimony species identifier to the label a reader should see.
+
+    The identifier cannot hold spaces or parentheses, so "LacI (E. coli lac
+    operon)" compiles to the species ``LacI``. This is how the Simulate tab
+    recovers the full label from a result's column names, so a trace names the
+    organism the gene came from rather than just the protein.
+    """
+    var_names = antimony_var_names(components)
+    by_id = {c.id: c for c in components}
+    return {
+        var: by_id[comp_id].display_label for comp_id, var in var_names.items() if comp_id in by_id
+    }
+
+
 class CircuitSimulationController(QObject):
     """Explicit Controller handling NetworkX circuit topology ODE compilation
     and SciPy integration.
@@ -35,6 +85,11 @@ class CircuitSimulationController(QObject):
         super().__init__(parent)
         self.state = state
         self._active_worker: CircuitSimWorker | None = None
+        # What the in-flight run was asked to do, so its methods entry can be
+        # recorded once it succeeds — never for a run that failed.
+        self._pending_run: (
+            tuple[list[CircuitComponent], list[CircuitEdge], SimulationParameters] | None
+        ) = None
 
     @Slot(list, list, object)
     def handle_simulation_request(
@@ -44,6 +99,7 @@ class CircuitSimulationController(QObject):
         params: SimulationParameters | None = None,
     ) -> None:
         """Launches non-blocking background ODE simulation worker."""
+        self._pending_run = (list(components), list(edges), params or SimulationParameters())
         self._active_worker = CircuitSimWorker(
             components=components,
             edges=edges,
@@ -75,7 +131,26 @@ class CircuitSimulationController(QObject):
 
         if self.state is not None:
             self.state.set_simulation_result(result)
+            self._record_run(result)
         self.simulation_ready.emit(result)
+
+    def _record_run(self, result: SimulationResult) -> None:
+        """Add this run to the workspace's methods log if it produced a trace."""
+        if self._pending_run is None or self.state is None:
+            return
+        components, edges, params = self._pending_run
+        self._pending_run = None
+        if not getattr(result, "success", True) or not result.time_points:
+            return
+        self.state.record_method(
+            circuit_ode_step(
+                components,
+                edges,
+                solver=params.solver_method,
+                t_end=params.t_end,
+                num_points=params.num_points,
+            )
+        )
 
     def build_simulation_payload(
         self,
@@ -84,8 +159,6 @@ class CircuitSimulationController(QObject):
         method: str = "ode",
     ) -> str:
         """Dynamically compiles an Antimony simulation model string from active circuit elements."""
-        import re
-
         comps = (
             components
             if components is not None
@@ -100,16 +173,17 @@ class CircuitSimulationController(QObject):
 
         lines = ["model circuit()"]
         node_map = {c.id: c for c in comps}
+        var_names = antimony_var_names(comps)
 
         for comp in comps:
-            var_name = re.sub(r"[^a-zA-Z0-9_]", "_", comp.id or comp.name)
+            var_name = var_names[comp.id]
             init_val = comp.initial_concentration
             if method == "gillespie":
                 init_val = int(init_val * 10) if init_val > 0 else 0
             lines.append(f"  species {var_name} = {init_val};")
 
         for comp in comps:
-            var_name = re.sub(r"[^a-zA-Z0-9_]", "_", comp.id or comp.name)
+            var_name = var_names[comp.id]
             incoming = [e for e in conn_edges if e.target_id == comp.id]
 
             reg_factors = []
@@ -117,7 +191,7 @@ class CircuitSimulationController(QObject):
                 # Skip dangling edges, as the SciPy engine does.
                 if e.source_id not in node_map:
                     continue
-                src_var = re.sub(r"[^a-zA-Z0-9_]", "_", e.source_id)
+                src_var = var_names[e.source_id]
                 # Shared with the SciPy engine so both simulators resolve the
                 # same K_d / n for the same edge.
                 kd_val, n_val = resolve_edge_params(e, target=comp)

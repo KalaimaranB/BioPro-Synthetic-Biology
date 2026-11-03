@@ -1,12 +1,13 @@
 """PySide6 CRISPR/Cas9 Guide RNA Design & Off-Target Inspection View.
 
 Provides target sequence editor, PAM selection, and scored results table with
-CFD off-target details. Decoupled from engines via CRISPRDesignController
+off-target details from the module's heuristic scorer. Decoupled from engines via CRISPRDesignController
 signals & slots.
 """
 
 from __future__ import annotations
 
+from karcytics_sdk.plugin.citation_widgets import CitationLabel
 from karcytics_sdk.plugin.components import (
     BioComboBox,
     BioSplitter,
@@ -28,13 +29,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ...analysis.citations import FEATURE_CITATIONS
 from ...analysis.models.domain import gRNACandidate
 from ...analysis.state import SynBioState
 from ...ui.controllers.crispr_controller import CRISPRDesignController
 
 
 class CRISPRDesignView(QWidget):
-    """PySide6 View for CRISPR/Cas9 target discovery and off-target CFD score
+    """PySide6 View for CRISPR/Cas9 target discovery and heuristic off-target score
     inspection.
     """
 
@@ -93,7 +95,7 @@ class CRISPRDesignView(QWidget):
         splitter = BioSplitter(Qt.Orientation.Vertical)
 
         # Top Control Box: Target Sequence Input & PAM Config
-        top_widget = QGroupBox("CRISPR Target Sequence & PAM Selection")
+        top_widget = QGroupBox("CRISPR Target Sequence && PAM Selection")
         top_layout = QVBoxLayout(top_widget)
 
         config_layout = QHBoxLayout()
@@ -141,13 +143,13 @@ class CRISPRDesignView(QWidget):
         self.grna_table.setRowCount(0)
         self.grna_table.setHorizontalHeaderLabels(
             [
-                "Protospacer (20bp)",
+                "Protospacer",
                 "PAM",
                 "Strand",
                 "Range",
                 "GC %",
-                "Efficiency %",
-                "CFD Off-Target",
+                "On-target (heuristic)",
+                "Off-target (heuristic)",
                 "Poly-T Risk",
             ]
         )
@@ -156,12 +158,20 @@ class CRISPRDesignView(QWidget):
         self.grna_table.setSelectionBehavior(BioTableWidget.SelectionBehavior.SelectRows)
         self.grna_table.itemSelectionChanged.connect(self._on_table_selection_changed)
         bottom_layout.addWidget(self.grna_table, stretch=2)
+        bottom_layout.addWidget(
+            CitationLabel(
+                "SpCas9 NGG PAM requirement",
+                FEATURE_CITATIONS["crispr_scan"],
+                prefix="Site rule:",
+                parent=self,
+            )
+        )
 
-        # CFD Off-target Detail Inspector
+        # Off-target detail inspector (position-weighted heuristic, not CFD)
         self.detail_display = QTextEdit()
         self.detail_display.setReadOnly(True)
         self.detail_display.setPlaceholderText(
-            "Select a guide RNA row to view detailed CFD off-target mismatch breakdown..."
+            "Select a guide RNA row to view its off-target mismatch breakdown..."
         )
         self.detail_display.setStyleSheet("font-family: Menlo, Consolas, 'Courier New', monospace;")
         bottom_layout.addWidget(self.detail_display, stretch=1)
@@ -189,8 +199,12 @@ class CRISPRDesignView(QWidget):
         self.scan_requested.emit(seq, pam_type, 20)
 
     @Slot(list)
-    def render_grna_results(self, candidates: list[gRNACandidate]):
-        """Populates candidates into table."""
+    def render_grna_results(self, candidates: list[gRNACandidate], announce: bool = True):
+        """Populates candidates into table.
+
+        ``announce=False`` redraws saved guides without the "Found N" toast — a
+        reopened workspace has not just run a scan.
+        """
         self.grna_table.setRowCount(0)
 
         for cand in candidates:
@@ -212,7 +226,7 @@ class CRISPRDesignView(QWidget):
                 eff_item.setForeground(Qt.GlobalColor.green)
             self.grna_table.setItem(row, 5, eff_item)
 
-            # CFD Off-target score item
+            # Off-target score item (heuristic)
             cfd_item = QTableWidgetItem(f"{cand.off_target_score}%")
             if cand.off_target_score >= 90.0:  # noqa: PLR2004
                 cfd_item.setForeground(Qt.GlobalColor.green)
@@ -226,7 +240,8 @@ class CRISPRDesignView(QWidget):
                 poly_t_item.setForeground(Qt.GlobalColor.red)
             self.grna_table.setItem(row, 7, poly_t_item)
 
-        show_toast(f"Found {len(candidates)} gRNA candidate(s)")
+        if announce:
+            show_toast(f"Found {len(candidates)} gRNA candidate(s)")
 
     def _on_table_selection_changed(self):
         selected_rows = self.grna_table.selectedItems()
@@ -248,8 +263,8 @@ class CRISPRDesignView(QWidget):
             f"Location:    {cand.start} .. {cand.end} ({strand_str})\n"
             f"GC Content:  {cand.gc_content}%\n"
             f"On-Target Efficiency:  {cand.efficiency_score}%\n"
-            f"CFD Off-Target Score:  {cand.off_target_score}%\n\n"
-            f"--- CFD OFF-TARGET HITS ({len(cand.off_target_hits)}) ---\n"
+            f"Off-target score (heuristic):  {cand.off_target_score}%\n\n"
+            f"--- OFF-TARGET HITS ({len(cand.off_target_hits)}) ---\n"
         )
 
         for idx, hit in enumerate(cand.off_target_hits, 1):

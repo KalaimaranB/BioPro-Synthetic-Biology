@@ -102,7 +102,9 @@ class SynBioPanel(PluginBase):
 
         # ── Build UI ──────────────────────────────────────────────────
         self.setStyleSheet(f"background: {Colors.BG_DARKEST};")
+        self._methods_dialog: Any = None
         self._setup_ui()
+        self._setup_workspace_persistence()
 
     def _setup_services(self) -> None:
         """Initialize and wire all core analysis and UI services."""
@@ -144,6 +146,7 @@ class SynBioPanel(PluginBase):
         from .views.plasmid_assembly_view import PlasmidAssemblyView
         from .views.properties_view import PropertiesView
         from .views.simulate_view import SimulateView
+        from .wizards.demo_tour import DemoTourBar, build_demo_tour_steps
 
         # ── Controllers & Attached Views ──────────────────────────────
         self._plasmid_controller = PlasmidAssemblyController(self.state)
@@ -216,7 +219,46 @@ class SynBioPanel(PluginBase):
                 }
                 """,
             )
-        layout.addWidget(self._tab_bar)
+        # ── Workspace controls beside the tab bar ─────────────────────
+        # Open / Methods & References / Save sit on the tab row so they are
+        # reachable from every tab. The Save button is the SDK's
+        # WorkspaceSaveButton: it shows unsaved state and splits into
+        # "update" vs "save as new" on its own.
+        from karcytics_sdk.plugin.components import SecondaryButton, WorkspaceSaveButton
+        from PySide6.QtWidgets import QHBoxLayout
+
+        tab_row = QWidget(self)
+        tab_row_layout = QHBoxLayout(tab_row)
+        tab_row_layout.setContentsMargins(0, 0, 8, 0)
+        tab_row_layout.setSpacing(6)
+        tab_row_layout.addWidget(self._tab_bar, 1)
+
+        self._btn_open_workspace = SecondaryButton("📂 Open", tab_row)
+        self._btn_open_workspace.setToolTip("Open a saved Synthetic Biology workflow")
+        self._btn_open_workspace.clicked.connect(self.open_workspace)
+
+        self._btn_methods = SecondaryButton("📚 Methods && References", tab_row)
+        self._btn_methods.setToolTip(
+            "Materials & Methods paragraph and references for what this workspace ran"
+        )
+        self._btn_methods.clicked.connect(self.open_methods_dialog)
+
+        self._save_button = WorkspaceSaveButton(tab_row)
+        self._save_button.save_requested.connect(self.save_workspace_as)
+        self._save_button.update_requested.connect(self.save_workspace)
+
+        for control in (self._btn_open_workspace, self._btn_methods, self._save_button):
+            tab_row_layout.addWidget(control)
+        layout.addWidget(tab_row)
+
+        # ── Guided demo tour ──────────────────────────────────────────
+        # Hidden until the Demo Showcase starts a tour. Sits under the tab bar
+        # so the narration stays visible while the tour drives the tabs.
+        self._demo_tour_bar = DemoTourBar(build_demo_tour_steps(), self)
+        self._demo_tour_bar.setVisible(False)
+        self._demo_tour_bar.step_changed.connect(self._on_demo_tour_step)
+        self._demo_tour_bar.tour_finished.connect(self.close_methods_dialog)
+        layout.addWidget(self._demo_tour_bar)
 
         # ── Ribbon Stack ──────────────────────────────────────────────
         self._ribbon_stack = QStackedWidget()
@@ -476,6 +518,311 @@ class SynBioPanel(PluginBase):
         synbio_data = state_dict.get("synbio_state", {})
         self.state.load_from_dict(synbio_data)
         self._refresh_views_from_state()
+
+    # ── Workspace persistence (save / reopen through the Hub project) ──
+
+    def _project_manager(self) -> Any:
+        """The Hub's project manager, or ``None`` when no project is open.
+
+        ``window().project_manager`` is the real ``ProjectManager`` in-process
+        and the SDK's ``RemoteProjectManager`` when isolated; both are ``None``
+        with no project open, which callers treat as a normal case.
+        """
+        window = self.window()
+        if window is None or window is self:
+            return None
+        return getattr(window, "project_manager", None)
+
+    def _setup_workspace_persistence(self) -> None:
+        from .workspace_persistence import WorkspacePersistence
+
+        self._persistence = WorkspacePersistence(
+            self.state, self.plugin_id, self._project_manager, self
+        )
+        self._persistence.dirty_changed.connect(self._save_button.set_dirty)
+        self._save_button.set_dirty(False)
+        self._save_button.set_workflow_active(False)
+
+        # Unsaved-changes tracking by content hash, so every way the state can
+        # change is caught without each mutation site flagging itself.
+        self._dirty_timer = QTimer(self)
+        self._dirty_timer.setInterval(1000)
+        self._dirty_timer.timeout.connect(self._persistence.check_dirty)
+        self._dirty_timer.start()
+
+        # The SDK's shared autosave loop. "Unsaved changes" is reported False
+        # with no project open: there is nowhere to save to, so the loop should
+        # neither try nor nag.
+        self.setup_workflow_autosave(
+            has_saved_once=lambda: self._persistence.filename is not None,
+            save=self._persistence.quiet_save,
+            has_unsaved_changes=lambda: (
+                self._persistence.has_project() and self._persistence.is_dirty()
+            ),
+        )
+
+    def prepare_for_replacement(self, action: str) -> bool:
+        """Confirm, then unlink from the current workflow, before the whole
+        workspace is replaced (e.g. by loading the demo).
+
+        Returns False if the user declines. Unlinking matters as much as
+        asking: a workspace opened from workflow X and then replaced must not
+        have its next Save overwrite X with unrelated content.
+        """
+        from karcytics_sdk.plugin.dialogs import ask_yes_no
+
+        self._persistence.check_dirty()
+        if self._persistence.is_dirty() and not ask_yes_no(
+            self,
+            title="Replace the current workspace?",
+            message=(
+                f"{action} will replace the current workspace, which has unsaved changes. Continue?"
+            ),
+        ):
+            return False
+        self._persistence.filename = None
+        self._persistence.metadata = {}
+        self._save_button.set_workflow_active(False)
+        return True
+
+    def _notify_saved(self, filename: str) -> None:
+        self._save_button.set_workflow_active(True)
+        controller = getattr(self, "_workflow_autosave_controller", None)
+        if controller is not None:
+            controller.notify_saved()
+        name = self._persistence.metadata.get("name") or filename
+        if hasattr(self, "_status_label"):
+            self._status_label.setText(f"💾 Saved workflow “{name}” ({filename}).")
+
+    def save_workspace_as(self) -> str | None:
+        """Ask for a name and save the workspace as a new workflow."""
+        from karcytics_sdk.plugin.dialogs import SaveWorkflowDialog, show_error, show_warning
+        from karcytics_sdk.plugin.toast import show_toast
+
+        if not self._persistence.has_project():
+            show_warning(
+                self,
+                title="No project open",
+                message=(
+                    "Open or create a project in the Karcytics Hub to save this "
+                    "workspace as a workflow."
+                ),
+            )
+            return None
+
+        dialog = SaveWorkflowDialog(self)
+        if not dialog.exec():
+            return None
+        try:
+            filename = self._persistence.save(metadata=dialog.get_metadata(), filename=None)
+        except Exception as ex:
+            show_error(self, "Save failed", f"The workspace could not be saved:\n{ex}")
+            return None
+        self._notify_saved(filename)
+        show_toast(f"Workspace saved as {filename}")
+        return filename
+
+    def save_workspace(self) -> str | None:
+        """Save over the current workflow, or ask for a name if there isn't one."""
+        from karcytics_sdk.plugin.dialogs import show_error
+        from karcytics_sdk.plugin.toast import show_toast
+
+        if self._persistence.filename is None:
+            return self.save_workspace_as()
+        try:
+            filename = self._persistence.save()
+        except Exception as ex:
+            show_error(self, "Save failed", f"The workspace could not be saved:\n{ex}")
+            return None
+        self._notify_saved(filename)
+        show_toast("Workspace saved")
+        return filename
+
+    def save_demo_workspace(self) -> str | None:
+        """Save the demo under a fixed name, without dialogs, for the guided tour.
+
+        A fixed filename means re-running the tour overwrites the demo workflow
+        instead of piling up copies. Returns ``None`` (and says why) when there
+        is no project to save into.
+        """
+        from karcytics_sdk.plugin.toast import show_toast
+
+        if not self._persistence.has_project():
+            show_toast(
+                "No Karcytics project is open, so the demo was not saved. Open a "
+                "project in the Hub to try save and reopen."
+            )
+            return None
+        try:
+            filename = self._persistence.save(
+                metadata={
+                    "name": "BIOL341 demo — repressilator",
+                    "description": (
+                        "Three-gene repressilator strand from the Demo Showcase, with its "
+                        "simulations and methods log."
+                    ),
+                    "tags": ["demo", "biol341", "repressilator"],
+                },
+                filename="biol341_demo_repressilator.json",
+            )
+        except Exception as ex:
+            show_toast(f"The demo could not be saved: {ex}")
+            return None
+        self._notify_saved(filename)
+        show_toast(f"Saved to the project as {filename}")
+        return filename
+
+    def open_workspace(self) -> None:
+        """Pick one of this module's saved workflows and open it."""
+        from karcytics_sdk.plugin.dialogs import ask_yes_no, show_error, show_info, show_warning
+        from PySide6.QtWidgets import QInputDialog
+
+        if not self._persistence.has_project():
+            show_warning(
+                self,
+                title="No project open",
+                message="Open a project in the Karcytics Hub to see its saved workflows.",
+            )
+            return
+
+        try:
+            workflows = self._persistence.list_workflows()
+        except Exception as ex:
+            show_error(self, "Open failed", f"Could not list workflows:\n{ex}")
+            return
+        if not workflows:
+            show_info(
+                self, "No saved workflows", "This project has no Synthetic Biology workflows yet."
+            )
+            return
+
+        labels = []
+        for wf in workflows:
+            stamp = str(wf.get("timestamp", ""))[:16].replace("T", " ")
+            labels.append(f"{wf.get('name') or wf.get('filename')}  —  {stamp}")
+        choice, ok = QInputDialog.getItem(
+            self, "Open workflow", "Saved Synthetic Biology workflows:", labels, 0, False
+        )
+        if not ok:
+            return
+        chosen = workflows[labels.index(choice)]
+
+        if self._persistence.is_dirty() and not ask_yes_no(
+            self,
+            title="Discard unsaved changes?",
+            message="This workspace has unsaved changes. Open the workflow anyway?",
+        ):
+            return
+
+        filename = str(chosen.get("filename"))
+        try:
+            payload = self._persistence.fetch_payload(filename)
+        except Exception as ex:
+            show_error(self, "Open failed", f"Could not read {filename}:\n{ex}")
+            return
+        self.load_workflow(payload, filename=filename, metadata=chosen)
+
+    def load_workflow(
+        self,
+        payload: dict,
+        filename: str | None = None,
+        metadata: dict | None = None,
+    ) -> None:
+        """Restore a saved workflow — the hook the Hub calls.
+
+        The Hub's workflow dashboard delivers a saved workflow by calling
+        ``panel.load_workflow(payload, filename=..., metadata=...)``, directly
+        when in-process and through the SDK daemon's ``inject_workflow`` RPC
+        when isolated. This panel had no such method, so opening a Synthetic
+        Biology workflow from the Hub silently did nothing.
+        """
+        from karcytics_sdk.plugin.dialogs import show_error
+
+        from .workspace_persistence import UnsupportedWorkflowError
+
+        try:
+            self._persistence.apply_payload(payload, filename=filename, metadata=metadata)
+        except UnsupportedWorkflowError as ex:
+            show_error(self, "Cannot open workflow", str(ex))
+            return
+
+        self._refresh_views_from_state()
+        self._restore_results_from_state()
+        self._save_button.set_workflow_active(filename is not None)
+        self._save_button.set_dirty(False)
+
+        name = (metadata or {}).get("name") or filename or "workflow"
+        if hasattr(self, "_status_label"):
+            self._status_label.setText(f"📂 Opened “{name}”.")
+
+    def _restore_results_from_state(self) -> None:
+        """Redraw saved results that the views do not re-read on their own.
+
+        ``reload_from_state`` restores designs, but the Circuit Simulation plot
+        and the CRISPR table are drawn from results the views were handed, not
+        from the state — so without this a reopened workspace has its circuit
+        back and its plots blank.
+        """
+        result = self.state.get_simulation_result()
+        if result is not None and getattr(result, "time_points", None):
+            try:
+                self.circuit_view.render_simulation_results(result, announce=False)
+            except Exception as ex:
+                self.logger.warning(f"Could not redraw the saved simulation: {ex}")
+
+        candidates = self.state.get_grna_candidates()
+        if candidates:
+            try:
+                self.crispr_view.render_grna_results(candidates, announce=False)
+            except Exception as ex:
+                self.logger.warning(f"Could not redraw the saved guide RNAs: {ex}")
+
+    # ── Methods & References ──────────────────────────────────────────
+
+    def open_methods_dialog(self) -> None:
+        """Show the Methods & References dialog for this workspace (non-modal)."""
+        from .wizards.methods_dialog import MethodsReferencesDialog
+
+        if self._methods_dialog is None:
+            self._methods_dialog = MethodsReferencesDialog(self.state, self)
+        self._methods_dialog.refresh()
+        self._methods_dialog.show()
+        self._methods_dialog.raise_()
+
+    def close_methods_dialog(self) -> None:
+        if self._methods_dialog is not None:
+            self._methods_dialog.close()
+
+    # ── Guided demo tour ──────────────────────────────────────────────
+
+    def start_demo_tour(self) -> None:
+        """Show the tour bar at step one and navigate to that step."""
+        self._demo_tour_bar.start()
+
+    def _on_demo_tour_step(self, index: int) -> None:
+        """Navigate to a tour step: switch the tab, then run its action.
+
+        The action runs after the tab switch so whatever it triggers renders on
+        a tab the audience is already looking at. Failures are logged and
+        swallowed: a tour that stops dead mid-presentation is worse than one
+        that skips a simulation.
+        """
+        step = self._demo_tour_bar.current_step
+        if step is None:
+            return
+
+        # A step that opened the Methods dialog should not leave it covering
+        # the next one; the step that wants it reopens it in its action.
+        self.close_methods_dialog()
+
+        if 0 <= step.tab_index < self._tab_bar.count():
+            self._tab_bar.setCurrentIndex(step.tab_index)
+
+        if step.action is not None:
+            try:
+                step.action(self)
+            except Exception as ex:
+                self.logger.warning(f"Demo tour step {index + 1} action failed: {ex}")
 
     def _refresh_views_from_state(self) -> None:
         """Re-read the shared state into every view after a session restore.

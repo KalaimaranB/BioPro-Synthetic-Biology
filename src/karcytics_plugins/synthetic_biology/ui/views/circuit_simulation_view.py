@@ -9,6 +9,7 @@ CircuitSimulationController signals & slots.
 from __future__ import annotations
 
 import pyqtgraph as pg
+from karcytics_sdk.plugin.citation_widgets import CitationLabel
 from karcytics_sdk.plugin.components import (
     BioComboBox,
     BioDoubleSpinBox,
@@ -30,6 +31,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ...analysis.citations import FEATURE_CITATIONS
 from ...analysis.models.domain import (
     CircuitComponent,
     CircuitEdge,
@@ -67,6 +69,9 @@ class CircuitSimulationView(QWidget):
 
         self._active_components: list[CircuitComponent] = []
         self._active_edges: list[CircuitEdge] = []
+        # Which circuit the Hill spin box was last synced from, so a reload of
+        # the same circuit does not overwrite a value the user just set.
+        self._synced_circuit_key: tuple[tuple[str, ...], str] | None = None
 
         self._init_ui()
         self._connect_signals()
@@ -119,7 +124,7 @@ class CircuitSimulationView(QWidget):
 
         self.hill_n_spin = BioDoubleSpinBox()
         self.hill_n_spin.setRange(1.0, 5.0)
-        self.hill_n_spin.setValue(2.1)
+        self.hill_n_spin.setValue(2.5)
         self.hill_n_spin.setSingleStep(0.1)
         form.addRow("Hill Coeff (n):", self.hill_n_spin)
 
@@ -132,6 +137,14 @@ class CircuitSimulationView(QWidget):
         self.btn_run_sim = BioRunButton("▶ Run Predictive Simulation")
         self.btn_run_sim.clicked.connect(self._on_run_sim_clicked)
         left_layout.addWidget(self.btn_run_sim)
+        left_layout.addWidget(
+            CitationLabel(
+                "Hill-repression ODE model",
+                FEATURE_CITATIONS["circuit_simulation"],
+                prefix="Model:",
+                parent=self,
+            )
+        )
 
         left_layout.addStretch()
         splitter.addWidget(left_widget)
@@ -177,11 +190,11 @@ class CircuitSimulationView(QWidget):
 
         title_color = Colors.ACCENT_PRIMARY if hasattr(Colors, "ACCENT_PRIMARY") else fg_color
         self.plot_widget.setTitle(
-            "Predicted Protein & RNA Expression Levels Over Time",
+            "Predicted Protein Expression Levels Over Time",
             color=title_color,
             size="12pt",
         )
-        self.plot_widget.setLabel("left", "Concentration (RPU / au)", color=fg_color)
+        self.plot_widget.setLabel("left", "Protein concentration (RPU)", color=fg_color)
         self.plot_widget.setLabel("bottom", "Time (minutes)", color=fg_color)
 
         view_qss = f"""
@@ -260,6 +273,29 @@ class CircuitSimulationView(QWidget):
             regulation = "no regulation (constitutive expression)"
         self.topology_label.setText(f"{n_nodes} gene(s): {names} — {regulation}")
         self.btn_run_sim.setEnabled(True)
+
+        # Adopt the loaded circuit's own Hill coefficient instead of imposing the
+        # spin box's. Pressing Run used to overwrite n on every node with
+        # whatever the box happened to show, so loading a circuit tuned above its
+        # oscillation threshold and simulating it detuned it on the way through —
+        # the oscillator stopped oscillating for no visible reason.
+        #
+        # Only on a genuinely different circuit, though. This method also runs on
+        # every Run of the active design, so adopting unconditionally would undo
+        # the user's own retuning the instant they pressed Run: set n to 2.1,
+        # press Run, and the box sprang back to the circuit's 2.5.
+        circuit_key = (
+            tuple(c.id for c in self._active_components),
+            self.preset_combo.currentText(),
+        )
+        if circuit_key != self._synced_circuit_key:
+            self._synced_circuit_key = circuit_key
+            circuit_n = {c.n for c in self._active_components if c.n is not None}
+            if len(circuit_n) == 1:
+                value = circuit_n.pop()
+                low, high = self.hill_n_spin.minimum(), self.hill_n_spin.maximum()
+                if low <= value <= high:
+                    self.hill_n_spin.setValue(value)
 
     def _load_preset(self, preset_name: str):
         if preset_name == ACTIVE_DESIGN_CHOICE:
@@ -346,10 +382,20 @@ class CircuitSimulationView(QWidget):
             )
             return
 
-        # Update Hill n on components
+        # Apply the Hill coefficient to the edges as well as the nodes.
+        #
+        # ``resolve_edge_params`` prefers an edge's own n over the target node's,
+        # so setting it on components alone made this control behave differently
+        # depending on where the circuit came from: it was ignored outright for a
+        # preset whose edges carry explicit values, and it silently retuned a
+        # compiled design whose edges leave n unset. Either way the spin box and
+        # the simulated circuit could disagree.
         hill_n = self.hill_n_spin.value()
         for comp in self._active_components:
             comp.n = hill_n
+        for edge in self._active_edges:
+            if edge.n is not None:
+                edge.n = hill_n
 
         params = SimulationParameters(
             t_start=0.0,
@@ -361,8 +407,12 @@ class CircuitSimulationView(QWidget):
         self.simulation_requested.emit(self._active_components, self._active_edges, params)
 
     @Slot(SimulationResult)
-    def render_simulation_results(self, result: SimulationResult):
-        """Plots time-series curves on PyQtGraph PlotWidget."""
+    def render_simulation_results(self, result: SimulationResult, announce: bool = True):
+        """Plots time-series curves on PyQtGraph PlotWidget.
+
+        ``announce=False`` redraws a saved result without the "completed"
+        toast — a reopened workspace has not just run a simulation.
+        """
         self.plot_widget.clear()
         legend = self.plot_widget.addLegend(offset=(-10, 10))
         if legend:
@@ -398,7 +448,8 @@ class CircuitSimulationView(QWidget):
             pen = pg.mkPen(color=color, width=2.5)
             self.plot_widget.plot(t_points, conc_values, name=species_name, pen=pen)
 
-        show_toast("Predictive simulation completed.", window=self)
+        if announce:
+            show_toast("Predictive simulation completed.", window=self)
 
     @Slot(str)
     def _show_error(self, message: str):
