@@ -37,11 +37,6 @@ matplotlib.use("QtAgg")
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
-try:
-    import tellurium as te
-except ImportError:
-    te = None
-
 from ...analysis.citations import FEATURE_CITATIONS, tellurium_step
 from ...analysis.parts.components import CDS, Promoter, sgRNA
 from ...analysis.prediction.graphing_utils import apply_standard_axes  # noqa: F401
@@ -53,6 +48,40 @@ from ..workers.base_worker import BaseSDKWorker
 logger = get_logger(__name__)
 
 MAX_DOWNSAMPLE_POINTS = 1000
+
+# Tellurium is loaded on first use, not at import.
+#
+# It pulls in libRoadRunner, a large native extension, and cost ~1.3 s of the
+# ~2.7 s this panel took to construct. That matters beyond start-up feel: the
+# isolated-plugin daemon sends its "ready" handshake *before* building the
+# panel and only starts the Qt event loop *after*, so every RPC the Hub sends
+# in between — `focus` among them — is read off stdin and then sits queued
+# until construction finishes. On a cold CI runner that exceeded the Hub's RPC
+# timeout and the worker looked hung. Deferring the import takes it off that
+# path; the first simulation pays for it instead, behind a progress dialog.
+#
+# (The daemon entry point preloads Tellurium before the handshake, so there it
+# is already resident; this keeps the cost off panel construction for every
+# other way the panel is built, tests included.)
+#
+# Always resolved on the GUI thread — see the callers — so the native extension
+# initialises there rather than on a worker thread.
+te: Any = None
+_tellurium_loaded = False
+
+
+def _load_tellurium() -> Any:
+    """Import Tellurium on first use. Returns the module, or None if absent."""
+    global te, _tellurium_loaded
+    if not _tellurium_loaded:
+        _tellurium_loaded = True
+        try:
+            import tellurium
+
+            te = tellurium
+        except ImportError:
+            te = None
+    return te
 
 
 class SimulateWorker(BaseSDKWorker):
@@ -88,10 +117,13 @@ class SimulateWorker(BaseSDKWorker):
                 return
             t_sim_start = time.perf_counter()
 
-            if te is None:
+            # Normally a cache hit: the view resolves Tellurium on the GUI
+            # thread before dispatching this worker.
+            tellurium = _load_tellurium()
+            if tellurium is None:
                 raise RuntimeError("Tellurium is not installed.")
 
-            r = te.loada(self.model_str)
+            r = tellurium.loada(self.model_str)
             if self.method == "gillespie":
                 r.setIntegrator("gillespie")
                 r.integrator.seed = int(np.random.randint(1000000))
@@ -726,7 +758,9 @@ class SimulateView(QWidget):
             "produced and degraded."
         )
 
-        if te is None:
+        # Resolve Tellurium here, on the GUI thread, so the worker dispatched
+        # below finds it already imported.
+        if _load_tellurium() is None:
             self.plot_widget.clear()
             self.plot_widget.setTitle(
                 f"<span style='color: {Colors.ACCENT_DANGER}; font-weight: bold; font-size: 13px;'>"

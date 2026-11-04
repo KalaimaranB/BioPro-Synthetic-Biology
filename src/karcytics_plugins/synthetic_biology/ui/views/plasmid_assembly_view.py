@@ -47,6 +47,7 @@ from ...analysis.parts.base import BiologicalPart
 from ...analysis.parts.components import CDS, RBS, Promoter, Terminator, part_from_dict
 from ...analysis.state import SynBioState
 from ...ui.controllers.plasmid_controller import PlasmidAssemblyController
+from ..widgets.flow_layout import FlowLayout
 
 
 class PartPaletteWidget(BioListWidget):
@@ -262,9 +263,17 @@ class PlasmidAssemblyView(QWidget):
         center_layout = QVBoxLayout(center_panel)
         center_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Toolbar
-        toolbar = QHBoxLayout()
+        # Toolbar. A FlowLayout, not a QHBoxLayout: a single row's minimum width
+        # is the sum of every control in it, and this panel sits in a three-way
+        # splitter, so that sum became a floor under the whole plugin window —
+        # one it could not be resized below, on a narrow display. Flowing wraps
+        # the controls onto another row instead, leaving the minimum at the
+        # widest single control. Button text is identical either way.
+        toolbar = FlowLayout(margin=0, hSpacing=6, vSpacing=6)
         self.name_edit = BioLineEdit("pKarcytics_v1")
+        # Without this the edit asks for a comfortable default width and puts
+        # most of the row's minimum back.
+        self.name_edit.setMinimumWidth(110)
         toolbar.addWidget(QLabel("Plasmid Name:"))
         toolbar.addWidget(self.name_edit)
 

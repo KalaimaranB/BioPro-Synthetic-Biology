@@ -186,9 +186,35 @@ def spawn_worker(env_extra: dict[str, str] | None = None) -> subprocess.Popen:
 # ---------------------------------------------------------------------------
 
 
+#: How long the worker may take, after "ready", to become able to answer an RPC.
+#: The daemon runtime emits "ready" *before* it calls panel_factory(), and only
+#: enters the Qt event loop once construction returns — so a request sent on
+#: "ready" is read off stdin immediately and then sits queued until the panel is
+#: built. Constructing this plugin's panel is around a second on a warm
+#: developer machine and several times that on a cold CI runner.
+SERVICEABLE_TIMEOUT = 45.0
+
+
+def wait_until_serviceable(proc: subprocess.Popen, timeout: float = SERVICEABLE_TIMEOUT) -> None:
+    """Block until the worker's Qt event loop is answering requests.
+
+    Sends a method the dispatcher does not know: it answers with an error
+    payload rather than crashing, and a reply at all is the proof wanted here.
+    Using a real method would pre-warm an assertion another test owns.
+    """
+    call_worker(proc, "__probe_worker_is_serviceable__", timeout=timeout)
+
+
 @pytest.fixture
 def worker():
-    """Spawn a real synthetic_biology worker and wait for "ready"."""
+    """Spawn a real synthetic_biology worker and wait until it can answer RPC.
+
+    Waiting only for "ready" is not enough: it is emitted before the panel is
+    built, so a test issuing a request straight afterwards is really timing
+    panel construction rather than the handler it means to exercise. That is
+    what made ``test_focus_request`` fail on CI while passing locally. Probing
+    here, once, keeps each test's own timeout measuring what it claims to.
+    """
     proc = spawn_worker()
     ready = drain_events_until(proc, "ready", timeout=30.0)
     assert ready is not None, "Worker did not emit 'ready' within 30 s. Stderr:\n" + (
@@ -196,6 +222,7 @@ def worker():
         if proc.poll() is not None
         else "(still running)"
     )
+    wait_until_serviceable(proc)
     yield proc
     # Teardown: tell the worker to exit, then force-kill if needed
     try:
@@ -216,7 +243,7 @@ def worker():
 
 
 @pytest.mark.integration
-@pytest.mark.timeout(45)
+@pytest.mark.timeout(120)
 class TestDaemonSubprocessSmoke:
     """Headless smoke tests: spawn the real daemon, send RPC, check no errors."""
 
@@ -324,7 +351,7 @@ class TestDaemonSubprocessSmoke:
 
 
 @pytest.mark.integration
-@pytest.mark.timeout(30)
+@pytest.mark.timeout(120)
 class TestDaemonCleanClose:
     """Lifecycle: clean close produces exit code 0."""
 
@@ -333,6 +360,10 @@ class TestDaemonCleanClose:
         proc = spawn_worker()
         ready = drain_events_until(proc, "ready", timeout=30.0)
         assert ready is not None, "Worker did not emit ready"
+        # Otherwise the 5 s budget below, and the elapsed assertion, would be
+        # spent waiting for the panel to finish building rather than on the
+        # clean close they are checking.
+        wait_until_serviceable(proc)
 
         start = time.monotonic()
         result = call_worker(proc, "exit", timeout=5.0)
@@ -355,6 +386,7 @@ class TestDaemonCleanClose:
         proc = spawn_worker()
         ready = drain_events_until(proc, "ready", timeout=30.0)
         assert ready is not None
+        wait_until_serviceable(proc)
 
         result = call_worker(proc, "close_requested", timeout=5.0)
         assert isinstance(result, dict)

@@ -86,6 +86,33 @@ try:
 except ImportError:
     pass
 
+# The rest of this plugin's heavy third-party dependencies, pulled in further
+# down by the analysis engines (networkx by the circuit solver, Biopython by
+# assembly and CRISPR, requests by the registry client).
+#
+# They are loaded here, with the block above, for a timing reason rather than a
+# tidiness one. The daemon runtime sends its "ready" handshake *before* calling
+# panel_factory() and only enters the Qt event loop *after* it returns, so any
+# RPC the Hub sends in between is read off stdin but cannot be serviced until
+# construction finishes. Importing these during panel construction therefore
+# spends the Hub's RPC timeout; importing them here spends the far more
+# generous startup budget instead, before the Hub is told the worker is ready.
+try:
+    import networkx  # noqa: E402, F401
+except ImportError:
+    pass
+
+try:
+    import Bio.Seq  # noqa: E402, F401
+    import Bio.SeqUtils.MeltingTemp  # noqa: E402, F401
+except ImportError:
+    pass
+
+try:
+    import requests  # noqa: E402, F401
+except ImportError:
+    pass
+
 
 def _build_plugin_context() -> Any:
     from karcytics_sdk.plugin.context import PluginContext

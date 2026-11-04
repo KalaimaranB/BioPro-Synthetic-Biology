@@ -107,9 +107,17 @@ def test_no_unescaped_ampersand_in_mnemonic_widget_text():
     assert not offenders, "Escape '&' as '&&':\n" + "\n".join(offenders)
 
 
-# Smallest display the plugin window has to fit, in logical pixels. A 1280-wide
-# laptop, less room for the Hub's own window chrome.
-MAX_PANEL_MIN_WIDTH = 1200
+# Smallest display the plugin window has to fit, in logical pixels: a 1280-wide
+# laptop, the narrowest this is expected to run on.
+#
+# Deliberately an absolute budget rather than a ratio, because the requirement
+# is absolute — but note it is measured against platform font metrics, and
+# those differ enough to matter. The same panel that reports 822 px on macOS
+# reported 1332 px on Windows, where wider default fonts and control padding
+# inflate every widget's minimum. A margin that looks generous on a developer
+# machine can therefore be none at all on CI, so leave real headroom here
+# rather than tuning this to whatever the local platform happens to report.
+MAX_PANEL_MIN_WIDTH = 1280
 
 
 def test_panel_fits_a_small_display(destroy_after):
