@@ -296,6 +296,11 @@ def test_demo_saves_and_reopens_identically_in_a_fresh_panel(destroy_after):
     assert rendered["announce"] is False
     assert len(rendered["grnas"]) == 2
     assert rendered["grnas_announce"] is False
+    # The plasmid map is redrawn too: it used to be drawn only after an
+    # assembly run in the same session, so a reopened workspace showed none.
+    plasmid = second.state.get_active_plasmid()
+    assert second.plasmid_view.feature_table.rowCount() == len(plasmid.features)
+    assert f"{plasmid.length} bp" in second.plasmid_view.seq_display.toPlainText()
     # Linked to the workflow it came from, with nothing unsaved.
     assert second._persistence.filename == filename
     assert not second._persistence.check_dirty()

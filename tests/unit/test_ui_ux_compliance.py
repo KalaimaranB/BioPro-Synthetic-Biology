@@ -105,3 +105,58 @@ def test_no_unescaped_ampersand_in_mnemonic_widget_text():
         if pattern.search(line)
     ]
     assert not offenders, "Escape '&' as '&&':\n" + "\n".join(offenders)
+
+
+# Smallest display the plugin window has to fit, in logical pixels. A 1280-wide
+# laptop, less room for the Hub's own window chrome.
+MAX_PANEL_MIN_WIDTH = 1200
+
+
+def test_panel_fits_a_small_display(destroy_after):
+    """The workspace must be shrinkable to fit the screen.
+
+    A window cannot be resized below its layout's minimum, so a single greedy
+    widget anywhere in the panel becomes a hard floor on the window — and the
+    window then extends past the edge of the display with no way to pull it
+    back. This caught a 1,879 px floor set by one label.
+    """
+    panel = destroy_after(SynBioPanel())
+    width = panel.minimumSizeHint().width()
+    assert width <= MAX_PANEL_MIN_WIDTH, (
+        f"the panel cannot shrink below {width} px, so it will not fit a "
+        f"{MAX_PANEL_MIN_WIDTH} px workspace"
+    )
+
+
+def test_no_unwrapped_label_inflates_the_window(destroy_after):
+    """A long QLabel that cannot wrap reports its whole text as a minimum width.
+
+    Because a QStackedWidget's minimum is the maximum over every page, such a
+    label on any one tab sets the floor for the entire window — even while that
+    tab is hidden. Long labels must wrap.
+    """
+    from PySide6.QtWidgets import QLabel
+
+    panel = destroy_after(SynBioPanel())
+    greedy = [
+        (lbl.minimumSizeHint().width(), lbl.text()[:60].replace("\n", " "))
+        for lbl in panel.findChildren(QLabel)
+        if not lbl.wordWrap() and lbl.minimumSizeHint().width() > 600
+    ]
+    assert not greedy, "call setWordWrap(True) on:\n" + "\n".join(
+        f"  {w} px: {t!r}" for w, t in sorted(greedy, reverse=True)
+    )
+
+
+def test_tab_bar_does_not_dictate_the_window_width(destroy_after):
+    """Eleven tabs end to end are wider than a laptop screen.
+
+    The bar has to yield that width and fall back to its scroll arrows, or its
+    preferred size propagates up and the window opens wider than the display.
+    """
+    from PySide6.QtWidgets import QSizePolicy
+
+    panel = destroy_after(SynBioPanel())
+    assert panel._tab_bar.usesScrollButtons()
+    assert panel._tab_bar.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Ignored
+    assert panel.sizeHint().width() <= MAX_PANEL_MIN_WIDTH + 200

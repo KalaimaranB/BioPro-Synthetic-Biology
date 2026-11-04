@@ -157,8 +157,15 @@ class CRISPRDesignView(QWidget):
             hv.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.grna_table.setSelectionBehavior(BioTableWidget.SelectionBehavior.SelectRows)
         self.grna_table.itemSelectionChanged.connect(self._on_table_selection_changed)
-        bottom_layout.addWidget(self.grna_table, stretch=2)
-        bottom_layout.addWidget(
+        # Table and its credit line stacked in one column. bottom_layout is
+        # horizontal, so adding the label to it directly made it a narrow third
+        # column wedged between the table and the inspector.
+        table_column = QWidget()
+        table_column_layout = QVBoxLayout(table_column)
+        table_column_layout.setContentsMargins(0, 0, 0, 0)
+        table_column_layout.setSpacing(4)
+        table_column_layout.addWidget(self.grna_table, stretch=1)
+        table_column_layout.addWidget(
             CitationLabel(
                 "SpCas9 NGG PAM requirement",
                 FEATURE_CITATIONS["crispr_scan"],
@@ -166,6 +173,7 @@ class CRISPRDesignView(QWidget):
                 parent=self,
             )
         )
+        bottom_layout.addWidget(table_column, stretch=2)
 
         # Off-target detail inspector (position-weighted heuristic, not CFD)
         self.detail_display = QTextEdit()

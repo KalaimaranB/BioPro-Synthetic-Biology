@@ -177,6 +177,14 @@ class SynBioPanel(PluginBase):
         self._tab_bar = QTabBar()
         self._tab_bar.setExpanding(False)
         self._tab_bar.setDocumentMode(True)
+        # Eleven tabs laid end to end ask for ~1,750 px, and that preferred
+        # width propagated all the way up to the window, which then opened wider
+        # than the display. Ignored means the layout stops asking for that width:
+        # the bar still takes whatever room is going (it holds the stretch slot
+        # in the row below) and falls back to its scroll arrows when there is
+        # not enough for every tab.
+        self._tab_bar.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        self._tab_bar.setUsesScrollButtons(True)
         self._tab_bar.addTab("🎨 Design")
         self._tab_bar.addTab("🔬 Biological View")
         self._tab_bar.addTab("🧬 Plasmid Assembly")

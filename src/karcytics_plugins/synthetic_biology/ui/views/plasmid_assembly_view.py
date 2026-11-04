@@ -291,6 +291,7 @@ class PlasmidAssemblyView(QWidget):
         )
 
         lbl_canvas = QLabel("Drop Parts Below to Assemble Genetic Construct (Drag to Reorder):")
+        lbl_canvas.setWordWrap(True)
         center_layout.addWidget(lbl_canvas)
 
         self.assembly_canvas = AssemblyCanvasWidget()
@@ -304,6 +305,7 @@ class PlasmidAssemblyView(QWidget):
         right_layout.setContentsMargins(0, 0, 0, 0)
 
         lbl_map = QLabel("🗺️ Feature Map & Sequence Viewer")
+        lbl_map.setWordWrap(True)
         lbl_map.setStyleSheet("font-size: 14px; font-weight: bold;")
         right_layout.addWidget(lbl_map)
 
@@ -336,8 +338,21 @@ class PlasmidAssemblyView(QWidget):
         self.controller.error_raised.connect(self._show_error)
 
     def reload_from_state(self) -> None:
-        """Re-read the design parts and catalogue into the palette."""
+        """Re-read the design parts and catalogue into the palette, and redraw the
+        workspace's plasmid.
+
+        The feature map used to be drawn only when an assembly finished in this
+        session, so a plasmid that arrived through the shared state — from the
+        demo, or from reopening a saved workflow — sat in the state while this
+        tab showed an empty map.
+        """
         self._populate_part_library()
+        plasmid = self.state.get_active_plasmid() if self.state is not None else None
+        if plasmid is not None and plasmid.sequence:
+            self.render_plasmid(plasmid, announce=False)
+        else:
+            self.feature_table.setRowCount(0)
+            self.seq_display.clear()
 
     def _populate_part_library(self):
         """Fill the palette from the design strand and the parts catalogue.
@@ -485,9 +500,12 @@ class PlasmidAssemblyView(QWidget):
         dlg.exec()
 
     @Slot(PlasmidVector)
-    def render_plasmid(self, vector: PlasmidVector):
+    def render_plasmid(self, vector: PlasmidVector, announce: bool = True):
         """Renders assembled or imported plasmid into feature map and sequence
         display.
+
+        ``announce=False`` redraws without the "assembled" toast, for a plasmid
+        restored from state rather than assembled just now.
         """
         self.name_edit.setText(vector.name)
 
@@ -510,7 +528,8 @@ class PlasmidAssemblyView(QWidget):
             [vector.sequence[i : i + 60] for i in range(0, len(vector.sequence), 60)]
         )
         self.seq_display.setText(header + formatted_seq)
-        show_toast("Plasmid construct assembled successfully")
+        if announce:
+            show_toast("Plasmid construct assembled successfully")
 
     @Slot(str)
     def _show_error(self, message: str):

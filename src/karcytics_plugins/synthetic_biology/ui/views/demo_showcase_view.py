@@ -56,7 +56,8 @@ from ...analysis.state import SynBioState
 # Kinetics shared by all three transcription units of the demo oscillator.
 #
 # n = 2.5 is deliberate and load-bearing. A three-gene repressor ring only
-# oscillates above a Hopf threshold in the Hill coefficient; at the n = 2.1 this
+# oscillates above a Hopf threshold in the Hill coefficient — about n = 2.15 for
+# these kinetics, where a small limit cycle first appears and then grows; at the n = 2.1 this
 # demo used to request, the shipped engine returns a visibly damping trace
 # (amplitude 15.3 -> 1.4 RPU over 400 min), which is why the old hand-written
 # "sustained limit cycle" caption did not match the engine. At n = 2.5 the same
@@ -328,6 +329,12 @@ class DemoShowcaseView(QWidget):
             "write-up and saving the workspace to the project."
         )
         subtitle_lbl.setObjectName("DemoSubtitle")
+        # Without this the label's minimum width is the full run of text — over
+        # 1,500 px — and because a QStackedWidget's minimum is the maximum over
+        # all its pages, that became the minimum width of the entire window,
+        # which could then be sized past the edge of the display.
+        subtitle_lbl.setWordWrap(True)
+        title_lbl.setWordWrap(True)
         title_box.addWidget(title_lbl)
         title_box.addWidget(subtitle_lbl)
 
@@ -361,6 +368,7 @@ class DemoShowcaseView(QWidget):
             f"({len(self._demo_components)} nodes, {len(self._demo_edges)} regulatory edges)"
         )
         topo_lbl.setObjectName("SectionTitle")
+        topo_lbl.setWordWrap(True)
         topo_layout.addWidget(topo_lbl)
 
         self.topo_table = BioTableWidget(self)
@@ -402,7 +410,8 @@ class DemoShowcaseView(QWidget):
 
         topo_note = QLabel(
             f"n = {DEMO_HILL_N:g} sits above the Hill-coefficient threshold at which this ring "
-            "sustains its cycle; below roughly n = 2.2 the same engine returns a damping trace."
+            "sustains its cycle. That threshold is about n = 2.15 for these kinetics: below it "
+            "the same engine returns a damping trace."
         )
         topo_note.setObjectName("DemoNote")
         topo_note.setWordWrap(True)
@@ -439,6 +448,7 @@ class DemoShowcaseView(QWidget):
             f"{'circular' if self._demo_plasmid.is_circular else 'linear'})"
         )
         plasmid_lbl.setObjectName("SectionTitle")
+        plasmid_lbl.setWordWrap(True)
         plasmid_layout.addWidget(plasmid_lbl)
 
         self.plasmid_table = BioTableWidget(self)
@@ -482,6 +492,7 @@ class DemoShowcaseView(QWidget):
             f"sites found in lacI ({len(_LACI_CDS):,} bp)"
         )
         crispr_lbl.setObjectName("SectionTitle")
+        crispr_lbl.setWordWrap(True)
         crispr_layout.addWidget(crispr_lbl)
 
         self.crispr_table = BioTableWidget(self)
@@ -539,6 +550,7 @@ class DemoShowcaseView(QWidget):
         # so naming Opentrons here promised an export the module cannot perform.
         robot_lbl = QLabel("🤖 Tecan worklist export preview (CSV)")
         robot_lbl.setObjectName("SectionTitle")
+        robot_lbl.setWordWrap(True)
         robot_layout.addWidget(robot_lbl)
 
         preview_lbl = QLabel(
