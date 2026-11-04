@@ -136,23 +136,56 @@ def test_panel_fits_a_small_display(destroy_after):
     )
 
 
+#: No single label may demand more than half the window's whole width budget.
+#:
+#: Expressed as a fraction of MAX_PANEL_MIN_WIDTH rather than a tuned constant,
+#: because that is the thing it protects: one label is never entitled to half
+#: of what the entire workspace gets.
+#:
+#: Note what this can and cannot catch. Label widths scale with the platform's
+#: font metrics — the same labels measure roughly 1.6x wider on Windows than on
+#: macOS — while the window budget is a fixed number of real pixels. So Windows
+#: is the binding platform, and a label that is comfortable locally may be the
+#: one that fails there. Running this on macOS alone is not evidence; the
+#: Windows CI job is what actually enforces it.
+MAX_LABEL_MIN_WIDTH = MAX_PANEL_MIN_WIDTH // 2
+
+
 def test_no_unwrapped_label_inflates_the_window(destroy_after):
     """A long QLabel that cannot wrap reports its whole text as a minimum width.
 
     Because a QStackedWidget's minimum is the maximum over every page, such a
     label on any one tab sets the floor for the entire window — even while that
-    tab is hidden. Long labels must wrap.
+    tab is hidden.
+
+    Long labels must therefore either wrap or sit in a scroll area. Both are
+    legitimate: wrapping suits prose, while preformatted content (a CSV
+    preview, a sequence) must not be re-flowed and scrolls instead. A label
+    inside a scroll area is skipped because the viewport, not the label,
+    determines what the window has to accommodate.
     """
-    from PySide6.QtWidgets import QLabel
+    from PySide6.QtWidgets import QAbstractScrollArea, QLabel
+
+    def inside_scroll_area(widget) -> bool:
+        parent = widget.parentWidget()
+        while parent is not None:
+            if isinstance(parent, QAbstractScrollArea):
+                return True
+            parent = parent.parentWidget()
+        return False
 
     panel = destroy_after(SynBioPanel())
     greedy = [
         (lbl.minimumSizeHint().width(), lbl.text()[:60].replace("\n", " "))
         for lbl in panel.findChildren(QLabel)
-        if not lbl.wordWrap() and lbl.minimumSizeHint().width() > 600
+        if not lbl.wordWrap()
+        and lbl.minimumSizeHint().width() > MAX_LABEL_MIN_WIDTH
+        and not inside_scroll_area(lbl)
     ]
-    assert not greedy, "call setWordWrap(True) on:\n" + "\n".join(
-        f"  {w} px: {t!r}" for w, t in sorted(greedy, reverse=True)
+    assert not greedy, (
+        "these labels put a floor under the window; wrap them, or scroll them "
+        "if they are preformatted:\n"
+        + "\n".join(f"  {w} px: {t!r}" for w, t in sorted(greedy, reverse=True))
     )
 
 

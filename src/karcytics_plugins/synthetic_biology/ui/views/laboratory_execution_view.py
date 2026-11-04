@@ -191,8 +191,12 @@ class LaboratoryExecutionView(QWidget):
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(8, 4, 8, 4)
 
-        title_lbl = QLabel("🧬 Laboratory Execution & Build Cycle Automation")
+        title_lbl = QLabel("🧬 Laboratory Execution && Build Cycle Automation")
         title_lbl.setStyleSheet("font-size: 16px; font-weight: bold;")
+        # Bold 16px makes this one of the widest labels in the plugin, and an
+        # unwrapped label's minimum width is its whole text — which becomes a
+        # floor under the window itself.
+        title_lbl.setWordWrap(True)
         header_layout.addWidget(title_lbl)
 
         header_layout.addStretch()

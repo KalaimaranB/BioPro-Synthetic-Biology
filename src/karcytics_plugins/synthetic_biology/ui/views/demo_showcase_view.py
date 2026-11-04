@@ -20,6 +20,7 @@ from typing import Any
 
 from karcytics_sdk.plugin.citation_widgets import CitationLabel
 from karcytics_sdk.plugin.components import (
+    BioScrollArea,
     BioSplitter,
     BioTableWidget,
     PrimaryButton,
@@ -475,6 +476,67 @@ class DemoShowcaseView(QWidget):
 
         return left_widget
 
+    def _build_robot_card(self) -> QFrame:
+        """The Tecan worklist preview, with its scrollable CSV sample."""
+        # 4. Robot Export Preview Card
+        robot_card = QFrame(self)
+        robot_card.setObjectName("SectionCard")
+        robot_layout = QVBoxLayout(robot_card)
+        robot_layout.setContentsMargins(14, 12, 14, 12)
+
+        # Tecan only: RobotExporter.export_to_opentrons raises NotImplementedError,
+        # so naming Opentrons here promised an export the module cannot perform.
+        robot_lbl = QLabel("🤖 Tecan worklist export preview (CSV)")
+        robot_lbl.setObjectName("SectionTitle")
+        robot_lbl.setWordWrap(True)
+        robot_layout.addWidget(robot_lbl)
+
+        preview_lbl = QLabel(
+            "Source,SourceWell,Destination,DestWell,Volume_uL,Reagent\n"
+            "SourceRack,A01,DestRack,A01,15.0,2X Golden Gate Master Mix (BsaI + T4 Ligase)\n"
+            "SourceRack,A02,DestRack,A01,2.5,pSB1A3 Backbone (50 ng/uL)\n"
+            "SourceRack,A03,DestRack,A01,2.5,LacI Repressor Insert (20 ng/uL)\n"
+            "SourceRack,A04,DestRack,A01,2.5,cI Repressor Insert (20 ng/uL)\n"
+            "SourceRack,A05,DestRack,A01,2.5,TetR Repressor Insert (20 ng/uL)\n"
+            "SourceRack,A06,DestRack,A01,5.0,Nuclease-Free Water"
+        )
+        preview_lbl.setObjectName("CodePreview")
+        preview_lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+
+        # In a scroll area, not word-wrapped. This is CSV: one record per line,
+        # and wrapping would fold a record onto the next line and misrepresent
+        # the file the exporter writes. But an unwrapped label's minimum width
+        # is its longest line, which would put a floor under the whole window —
+        # 876 px on Windows, where the monospace font is wider. Scrolling keeps
+        # the records intact and keeps that width off the window.
+        preview_scroll = BioScrollArea(self)
+        preview_scroll.setWidget(preview_lbl)
+        preview_scroll.setWidgetResizable(True)
+        preview_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        preview_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        preview_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        # Tall enough for the seven CSV lines, so only width ever scrolls.
+        preview_scroll.setMinimumHeight(preview_lbl.sizeHint().height() + 8)
+        robot_layout.addWidget(preview_scroll)
+
+        robot_note = QLabel(
+            "Opentrons OT-2 export is not implemented; the Laboratory Execution tab "
+            "reports that rather than writing a file."
+        )
+        robot_note.setObjectName("DemoNote")
+        robot_note.setWordWrap(True)
+        robot_layout.addWidget(robot_note)
+        robot_layout.addWidget(
+            CitationLabel(
+                "Golden Gate assembly",
+                FEATURE_CITATIONS["golden_gate"],
+                prefix="Reaction design:",
+                parent=self,
+            )
+        )
+
+        return robot_card
+
     def _build_right_column(self) -> QWidget:
         right_widget = QWidget(self)
         right_layout = QVBoxLayout(right_widget)
@@ -540,49 +602,7 @@ class DemoShowcaseView(QWidget):
         )
         right_layout.addWidget(crispr_card)
 
-        # 4. Robot Export Preview Card
-        robot_card = QFrame(self)
-        robot_card.setObjectName("SectionCard")
-        robot_layout = QVBoxLayout(robot_card)
-        robot_layout.setContentsMargins(14, 12, 14, 12)
-
-        # Tecan only: RobotExporter.export_to_opentrons raises NotImplementedError,
-        # so naming Opentrons here promised an export the module cannot perform.
-        robot_lbl = QLabel("🤖 Tecan worklist export preview (CSV)")
-        robot_lbl.setObjectName("SectionTitle")
-        robot_lbl.setWordWrap(True)
-        robot_layout.addWidget(robot_lbl)
-
-        preview_lbl = QLabel(
-            "Source,SourceWell,Destination,DestWell,Volume_uL,Reagent\n"
-            "SourceRack,A01,DestRack,A01,15.0,2X Golden Gate Master Mix (BsaI + T4 Ligase)\n"
-            "SourceRack,A02,DestRack,A01,2.5,pSB1A3 Backbone (50 ng/uL)\n"
-            "SourceRack,A03,DestRack,A01,2.5,LacI Repressor Insert (20 ng/uL)\n"
-            "SourceRack,A04,DestRack,A01,2.5,cI Repressor Insert (20 ng/uL)\n"
-            "SourceRack,A05,DestRack,A01,2.5,TetR Repressor Insert (20 ng/uL)\n"
-            "SourceRack,A06,DestRack,A01,5.0,Nuclease-Free Water"
-        )
-        preview_lbl.setObjectName("CodePreview")
-        preview_lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        robot_layout.addWidget(preview_lbl)
-
-        robot_note = QLabel(
-            "Opentrons OT-2 export is not implemented; the Laboratory Execution tab "
-            "reports that rather than writing a file."
-        )
-        robot_note.setObjectName("DemoNote")
-        robot_note.setWordWrap(True)
-        robot_layout.addWidget(robot_note)
-        robot_layout.addWidget(
-            CitationLabel(
-                "Golden Gate assembly",
-                FEATURE_CITATIONS["golden_gate"],
-                prefix="Reaction design:",
-                parent=self,
-            )
-        )
-
-        right_layout.addWidget(robot_card)
+        right_layout.addWidget(self._build_robot_card())
         right_layout.addStretch()
 
         return right_widget
