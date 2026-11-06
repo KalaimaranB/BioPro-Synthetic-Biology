@@ -75,10 +75,11 @@ def test_service_delete_part(tmp_path):
 
 
 def test_json_part_repository_writes_trailing_newline(tmp_path):
-    """The shipped catalogue.json is tracked in git and checked by end-of-file-fixer.
+    """Catalogue files this class writes stay well-formed for text tooling.
 
-    Every save from the running app rewrites it; without a final newline each
-    rewrite makes the pre-commit hook fail.
+    The app no longer rewrites the git-tracked shipped catalogue — writes go to
+    the user directory — but a trailing newline is still what end-of-file-fixer
+    and ordinary diff tools expect of any JSON we emit.
     """
     repo_path = tmp_path / "catalogue.json"
     repo = JsonPartRepository(str(repo_path))

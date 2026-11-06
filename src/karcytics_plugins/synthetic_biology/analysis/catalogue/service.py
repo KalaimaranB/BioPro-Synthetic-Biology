@@ -5,6 +5,7 @@ import urllib.request
 from ..api.kinetics import CelloKineticsDatabase
 from ..parts.base import BiologicalPart
 from ..parts.components import CDS, Promoter
+from ..user_paths import user_images_dir
 from .repository import PartRepository
 
 
@@ -100,9 +101,11 @@ class PartsCatalogueService:
                         pdb_id = pdbs[0].lower()
                         # 2. Fetch image from RCSB PDB
                         img_url = f"https://cdn.rcsb.org/images/structures/{pdb_id}_assembly-1.jpeg"
-                        img_path = os.path.join(
-                            os.path.dirname(__file__), "images", f"{part.id}.jpeg"
-                        )
+                        # Downloaded at runtime, so it must land outside the
+                        # signed payload — see analysis/user_paths.py.
+                        images_dir = user_images_dir()
+                        images_dir.mkdir(parents=True, exist_ok=True)
+                        img_path = str(images_dir / f"{part.id}.jpeg")
                         try:
                             img_req = urllib.request.Request(img_url)
                             with (
