@@ -239,6 +239,19 @@ CITATIONS: tuple[Citation, ...] = (
         doi="10.1137/0904010",
     ),
     Citation(
+        key="santalucia2004",
+        authors=(
+            "SantaLucia, J.",
+            "Hicks, D.",
+        ),
+        title="The Thermodynamics of DNA Structural Motifs",
+        year=2004,
+        venue="Annual Review of Biophysics and Biomolecular Structure",
+        volume="33(1)",
+        pages="415\u2013440",
+        doi="10.1146/annurev.biophys.32.110601.141800",
+    ),
+    Citation(
         key="sharp1987",
         authors=(
             "Sharp, P. M.",
@@ -406,6 +419,11 @@ FEATURE_CITATIONS: dict[str, tuple[str, ...]] = {
     "simulate_ssa": ("gillespie1977", "choi2018", "smith2009"),
     # Biopython Tm_NN with the DNA_NN3 table and saltcorr=7.
     "primer_design": ("allawi1997", "owczarzy2008", "cock2009"),
+    # Secondary-structure screening. The nearest-neighbour parameters are the
+    # SantaLucia & Hicks (2004) unified set, read from Biopython's DNA_NN4
+    # table. The rubric *thresholds* applied on top of those energies are
+    # conventions and cite nothing — see primer_rubric.THRESHOLD_PROVENANCE.
+    "primer_screen": ("santalucia2004", "cock2009"),
     # The scanner searches for the SpCas9 NGG PAM. Candidate *ranking* is the
     # module's own heuristic and deliberately cites nothing.
     "crispr_scan": ("jinek2012",),
@@ -433,6 +451,7 @@ STEP_ORDER: tuple[str, ...] = (
     "design",
     "assembly",
     "primer_design",
+    "primer_screen",
     "crispr_scan",
     "circuit_ode",
     "tellurium_ode",
@@ -498,6 +517,46 @@ def primer_step(target_tm: float, forward_tm: float, reverse_tm: float) -> dict[
             "[Na+]": f"{defaults['na_conc_mm'].default:g} mM",
             "[Mg2+]": f"{defaults['mg_conc_mm'].default:g} mM",
             "[primer]": f"{defaults['primer_conc_nm'].default:g} nM",
+        },
+    )
+
+
+def primer_screen_step(
+    rubric: Any,
+    n_candidates: int,
+    verdict: str,
+    checks_applied: Sequence[str] = (),
+) -> dict[str, Any]:
+    """Primer screening. Reads its parameters off the rubric that was applied,
+    so the write-up cannot claim thresholds the run did not use.
+
+    Only the free-energy model is cited. The thresholds are conventions, and
+    the description says so rather than letting a citation imply otherwise.
+    """
+    return _entry(
+        "primer_screen",
+        "Candidate primers were screened against a configurable rubric covering GC "
+        "content, 3' clamp, single-base runs, pair melting-temperature match, product "
+        "size and template uniqueness, with hairpin, self-dimer and heterodimer free "
+        "energies computed from nearest-neighbour parameters; the rubric thresholds "
+        "themselves are conventional primer-design practice rather than published "
+        "values, and hairpins are scored on stem stacking only",
+        FEATURE_CITATIONS["primer_screen"],
+        {
+            "rubric": getattr(rubric, "name", "unnamed"),
+            "GC window": f"{rubric.gc_min_percent:g}\u2013{rubric.gc_max_percent:g}%",
+            "3' clamp": (
+                f"{rubric.clamp_min_gc}\u2013{rubric.clamp_max_gc} G/C "
+                f"in last {rubric.clamp_window}"
+            ),
+            "max single-base run": rubric.max_poly_run,
+            "pair Tm tolerance": f"{rubric.pair_tm_tolerance:g} \u00b0C",
+            "product size": f"{rubric.product_min_bp}\u2013{rubric.product_max_bp} bp",
+            "hairpin \u0394G cutoff": f"{rubric.hairpin_min_dg:g} kcal/mol",
+            "dimer \u0394G cutoff": f"{rubric.self_dimer_min_dg:g} kcal/mol",
+            "candidates ranked": n_candidates,
+            "best verdict": verdict,
+            **({"checks": ", ".join(checks_applied)} if checks_applied else {}),
         },
     )
 
@@ -685,6 +744,7 @@ __all__ = [
     "design_step",
     "method_steps",
     "methods_text",
+    "primer_screen_step",
     "primer_step",
     "resolve",
     "tellurium_step",

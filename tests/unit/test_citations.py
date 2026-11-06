@@ -202,3 +202,91 @@ def test_methods_log_is_saved_with_the_workspace():
     restored = SynBioState()
     restored.load_from_dict(state.to_dict())
     assert restored.methods_log == state.methods_log
+
+
+# ── Primer screening ───────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+def test_primer_screen_cites_the_free_energy_model_only():
+    """The ΔG model is published; the thresholds on top of it are convention.
+
+    Citing a paper for "40-60% GC" would misrepresent a rule of thumb as a
+    finding, which is the same error the CRISPR scores made before.
+    """
+    keys = cites.FEATURE_CITATIONS["primer_screen"]
+    assert "santalucia2004" in keys
+    assert "cock2009" in keys
+
+
+@pytest.mark.unit
+def test_santalucia2004_matches_its_crossref_record():
+    from karcytics_sdk.plugin.citations import get
+
+    work = get("santalucia2004")
+    assert work.authors == ("SantaLucia, J.", "Hicks, D.")
+    assert work.year == 2004
+    assert work.venue == "Annual Review of Biophysics and Biomolecular Structure"
+    assert work.volume == "33(1)"
+    assert work.pages == "415–440"
+    assert work.doi == "10.1146/annurev.biophys.32.110601.141800"
+
+
+@pytest.mark.unit
+def test_the_nn_parameters_in_use_come_from_the_cited_work():
+    """The citation must describe the table the code actually loads.
+
+    Biopython labels DNA_NN4 as SantaLucia & Hicks (2004); the thermodynamics
+    module reads that table, and primer_screen cites that paper. This pins the
+    three together so they cannot drift apart silently.
+    """
+    import inspect
+
+    from Bio.SeqUtils import MeltingTemp
+
+    from karcytics_plugins.synthetic_biology.analysis.assembly import thermodynamics
+
+    comment = inspect.getsource(MeltingTemp).split("DNA_NN4 =")[0].splitlines()[-1]
+    assert "SantaLucia" in comment and "2004" in comment
+    assert thermodynamics.NN_PARAMS["AA/TT"] == (
+        MeltingTemp.DNA_NN4["AA/TT"][0],
+        MeltingTemp.DNA_NN4["AA/TT"][1],
+    )
+
+
+@pytest.mark.unit
+def test_primer_screen_step_reports_the_rubric_it_applied():
+    from karcytics_plugins.synthetic_biology.analysis.assembly.primer_rubric import PrimerRubric
+
+    rubric = PrimerRubric(name="BIOL341 Lab 3", gc_min_percent=45.0)
+    entry = cites.primer_screen_step(rubric, n_candidates=12, verdict="pass")
+
+    assert entry["kind"] == "primer_screen"
+    assert entry["citations"] == list(cites.FEATURE_CITATIONS["primer_screen"])
+    assert entry["parameters"]["rubric"] == "BIOL341 Lab 3"
+    assert entry["parameters"]["GC window"].startswith("45")
+    assert entry["parameters"]["candidates ranked"] == 12
+    # The write-up must say the thresholds are conventions, not findings.
+    assert "conventional primer-design practice" in entry["description"]
+    assert "stem stacking only" in entry["description"]
+
+
+@pytest.mark.unit
+def test_primer_screen_is_written_up_after_the_design_it_judges():
+    order = list(cites.STEP_ORDER)
+    assert order.index("primer_screen") > order.index("primer_design")
+
+
+@pytest.mark.unit
+def test_a_screening_run_flows_into_methods_text_and_bibtex():
+    from karcytics_plugins.synthetic_biology.analysis.assembly.primer_rubric import PrimerRubric
+    from karcytics_plugins.synthetic_biology.analysis.state import SynBioState
+
+    state = SynBioState()
+    state.record_method(cites.primer_step(60.0, 60.1, 59.6))
+    state.record_method(cites.primer_screen_step(PrimerRubric(), 8, "pass"))
+
+    text = cites.methods_text(state.methods_log)
+    assert "screened against a configurable rubric" in text
+    assert "SantaLucia" in text
+    assert "santalucia2004," in cites.bibtex(state.methods_log)
