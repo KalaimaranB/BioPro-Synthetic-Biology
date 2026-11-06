@@ -71,3 +71,12 @@ mypy_errors.txt
 
 # Generated pitch / demo documents (large binaries; regenerate rather than commit)
 Karcytics_SynBio_Pitch.pdf
+
+# Test debris. A bare relative catalogue path used to resolve against the
+# plugin directory, so running the suite wrote these into the signed payload
+# and they were committed three times. The generator is fixed, but ignore
+# them so a stale checkout cannot re-commit them. Note this does NOT cover
+# the shipped src/karcytics_plugins/synthetic_biology/catalogue.json, which
+# is a real payload file.
+temp_test_cat.json
+/src/catalogue.json
