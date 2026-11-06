@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+reviews:
+  profile: "assertive"
+  review_status: false
+  request_changes_workflow: true
+  high_level_summary: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "^main$"
+  path_filters:
+    - "!dist/**"
+    - "!site/**"
+    - "!**/*.lock"
+    - "!catalogue.json"
+  path_instructions:
+    - path: "src/karcytics_plugins/synthetic_biology/analysis/**/*.py"
+      instructions: |
+        This is the Qt-free scientific core. Flag ANY PySide6/Qt import here — the
+        layering is the architecture, not a preference.
+        Every empirical value, parameter table or published model must carry a
+        citation registered in analysis/citations.py and wired into
+        FEATURE_CITATIONS. A threshold that is our own convention must cite
+        NOTHING and be labelled a convention (see the CRISPR scoring precedent).
+        Flag any number that is neither cited nor explicitly marked a convention.
+        Enforce strict type hints (mypy), McCabe complexity under 10, and no magic
+        numbers.
+    - path: "src/karcytics_plugins/synthetic_biology/ui/**/*.py"
+      instructions: |
+        The UI is a client of analysis/, never a container for it. Flag any
+        scientific calculation, threshold comparison or pass/fail decision made in
+        a view — those belong in analysis/.
+        Widgets, dialogs, buttons, toasts and theming must come from
+        karcytics_sdk.plugin.* (components, dialogs, ribbon, toast,
+        theme_fallback, citation_widgets). Flag raw PySide6 widget construction
+        and any hardcoded colour, font or spacing value.
+        Do not import karcytics.* from the Hub — SDK only.
+        Long-running work belongs on a worker, never the UI thread.
+    - path: "tests/**/*.py"
+      instructions: |
+        Test code may use magic numbers and simple helpers without the same
+        complexity or modularity constraints as production code. Focus feedback on
+        test correctness, edge-case coverage, and avoiding flaky or order-dependent
+        tests.

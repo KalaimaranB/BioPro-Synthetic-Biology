@@ -6,6 +6,37 @@ on:
   pull_request:
 
 jobs:
+  enforce-workflow:
+    name: Enforce Branch & Commit Policy
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title (Conventional Commits)
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if ! echo "$PR_TITLE" | grep -qE '^(feat|fix|chore|docs|refactor|test|ci)(\(.+\))?!?: .+'; then
+            echo "::error::PR title must follow Conventional Commits, e.g. 'feat: add X'. Got: $PR_TITLE"
+            exit 1
+          fi
+
+      - name: Validate branch topology
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [ "$BASE_REF" = "main" ]; then
+            if [ "$HEAD_REF" != "develop" ] && [[ "$HEAD_REF" != hotfix/* ]]; then
+              echo "::error::main only accepts PRs from 'develop' or 'hotfix/*'. Got: $HEAD_REF"
+              exit 1
+            fi
+          elif [ "$BASE_REF" = "develop" ]; then
+            if ! [[ "$HEAD_REF" =~ ^(feature|fix|chore|docs|hotfix|ci)/ ]]; then
+              echo "::error::develop only accepts feature/fix/chore/docs/hotfix/ci branches. Got: $HEAD_REF"
+              exit 1
+            fi
+          fi
+
   lint-and-audit:
     name: Lint, Types & Security (Ubuntu)
     runs-on: ubuntu-latest
