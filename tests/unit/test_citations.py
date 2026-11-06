@@ -290,3 +290,138 @@ def test_a_screening_run_flows_into_methods_text_and_bibtex():
     assert "screened against a configurable rubric" in text
     assert "SantaLucia" in text
     assert "santalucia2004," in cites.bibtex(state.methods_log)
+
+
+# ── Phase 2: digest, amplification and gel ────────────────────────────
+
+
+@pytest.mark.unit
+def test_phase2_citations_are_registered():
+    for key in ("roberts2022", "southern1979", "elder1983"):
+        entry = cites.get(key)
+        assert entry.doi, key
+        assert entry.authors, key
+
+
+@pytest.mark.unit
+def test_rebase_is_cited_for_enzyme_geometry():
+    """Recognition sites and cut offsets are REBASE's, via Biopython."""
+    keys = cites.FEATURE_CITATIONS["restriction_digest"]
+    assert "roberts2022" in keys
+    assert "cock2009" in keys
+
+
+@pytest.mark.unit
+def test_the_gel_cites_the_size_dependence_not_the_equation():
+    """Southern (1979) established the relationship; the log-linear form is ours."""
+    from karcytics_plugins.synthetic_biology.analysis.assembly import gel
+
+    assert cites.FEATURE_CITATIONS["gel_migration"] == ("southern1979", "elder1983")
+    kind, _ = gel.THRESHOLD_PROVENANCE["mobility_model"]
+    assert kind == "convention", "the equation must not claim to be a published result"
+
+
+@pytest.mark.unit
+def test_amplification_does_not_cite_its_mismatch_rule():
+    """The priming rule is a convention and must carry no citation."""
+    from karcytics_plugins.synthetic_biology.analysis.assembly import amplification as amp
+
+    keys = cites.FEATURE_CITATIONS["amplification"]
+    assert keys == ("allawi1997", "cock2009")
+    for field_name in ("three_prime_exact", "max_mismatches"):
+        assert amp.THRESHOLD_PROVENANCE[field_name][0] == "convention"
+
+
+@pytest.mark.unit
+def test_phase2_steps_are_in_step_order():
+    for kind in ("amplification", "restriction_digest", "gel_migration"):
+        assert kind in cites.STEP_ORDER
+
+
+@pytest.mark.unit
+def test_phase2_steps_appear_in_workflow_order():
+    """Methods read in the order the bench work happens."""
+    order = list(cites.STEP_ORDER)
+    assert order.index("primer_screen") < order.index("amplification")
+    assert order.index("amplification") < order.index("restriction_digest")
+    assert order.index("restriction_digest") < order.index("gel_migration")
+
+
+def _phase2_log():
+    from karcytics_plugins.synthetic_biology.analysis.assembly import amplification as amp
+    from karcytics_plugins.synthetic_biology.analysis.assembly import gel
+    from karcytics_plugins.synthetic_biology.analysis.assembly import restriction as rst
+
+    from .sequence_fixtures import (
+        ECORI_TAIL,
+        HINDIII_TAIL,
+        SYNTHETIC_ORF,
+        SYNTHETIC_TEMPLATE,
+        primers_for,
+    )
+
+    fwd, rev = primers_for(SYNTHETIC_ORF)
+    result = amp.amplify(
+        SYNTHETIC_TEMPLATE,
+        ECORI_TAIL + fwd,
+        HINDIII_TAIL + rev,
+        forward_tail=ECORI_TAIL,
+        reverse_tail=HINDIII_TAIL,
+        enzymes=["EcoRI", "HindIII"],
+    )
+    digest = rst.double_digest(result.product.sequence, "EcoRI", "HindIII")
+    built = gel.build_gel([gel.product_lane(result.product.length), gel.digest_lane(digest)])
+    return (
+        [
+            cites.amplification_step(result),
+            cites.digest_step(digest),
+            cites.gel_step(built),
+        ],
+        result,
+        digest,
+        built,
+    )
+
+
+@pytest.mark.unit
+def test_each_phase2_step_records_the_parameters_it_ran_with():
+    log, result, digest, built = _phase2_log()
+    by_kind = {entry["kind"]: entry for entry in log}
+
+    amp_params = by_kind["amplification"]["parameters"]
+    assert amp_params["outcome"] == result.outcome
+    assert amp_params["3' bases required to match"] == result.diagnostics["three_prime_exact"]
+
+    dig_params = by_kind["restriction_digest"]["parameters"]
+    assert dig_params["sites found"] == len(digest.sites)
+    assert dig_params["enzymes"] == "EcoRI, HindIII"
+
+    gel_params = by_kind["gel_migration"]["parameters"]
+    assert gel_params["lanes"] == len(built.lanes)
+
+
+@pytest.mark.unit
+def test_phase2_steps_flow_into_methods_text_and_bibtex():
+    log, _, _, _ = _phase2_log()
+    text = cites.methods_text(log)
+
+    assert "REBASE" in text
+    assert "log-linear" in text
+    # The disclaimers must survive into the paragraph a student submits.
+    assert "convention" in text
+    assert "does not account for" in text
+
+    keys = cites.cited_keys(log)
+    for key in ("roberts2022", "southern1979", "elder1983", "cock2009"):
+        assert key in keys
+    bib = cites.bibtex(log)
+    for key in ("roberts2022", "southern1979", "elder1983"):
+        assert f"{{{key}," in bib
+
+
+@pytest.mark.unit
+def test_the_digest_step_names_what_it_cannot_model():
+    log, _, _, _ = _phase2_log()
+    digest_entry = next(e for e in log if e["kind"] == "restriction_digest")
+    for limitation in ("methylation sensitivity", "star activity", "isoschizomers"):
+        assert limitation in digest_entry["description"]

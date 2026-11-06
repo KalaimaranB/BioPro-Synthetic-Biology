@@ -45,6 +45,47 @@ CITATIONS: tuple[Citation, ...] = (
         doi="10.1021/bi962590c",
     ),
     Citation(
+        key="roberts2022",
+        authors=(
+            "Roberts, Richard J",
+            "Vincze, Tamas",
+            "Posfai, Janos",
+            "Macelis, Dana",
+        ),
+        title="REBASE: a database for DNA restriction and modification: enzymes, genes and genomes",
+        year=2022,
+        venue="Nucleic Acids Research",
+        volume="51(D1)",
+        pages="D629\u2013D630",
+        doi="10.1093/nar/gkac975",
+    ),
+    Citation(
+        key="southern1979",
+        authors=("Southern, E.M.",),
+        title="Measurement of DNA length by gel electrophoresis",
+        year=1979,
+        venue="Analytical Biochemistry",
+        volume="100(2)",
+        pages="319\u2013323",
+        doi="10.1016/0003-2697(79)90235-5",
+    ),
+    Citation(
+        key="elder1983",
+        authors=(
+            "Elder, J.K.",
+            "Southern, E.M.",
+        ),
+        title=(
+            "Measurement of DNA length by gel electrophoresis II: Comparison of methods "
+            "for relating mobility to fragment length"
+        ),
+        year=1983,
+        venue="Analytical Biochemistry",
+        volume="128(1)",
+        pages="227\u2013231",
+        doi="10.1016/0003-2697(83)90369-x",
+    ),
+    Citation(
         key="choi2018",
         authors=(
             "Choi, K.",
@@ -424,6 +465,20 @@ FEATURE_CITATIONS: dict[str, tuple[str, ...]] = {
     # table. The rubric *thresholds* applied on top of those energies are
     # conventions and cite nothing — see primer_rubric.THRESHOLD_PROVENANCE.
     "primer_screen": ("santalucia2004", "cock2009"),
+    # Enzyme recognition sites, cut offsets and overhang polarity come from
+    # REBASE as distributed with Biopython. Nothing in the digest engine is a
+    # threshold, so there is no convention to disclaim.
+    "restriction_digest": ("roberts2022", "cock2009"),
+    # Binding uses the same nearest-neighbour Tm model as primer design. The
+    # mismatch-tolerance rule is our own convention and cites nothing -- see
+    # amplification.THRESHOLD_PROVENANCE.
+    "amplification": ("allawi1997", "cock2009"),
+    # Size-dependent mobility, calibrated against a ladder, is Southern (1979);
+    # Elder & Southern (1983) compared the functional forms and found the
+    # log-linear one wanting. The log-linear model this module uses is
+    # therefore labelled a convention in gel.THRESHOLD_PROVENANCE: the
+    # citations support the size dependence, not this particular equation.
+    "gel_migration": ("southern1979", "elder1983"),
     # The scanner searches for the SpCas9 NGG PAM. Candidate *ranking* is the
     # module's own heuristic and deliberately cites nothing.
     "crispr_scan": ("jinek2012",),
@@ -452,6 +507,9 @@ STEP_ORDER: tuple[str, ...] = (
     "assembly",
     "primer_design",
     "primer_screen",
+    "amplification",
+    "restriction_digest",
+    "gel_migration",
     "crispr_scan",
     "circuit_ode",
     "tellurium_ode",
@@ -557,6 +615,120 @@ def primer_screen_step(
             "candidates ranked": n_candidates,
             "best verdict": verdict,
             **({"checks": ", ".join(checks_applied)} if checks_applied else {}),
+        },
+    )
+
+
+def amplification_step(
+    result: Any,
+    *,
+    template_bp: int | None = None,
+    circular: bool | None = None,
+) -> dict[str, Any]:
+    """In-silico PCR. Parameters are read off the result's own diagnostics, so
+    the write-up cannot report a rule the run did not apply.
+
+    Only the Tm model and Biopython are cited. The mismatch-tolerance rule is
+    this module's convention and the description says so rather than letting a
+    citation imply it was measured.
+    """
+    diag = dict(getattr(result, "diagnostics", {}) or {})
+    outcome = getattr(result, "outcome", "unknown")
+    amplicons = tuple(getattr(result, "amplicons", ()) or ())
+
+    parameters: dict[str, Any] = {
+        "template": f"{diag.get('template_bp', template_bp)} bp "
+        f"{'circular' if diag.get('circular', circular) else 'linear'}",
+        "outcome": outcome,
+        "products": len(amplicons),
+        "3' bases required to match": diag.get("three_prime_exact"),
+        "mismatches allowed elsewhere": diag.get("max_mismatches"),
+        "max product searched": f"{diag.get('max_product_bp')} bp",
+    }
+    if amplicons:
+        parameters["product sizes"] = ", ".join(f"{a.length} bp" for a in amplicons)
+        parameters["product GC"] = ", ".join(f"{a.gc_percent:.1f}%" for a in amplicons)
+    if getattr(result, "dimer_risk", False):
+        parameters["heterodimer \u0394G"] = f"{result.dimer_delta_g:.2f} kcal/mol"
+
+    return _entry(
+        "amplification",
+        "Primer binding sites were located on both strands of the template, "
+        "requiring an exact match over the 3'-terminal bases and tolerating a "
+        "bounded number of mismatches further upstream, and amplicons were "
+        "resolved from correctly oriented pairs within the maximum product "
+        "length; annealing temperatures were computed on the binding region "
+        "alone, excluding any 5' tail, while product lengths include it. The "
+        "mismatch tolerance is a convention of this module rather than a "
+        "published value",
+        FEATURE_CITATIONS["amplification"],
+        parameters,
+    )
+
+
+def digest_step(result: Any) -> dict[str, Any]:
+    """A restriction digest. Enzyme geometry is REBASE's, via Biopython.
+
+    There are no thresholds here, so nothing needs disclaiming as convention;
+    what does need stating is what the model leaves out, which it does.
+    """
+    from .assembly.restriction import DIGEST_LIMITATIONS
+
+    sites = tuple(getattr(result, "sites", ()) or ())
+    fragments = tuple(getattr(result, "fragments", ()) or ())
+    enzymes = tuple(getattr(result, "enzymes", ()) or ())
+
+    return _entry(
+        "restriction_digest",
+        "Restriction sites were located using recognition sequences and "
+        "strand-specific cut offsets from REBASE, and fragments were predicted "
+        "with the overhang left at each end read from the template, so that "
+        "enzymes cutting outside their recognition sequence yield "
+        "sequence-dependent overhangs; the digest is modelled as complete and "
+        "does not account for " + ", ".join(name for name, _ in DIGEST_LIMITATIONS),
+        FEATURE_CITATIONS["restriction_digest"],
+        {
+            "enzymes": ", ".join(enzymes) or "none",
+            "topology": "circular" if getattr(result, "circular", False) else "linear",
+            "template": f"{getattr(result, 'template_length', 0)} bp",
+            "sites found": len(sites),
+            "fragments": len(fragments),
+            **(
+                {"fragment sizes": ", ".join(f"{f.length} bp" for f in fragments)}
+                if fragments
+                else {}
+            ),
+        },
+    )
+
+
+def gel_step(gel: Any) -> dict[str, Any]:
+    """A predicted gel. The size dependence is cited; the equation is not.
+
+    Southern (1979) established that mobility tracks fragment length against a
+    ladder, and also that the relationship is *not* strictly linear in
+    log(size). The log-linear form used here is a teaching approximation, and
+    the description says so in place of implying the citation endorses it.
+    """
+    lanes = tuple(getattr(gel, "lanes", ()) or ())
+    clamped = sum(1 for lane in lanes for b in getattr(lane, "bands", ()) if b.out_of_range)
+
+    return _entry(
+        "gel_migration",
+        "Fragment positions were predicted from length by a log-linear "
+        "mobility model calibrated to the gel's resolving window, with band "
+        "intensity taken as proportional to the mass of DNA in the band and "
+        "fragments of equal length merged into a single band; the log-linear "
+        "form is a conventional approximation rather than a published "
+        "relationship, and agarose percentage, voltage, run conditions and DNA "
+        "conformation are not modelled",
+        FEATURE_CITATIONS["gel_migration"],
+        {
+            "model": getattr(gel, "model", "log-linear"),
+            "resolving window": f"{getattr(gel, 'min_bp', 0)}\u2013{getattr(gel, 'max_bp', 0)} bp",
+            "lanes": len(lanes),
+            "lane length": f"{getattr(gel, 'lane_length_mm', 0):g} mm",
+            **({"bands outside the window": clamped} if clamped else {}),
         },
     )
 
@@ -733,6 +905,9 @@ def all_keys() -> list[str]:
 __all__ = [
     "CITATIONS",
     "FEATURE_CITATIONS",
+    "amplification_step",
+    "digest_step",
+    "gel_step",
     "SOLVER_CITATIONS",
     "STEP_ORDER",
     "all_keys",
