@@ -16,8 +16,21 @@ class PartsCatalogueService:
     PartRepository abstraction rather than a concrete implementation.
     """
 
-    def __init__(self, repository: PartRepository):
+    def __init__(self, repository: PartRepository, *, enrich_from_network: bool = False):
+        """Wire the service to a repository.
+
+        Args:
+            repository: Where parts are read from and written to.
+            enrich_from_network: Whether seeding may call UniProt and RCSB PDB
+                to fill in descriptions and structure images. Off by default:
+                these are blocking HTTP calls, so leaving them on made the
+                unit suite non-hermetic (it downloaded ~150 KB of JPEGs) and
+                fail offline. Anything turning this on needs to run seeding on
+                a worker, not the GUI thread -- `_enrich_part` issues two
+                requests per CDS.
+        """
         self._repository = repository
+        self._enrich_from_network = enrich_from_network
 
     def add_part(self, part: BiologicalPart) -> None:
         """Add a new part or update an existing one."""
@@ -70,7 +83,11 @@ class PartsCatalogueService:
         )
 
     def _enrich_part(self, part: BiologicalPart):
-        """Fetch description from UniProt and image from RCSB PDB."""
+        """Fetch description from UniProt and image from RCSB PDB.
+
+        Blocking network I/O, two requests per part. Only reached when the
+        service was built with ``enrich_from_network=True``; see __init__.
+        """
         if not isinstance(part, CDS):
             return
 
@@ -179,7 +196,7 @@ class PartsCatalogueService:
                     product=params.get("product", ""),
                 )
 
-            if isinstance(part, CDS):
+            if isinstance(part, CDS) and self._enrich_from_network:
                 self._enrich_part(part)
 
             self._repository.save(part)
@@ -220,7 +237,7 @@ class PartsCatalogueService:
                     product=params.get("product", ""),
                 )
 
-            if isinstance(part, CDS):
+            if isinstance(part, CDS) and self._enrich_from_network:
                 self._enrich_part(part)
 
             self._repository.save(part)

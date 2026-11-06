@@ -266,3 +266,42 @@ def test_initialize_cello_parts_writes_nothing_when_shipped_parts_exist(user_dir
 
     assert _snapshot_payload() == before
     assert not user_catalogue_path().exists(), "seeding wrote a redundant user file"
+
+
+# ── Hermetic seeding ───────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+def test_seeding_makes_no_network_calls_by_default(tmp_path, monkeypatch):
+    """The unit suite must pass offline.
+
+    Seeding used to call UniProt and RCSB PDB for every CDS, two blocking
+    requests each, and downloaded ~150 KB of JPEGs during a test run.
+    """
+    import urllib.request
+
+    def explode(*args, **kwargs):
+        raise AssertionError("seeding attempted a network call")
+
+    monkeypatch.setattr(urllib.request, "urlopen", explode)
+
+    service = PartsCatalogueService(JsonPartRepository(str(tmp_path / "seed.json")))
+    service.initialize_cello_parts()
+
+    assert service.get_all_parts(), "seeding should still populate the catalogue"
+
+
+@pytest.mark.unit
+def test_enrichment_is_opt_in_and_off_by_default(tmp_path):
+    assert PartsCatalogueService(JsonPartRepository())._enrich_from_network is False
+    opted_in = PartsCatalogueService(JsonPartRepository(), enrich_from_network=True)
+    assert opted_in._enrich_from_network is True
+
+
+@pytest.mark.unit
+def test_seeding_downloads_no_images_into_the_user_dir(user_dir, tmp_path):
+    """The images that used to appear under ~/.karcytics came from seeding."""
+    service = PartsCatalogueService(JsonPartRepository(str(tmp_path / "seed.json")))
+    service.initialize_cello_parts()
+
+    assert not user_images_dir().exists() or not list(user_images_dir().iterdir())
