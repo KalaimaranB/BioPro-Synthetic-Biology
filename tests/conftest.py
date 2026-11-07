@@ -557,3 +557,21 @@ def destroy_after():
     for widget in widgets:
         widget.deleteLater()
     QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+
+
+# Literal rather than imported from analysis.user_paths, to keep conftest free
+# of plugin imports at collection time. Must match USER_DIR_ENV there.
+_SYNBIO_USER_DIR_ENV = "KARCYTICS_SYNBIO_USER_DIR"
+
+
+@pytest.fixture(autouse=True)
+def isolate_plugin_user_dir(tmp_path_factory, monkeypatch):
+    """Point the plugin's writable directory at a temp dir for every test.
+
+    The plugin writes runtime data to ~/.karcytics/plugin_configs/<id>/ (see
+    analysis/user_paths.py). Without this, a test that saves a part writes into
+    the developer's real home directory, and `initialize_cello_parts` even
+    downloads structure images there. Tests that need a specific location
+    override this with their own monkeypatch.setenv, which runs later and wins.
+    """
+    monkeypatch.setenv(_SYNBIO_USER_DIR_ENV, str(tmp_path_factory.mktemp("synbio_user")))
