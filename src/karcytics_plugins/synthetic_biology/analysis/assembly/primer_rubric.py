@@ -31,10 +31,12 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-#: Marker for a threshold that is community practice rather than a result.
-CONVENTION = "convention"
-#: Marker for a threshold that follows from a cited model.
-SOURCED = "sourced"
+from ..provenance import CONVENTION, SOURCED, Provenance
+
+#: Re-exported from ``analysis.provenance`` so existing importers of
+#: ``primer_rubric.CONVENTION`` keep working; the definitions now live in one
+#: place alongside the mechanism category.
+__all_provenance__ = (CONVENTION, SOURCED)
 
 
 @dataclass(frozen=True)
@@ -155,53 +157,106 @@ class PrimerRubric:
 #: Keep every field of :class:`PrimerRubric` that is a threshold represented
 #: here; ``test_primer_rubric`` asserts the mapping stays complete, so a new
 #: threshold cannot be added without declaring its provenance.
-THRESHOLD_PROVENANCE: dict[str, tuple[str, str]] = {
-    "gc_min_percent": (
-        CONVENTION,
-        "40-60% GC is standard primer-design practice, not a measured result.",
+THRESHOLD_PROVENANCE: dict[str, Provenance] = {
+    "gc_min_percent": Provenance(
+        kind=CONVENTION,
+        explanation=("40-60% GC is standard primer-design practice, not a measured result."),
     ),
-    "gc_max_percent": (
-        CONVENTION,
-        "40-60% GC is standard primer-design practice, not a measured result.",
+    "gc_max_percent": Provenance(
+        kind=CONVENTION,
+        explanation=("40-60% GC is standard primer-design practice, not a measured result."),
     ),
-    "clamp_window": (CONVENTION, "Inspecting the last 5 bases for a G/C clamp is convention."),
-    "clamp_min_gc": (CONVENTION, "Requiring at least one 3' G or C is convention."),
-    "clamp_max_gc": (CONVENTION, "Capping 3' G/C to discourage mispriming is convention."),
-    "max_poly_run": (CONVENTION, "Avoiding runs of four or more identical bases is convention."),
-    "pair_tm_tolerance": (
-        CONVENTION,
-        "Matching the pair to within 5 °C is convention; the Tm values themselves are computed "
-        "from a published nearest-neighbour model.",
+    "clamp_window": Provenance(
+        kind=CONVENTION,
+        explanation=("Inspecting the last 5 bases for a G/C clamp is convention."),
     ),
-    "product_min_bp": (CONVENTION, "Product-size limits are set by the experiment, not by theory."),
-    "product_max_bp": (CONVENTION, "Product-size limits are set by the experiment, not by theory."),
-    "hairpin_min_dg": (
-        CONVENTION,
-        "The cutoff is a convention; the ΔG it is compared against is computed with the "
-        "SantaLucia & Hicks (2004) nearest-neighbour parameters.",
+    "clamp_min_gc": Provenance(
+        kind=CONVENTION,
+        explanation=("Requiring at least one 3' G or C is convention."),
     ),
-    "self_dimer_min_dg": (
-        CONVENTION,
-        "The cutoff is a convention; the ΔG it is compared against is computed with the "
-        "SantaLucia & Hicks (2004) nearest-neighbour parameters.",
+    "clamp_max_gc": Provenance(
+        kind=CONVENTION,
+        explanation=("Capping 3' G/C to discourage mispriming is convention."),
     ),
-    "hetero_dimer_min_dg": (
-        CONVENTION,
-        "The cutoff is a convention; the ΔG it is compared against is computed with the "
-        "SantaLucia & Hicks (2004) nearest-neighbour parameters.",
+    "max_poly_run": Provenance(
+        kind=CONVENTION,
+        explanation=("Avoiding runs of four or more identical bases is convention."),
     ),
-    "three_prime_window": (
-        CONVENTION,
-        "Treating the last 5 bases as the priming end is convention; extension initiates there.",
+    "pair_tm_tolerance": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "Matching the pair to within 5 °C is convention; the Tm values themselves are computed from a published nearest-neighbour model."
+        ),
     ),
-    "three_prime_dimer_min_dg": (
-        CONVENTION,
-        "A stricter cutoff for 3'-anchored duplexes is a convention.",
+    "product_min_bp": Provenance(
+        kind=CONVENTION,
+        explanation=("Product-size limits are set by the experiment, not by theory."),
     ),
-    "min_length": (CONVENTION, "18-30 nt is standard primer-length practice."),
-    "max_length": (CONVENTION, "18-30 nt is standard primer-length practice."),
-    "max_offset": (CONVENTION, "How far the search may slide is a search setting, not a result."),
-    "target_tm": (CONVENTION, "A 60 °C target is convention; the Tm model behind it is published."),
+    "product_max_bp": Provenance(
+        kind=CONVENTION,
+        explanation=("Product-size limits are set by the experiment, not by theory."),
+    ),
+    "hairpin_min_dg": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "The cutoff is a convention; the ΔG it is compared against is computed with the SantaLucia & Hicks (2004) nearest-neighbour parameters."
+        ),
+    ),
+    "self_dimer_min_dg": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "The cutoff is a convention; the ΔG it is compared against is computed with the SantaLucia & Hicks (2004) nearest-neighbour parameters."
+        ),
+    ),
+    "hetero_dimer_min_dg": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "The cutoff is a convention; the ΔG it is compared against is computed with the SantaLucia & Hicks (2004) nearest-neighbour parameters."
+        ),
+    ),
+    "three_prime_window": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "Treating the last 5 bases as the priming end is convention; the "
+            "count of 5 is ours. That the 3' end is what decides whether a "
+            "duplex primes is not."
+        ),
+        mechanism=("newton1989",),
+        mechanism_claim=(
+            "Newton et al. (1989) demonstrated that an oligonucleotide "
+            "mismatched at its 3' residue does not function as a primer, which "
+            "is why this module judges 3'-anchored structures differently from "
+            "internal ones. The paper does not support a window of 5 bases."
+        ),
+    ),
+    "three_prime_dimer_min_dg": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "A stricter cutoff for 3'-anchored duplexes is a convention; the value is ours."
+        ),
+        mechanism=("newton1989",),
+        mechanism_claim=(
+            "A duplex involving the 3' terminus can prime, so it competes with "
+            "the template in a way an internal duplex does not (Newton et al. "
+            "1989). The cutoff value itself is not supported by that paper."
+        ),
+    ),
+    "min_length": Provenance(
+        kind=CONVENTION,
+        explanation=("18-30 nt is standard primer-length practice."),
+    ),
+    "max_length": Provenance(
+        kind=CONVENTION,
+        explanation=("18-30 nt is standard primer-length practice."),
+    ),
+    "max_offset": Provenance(
+        kind=CONVENTION,
+        explanation=("How far the search may slide is a search setting, not a result."),
+    ),
+    "target_tm": Provenance(
+        kind=CONVENTION,
+        explanation=("A 60 °C target is convention; the Tm model behind it is published."),
+    ),
 }
 
 #: Fields of PrimerRubric that are labels rather than thresholds.

@@ -37,6 +37,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..provenance import CONVENTION, Provenance
 from . import restriction as rst
 from .primer_rubric import DEFAULT_RUBRIC, PrimerRubric
 from .thermodynamics import hetero_dimer, reverse_complement
@@ -589,26 +590,38 @@ def amplify(  # noqa: PLR0913 - each argument is an independent input to the rea
     )
 
 
-#: Provenance of every tunable in this module, in the same form as
-#: ``primer_rubric.THRESHOLD_PROVENANCE``. All conventions: the priming rule's
-#: shape is standard practice but these particular numbers are our settings.
-THRESHOLD_PROVENANCE: dict[str, tuple[str, str]] = {
-    "three_prime_exact": (
-        "convention",
-        "Requiring a perfect match over the last 5 bases reflects that Taq "
-        "lacks 3'→5' proofreading, so a terminal mismatch is not corrected. "
-        "The principle is standard practice; the window of 5 is our setting, "
-        "not a measured result.",
+#: Provenance of every tunable in this module. The parameter *values* are all
+#: conventions; the rule's *shape* is not, and that distinction is what
+#: ``Provenance.mechanism`` exists to record.
+THRESHOLD_PROVENANCE: dict[str, Provenance] = {
+    "three_prime_exact": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "Requiring a perfect match over the last 5 bases is our setting, "
+            "not a measured result: real tolerance depends on the mismatch's "
+            "identity and the annealing temperature, neither of which this "
+            "model takes. The window being at the 3' end is not our choice."
+        ),
+        mechanism=("newton1989", "tindall1988"),
+        mechanism_claim=(
+            "An oligonucleotide with a mismatched 3' residue does not function "
+            "as a primer (Newton et al. 1989, who report this as unexpected), "
+            "and Taq lacks detectable proofreading on a substrate carrying a "
+            "3'-OH terminal mismatch, so such a mismatch is not excised "
+            "(Tindall & Kunkel 1988). Neither paper supports a window of 5."
+        ),
     ),
-    "max_mismatches": (
-        "convention",
-        "Tolerating up to 2 mismatches away from the 3' end is our setting. "
-        "Real tolerance depends on position, identity and annealing "
-        "temperature, none of which this model takes into account.",
+    "max_mismatches": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "Tolerating up to 2 mismatches away from the 3' end is our "
+            "setting. Real tolerance depends on position, identity and "
+            "annealing temperature, none of which this model takes."
+        ),
     ),
-    "max_product_bp": (
-        "convention",
-        "A search bound, not a claim about polymerase processivity.",
+    "max_product_bp": Provenance(
+        kind=CONVENTION,
+        explanation="A search bound, not a claim about polymerase processivity.",
     ),
 }
 

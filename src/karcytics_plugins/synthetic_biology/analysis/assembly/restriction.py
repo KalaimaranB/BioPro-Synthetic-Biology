@@ -54,6 +54,8 @@ from typing import Any
 from Bio.Restriction import AllEnzymes, RestrictionBatch  # type: ignore[attr-defined]
 from Bio.Seq import Seq
 
+from ..provenance import SOURCED, Provenance
+
 #: Overhang polarity labels, used in results and surfaced to the user.
 FIVE_PRIME = "5'"
 THREE_PRIME = "3'"
@@ -488,23 +490,28 @@ def enzymes_cutting(sequence: str, *, circular: bool = False, batch: Any = None)
     return {str(enzyme): len(hits) for enzyme, hits in found.items() if hits}
 
 
-#: Why each reported quantity is trustworthy, per field, in the same spirit as
-#: ``primer_rubric.THRESHOLD_PROVENANCE``. There are no thresholds in this
-#: module — nothing here is a judgement call — so every entry is sourced.
-THRESHOLD_PROVENANCE: dict[str, tuple[str, str]] = {
-    "recognition_site": (
-        "sourced",
-        "Recognition sequences come from REBASE as distributed with Biopython.",
+#: Why each reported quantity is trustworthy. This engine makes no judgement
+#: calls -- there are no thresholds and nothing to tune -- so every entry is
+#: sourced and none needs a mechanism: the rules *are* the enzyme geometry.
+THRESHOLD_PROVENANCE: dict[str, Provenance] = {
+    "recognition_site": Provenance(
+        kind=SOURCED,
+        explanation=("Recognition sequences come from REBASE as distributed with Biopython."),
     ),
-    "cut_position": (
-        "sourced",
-        "Top- and bottom-strand cut offsets come from REBASE as distributed "
-        "with Biopython; this module converts them to 0-based coordinates.",
+    "cut_position": Provenance(
+        kind=SOURCED,
+        explanation=(
+            "Top- and bottom-strand cut offsets come from REBASE as distributed "
+            "with Biopython; this module converts them to 0-based coordinates."
+        ),
     ),
-    "overhang": (
-        "sourced",
-        "Overhang polarity and length come from REBASE; the overhang sequence "
-        "is read from the template, which is what makes Type IIS assembly work.",
+    "overhang": Provenance(
+        kind=SOURCED,
+        explanation=(
+            "Overhang polarity and length come from REBASE; the overhang "
+            "sequence is read from the template, which is what makes Type IIS "
+            "assembly work."
+        ),
     ),
 }
 

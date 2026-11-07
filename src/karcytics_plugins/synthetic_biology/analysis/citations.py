@@ -45,6 +45,57 @@ CITATIONS: tuple[Citation, ...] = (
         doi="10.1021/bi962590c",
     ),
     Citation(
+        key="newton1989",
+        authors=(
+            "Newton, C. R.",
+            "Graham, A.",
+            "Heptinstall, L. E.",
+            "Powell, S. J.",
+            "Summers, C.",
+            "Kalsheker, N.",
+            "Smith, J. C.",
+            "Markham, A. F.",
+        ),
+        title="Analysis of any point mutation in DNA. The amplification refractory mutation system (ARMS)",
+        year=1989,
+        venue="Nucleic Acids Research",
+        volume="17(7)",
+        pages="2503\u20132516",
+        doi="10.1093/nar/17.7.2503",
+    ),
+    Citation(
+        key="saiki1988",
+        authors=(
+            "Saiki, Randall K.",
+            "Gelfand, David H.",
+            "Stoffel, Susanne",
+            "Scharf, Stephen J.",
+            "Higuchi, Russell",
+            "Horn, Glenn T.",
+            "Mullis, Kary B.",
+            "Erlich, Henry A.",
+        ),
+        title="Primer-Directed Enzymatic Amplification of DNA with a Thermostable DNA Polymerase",
+        year=1988,
+        venue="Science",
+        volume="239(4839)",
+        pages="487\u2013491",
+        doi="10.1126/science.2448875",
+    ),
+    Citation(
+        key="tindall1988",
+        authors=(
+            "Tindall, Kenneth R.",
+            "Kunkel, Thomas A.",
+        ),
+        title="Fidelity of DNA synthesis by the Thermus aquaticus DNA polymerase",
+        year=1988,
+        venue="Biochemistry",
+        volume="27(16)",
+        pages="6008\u20136013",
+        doi="10.1021/bi00416a027",
+    ),
+    Citation(
         key="roberts2022",
         authors=(
             "Roberts, Richard J",
@@ -469,10 +520,19 @@ FEATURE_CITATIONS: dict[str, tuple[str, ...]] = {
     # REBASE as distributed with Biopython. Nothing in the digest engine is a
     # threshold, so there is no convention to disclaim.
     "restriction_digest": ("roberts2022", "cock2009"),
-    # Binding uses the same nearest-neighbour Tm model as primer design. The
-    # mismatch-tolerance rule is our own convention and cites nothing -- see
-    # amplification.THRESHOLD_PROVENANCE.
-    "amplification": ("allawi1997", "cock2009"),
+    # What is modelled is PCR with a thermostable polymerase, which is Saiki
+    # et al. (1988) -- not Mullis & Faloona (1987), whose method used Klenow at
+    # 37 C and is not what this engine simulates.
+    #
+    # The priming rule's *numbers* (5-base exact 3' window, 2 mismatches
+    # upstream) remain conventions and cite nothing. Its *shape* does not:
+    # Newton et al. (1989) demonstrated that an oligonucleotide with a
+    # mismatched 3' residue will not function as a primer, and Tindall &
+    # Kunkel (1988) showed, on a substrate carrying a 3'-OH terminal mismatch,
+    # that Taq lacks detectable proofreading -- which is why such a mismatch is
+    # not corrected. Each is attached to its own claim in
+    # amplification.THRESHOLD_PROVENANCE; neither supports the chosen window.
+    "amplification": ("saiki1988", "newton1989", "tindall1988", "allawi1997", "cock2009"),
     # Size-dependent mobility, calibrated against a ladder, is Southern (1979);
     # Elder & Southern (1983) compared the functional forms and found the
     # log-linear one wanting. The log-linear model this module uses is
@@ -653,14 +713,19 @@ def amplification_step(
 
     return _entry(
         "amplification",
-        "Primer binding sites were located on both strands of the template, "
-        "requiring an exact match over the 3'-terminal bases and tolerating a "
-        "bounded number of mismatches further upstream, and amplicons were "
-        "resolved from correctly oriented pairs within the maximum product "
-        "length; annealing temperatures were computed on the binding region "
-        "alone, excluding any 5' tail, while product lengths include it. The "
-        "mismatch tolerance is a convention of this module rather than a "
-        "published value",
+        "Amplification by the polymerase chain reaction with a thermostable "
+        "polymerase was simulated in silico. Primer binding sites were located "
+        "on both strands of the template, requiring an exact match over the "
+        "3'-terminal bases -- an oligonucleotide mismatched at its 3' residue "
+        "does not prime, and Taq lacks the proofreading activity that would "
+        "excise such a mismatch -- and tolerating a bounded number of "
+        "mismatches further upstream; amplicons were resolved from correctly "
+        "oriented pairs within the maximum product length. Annealing "
+        "temperatures were computed on the binding region alone, excluding any "
+        "5' tail, while product lengths include it. The size of the 3' window "
+        "and the number of mismatches tolerated are conventions of this module "
+        "rather than published values, although the dependence on the 3' "
+        "terminus itself is a published result",
         FEATURE_CITATIONS["amplification"],
         parameters,
     )

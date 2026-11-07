@@ -47,6 +47,8 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..provenance import CONVENTION, SOURCED, Provenance
+
 #: Resolving window of a typical 1% agarose gel, in bp. A convention: a
 #: different agarose percentage resolves a different window.
 DEFAULT_MIN_BP = 100
@@ -428,36 +430,73 @@ def build_gel(
     )
 
 
-#: Provenance per field, as in ``primer_rubric.THRESHOLD_PROVENANCE``.
-THRESHOLD_PROVENANCE: dict[str, tuple[str, str]] = {
-    "mobility_model": (
-        "convention",
-        "Migration linear in log10(size) is a teaching approximation. Southern "
-        "(1979) showed mobility is not strictly log-linear and proposed a "
-        "reciprocal relationship; Elder & Southern (1983) compared the forms. "
-        "The size-dependence itself is the cited empirical result -- this "
-        "particular functional form is not.",
+#: Provenance per field. The mobility model is the one place this module could
+#: overclaim, so its entry records the paper that was weighed and declined.
+THRESHOLD_PROVENANCE: dict[str, Provenance] = {
+    "mobility_model": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "Migration linear in log10(size) is a teaching approximation. The "
+            "size-dependence itself is an empirical result and is cited; this "
+            "particular functional form is not. Southern (1979) showed "
+            "mobility is not strictly log-linear and proposed a reciprocal "
+            "relationship, and Elder & Southern (1983) compared the forms."
+        ),
+        rejected=(
+            (
+                "Aaij & Borst (1972), Biochim. Biophys. Acta 269:192-200, "
+                "doi:10.1016/0005-2787(72)90426-1",
+                "Considered as a source for the log-linear form itself, and "
+                "declined because its content could not be verified. The paper "
+                "is real and correctly identified (PMID 5063906), but no "
+                "abstract is indexed in PubMed, Crossref, OpenAlex or Europe "
+                "PMC, and the full text is paywalled. A secondary fragment "
+                "suggested it may in fact report mobility as NOT linear in log "
+                "MW for linear DNA above ~1e6 Da in 1% gels, which would "
+                "argue against the sourced label, but that is equally "
+                "unverified. Citing it unread would make the claim look "
+                "checked when it is not.",
+            ),
+        ),
     ),
-    "resolving_window": (
-        "convention",
-        "100-10000 bp stands in for a typical 1% agarose gel. The real window "
-        "depends on agarose percentage, voltage and run time, none of which "
-        "this model takes.",
+    "resolving_window": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "100-10000 bp stands in for a typical 1% agarose gel. The real "
+            "window depends on agarose percentage, voltage and run time, none "
+            "of which this model takes."
+        ),
     ),
-    "lane_length_mm": (
-        "convention",
-        "A presentation scale for a renderer, not a physical quantity.",
+    "lane_length_mm": Provenance(
+        kind=CONVENTION,
+        explanation="A presentation scale for a renderer, not a physical quantity.",
     ),
-    "intensity": (
-        "convention",
-        "Intensity proportional to band mass follows from intercalating dye "
-        "binding along the duplex. The proportionality is conventional and "
-        "ignores saturation and the dye's own size preference.",
+    "intensity": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "Intensity proportional to band mass follows from intercalating "
+            "dye binding along the duplex. The proportionality is conventional "
+            "and ignores saturation and the dye's own size preference."
+        ),
+        rejected=(
+            (
+                "Le Pecq & Paoletti (1967), J. Mol. Biol. 27:87-106, "
+                "doi:10.1016/0022-2836(67)90353-1",
+                "Considered as the source for ethidium fluorescence scaling "
+                "with bound DNA, and declined for the same reason as Aaij & "
+                "Borst: no abstract is indexed anywhere (PMID 6033613) and the "
+                "full text is paywalled, so the claim could not be checked "
+                "against the paper.",
+            ),
+        ),
     ),
-    "ladder_sizes": (
-        "sourced",
-        "Fragment sizes are as published by the ladder's supplier; they state "
-        "a product's composition rather than an experimental measurement.",
+    "ladder_sizes": Provenance(
+        kind=SOURCED,
+        explanation=(
+            "Fragment sizes are as published by the ladder's supplier; they "
+            "state a product's composition rather than an experimental "
+            "measurement."
+        ),
     ),
 }
 
