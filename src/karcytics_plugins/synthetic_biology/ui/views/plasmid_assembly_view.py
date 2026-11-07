@@ -10,6 +10,8 @@ signals & slots.
 from __future__ import annotations
 
 import json
+import logging
+from typing import Any
 
 from karcytics_sdk.plugin.citation_widgets import CitationLabel
 from karcytics_sdk.plugin.components import (
@@ -25,6 +27,7 @@ from karcytics_sdk.plugin.components import (
     BioToggleButton,
     PrimaryButton,
     SecondaryButton,
+    WorkspaceSaveButton,
 )
 from karcytics_sdk.plugin.dialogs import show_error, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
@@ -47,6 +50,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...analysis.assembly import restriction as rst
+from ...analysis.assembly.primer_rubric import PrimerRubric
 from ...analysis.citations import FEATURE_CITATIONS
 from ...analysis.models.domain import PlasmidVector
 from ...analysis.parts.base import BiologicalPart
@@ -60,6 +64,8 @@ from ..widgets.flow_layout import FlowLayout
 from ..widgets.gel_view import GelView
 from ..widgets.rubric_panel import RubricPanel
 from ..workers import AmplificationWorker, InternalSiteWorker, PrimerCandidateWorker
+
+logger = logging.getLogger(__name__)
 
 
 class PartPaletteWidget(BioListWidget):
@@ -148,6 +154,8 @@ class PrimerDesignDialog(QDialog):
         self._worker: PrimerCandidateWorker | None = None
         self._amp_worker: AmplificationWorker | None = None
         self._site_worker: InternalSiteWorker | None = None
+        self._methods_dialog: Any = None
+        self._last_rubric = PrimerRubric()
 
         layout = QVBoxLayout(self)
         layout.addWidget(self._build_inputs())
@@ -158,10 +166,65 @@ class PrimerDesignDialog(QDialog):
         self.tabs.addTab(self._build_gel_tab(), "Gel")
         layout.addWidget(self.tabs)
 
+        layout.addWidget(self._build_footer())
+
         self.status = BioStatusLabel("")
         layout.addWidget(self.status)
 
         self._refresh_tail_enzymes()
+
+    def _build_footer(self) -> QWidget:
+        """Save / Methods & References / Export, which this dialog had none of.
+
+        The main panel carries these once globally, but a modal dialog is
+        where the primer work actually happens, so a student had no way to
+        save a design or see what produced its numbers without closing it.
+        """
+        bar = QWidget()
+        row = QHBoxLayout(bar)
+        row.setContentsMargins(0, 0, 0, 0)
+
+        self.btn_methods = SecondaryButton("Methods && References")
+        self.btn_methods.clicked.connect(self._open_methods)
+        row.addWidget(self.btn_methods)
+
+        row.addStretch()
+
+        self.save_button = WorkspaceSaveButton(bar)
+        self.save_button.clicked.connect(self._save_workspace)
+        row.addWidget(self.save_button)
+        return bar
+
+    def _open_methods(self) -> None:
+        """Show the same Methods & References dialog the main panel uses."""
+        from ..wizards.methods_dialog import MethodsReferencesDialog
+
+        state = getattr(self.controller, "state", None)
+        if state is None:
+            show_warning(
+                self,
+                title="Methods unavailable",
+                message="This dialog is not attached to a workspace.",
+            )
+            return
+        if self._methods_dialog is None:
+            self._methods_dialog = MethodsReferencesDialog(state, self)
+        self._methods_dialog.refresh()
+        self._methods_dialog.show()
+        self._methods_dialog.raise_()
+
+    def _save_workspace(self) -> None:
+        panel = self.parent()
+        saver = getattr(panel, "save_workflow", None) or getattr(panel, "_on_save", None)
+        if callable(saver):
+            saver()
+            show_toast("Design saved to the workspace.")
+        else:
+            show_warning(
+                self,
+                title="Save unavailable",
+                message="This dialog is not attached to a workspace that can be saved.",
+            )
 
     # ── Inputs ─────────────────────────────────────────────────────────
 
@@ -428,6 +491,7 @@ class PrimerDesignDialog(QDialog):
     def _on_candidates(self, candidates: list) -> None:
         self.btn_design.setEnabled(True)
         self._candidates = list(candidates or [])
+        self._last_rubric = PrimerRubric()
         self._fill_candidate_table()
         if not self._candidates:
             self.status.setText("No candidate primers could be generated for this region.")
@@ -469,6 +533,12 @@ class PrimerDesignDialog(QDialog):
             return
         candidate = self._candidates[row]
         self.rubric_panel.show_candidate(candidate["checks"], candidate["summary"])
+        # Record the design and screening that produced the pair now on screen.
+        self._record(
+            lambda: self.controller.record_primer_design(
+                candidate, self._last_rubric, len(self._candidates)
+            )
+        )
         self._run_amplification(candidate)
 
     def _run_amplification(self, candidate: dict) -> None:
@@ -491,11 +561,30 @@ class PrimerDesignDialog(QDialog):
 
     def _on_amplification(self, payload: dict) -> None:
         self.amplification_track.show_result(payload["result"], payload["template_bp"])
+        self._record(lambda: self.controller.record_amplification(payload["result"]))
+
+        digest = payload.get("digest")
+        if digest is not None:
+            self._record(lambda: self.controller.record_digest(digest))
+
         gel = payload.get("gel")
         if gel is not None:
             self.gel_view.show_gel(gel)
+            self._record(lambda: self.controller.record_gel(gel))
         else:
             self.gel_view.clear()
+
+    def _record(self, write: Any) -> None:
+        """Write one methods entry, tolerating a controller that cannot.
+
+        Tests and the demo pass stand-in controllers without a state object.
+        A missing recorder must not take the results off the screen, but it
+        must not pass silently either.
+        """
+        try:
+            write()
+        except AttributeError as exc:
+            logger.warning("Could not record a methods entry: %s", exc)
 
 
 #: Engine verdict -> theme token. The engine decides the verdict.
@@ -513,7 +602,6 @@ class PlasmidAssemblyView(QWidget):
 
     assembly_requested = Signal(str, list)
     file_parse_requested = Signal(str, str)
-    primer_requested = Signal(str, float, str, str)
 
     def __init__(
         self,
