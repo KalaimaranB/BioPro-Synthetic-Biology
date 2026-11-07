@@ -345,3 +345,68 @@ def test_autosave_does_not_nag_without_a_project(destroy_after):
     assert panel._persistence.is_dirty()
     assert callbacks["has_unsaved_changes"]() is False
     assert callbacks["has_saved_once"]() is False
+
+
+# ── Primer screening results survive a save/reopen ─────────────────────
+
+
+@pytest.mark.unit
+def test_screened_primers_round_trip_through_a_workflow():
+    """A primer's rubric verdict has to survive being saved and reopened.
+
+    Losing the checks would leave a workspace showing primers with no evidence
+    of whether they passed — which reads as approval rather than as unknown.
+    """
+    from karcytics_plugins.synthetic_biology.analysis.assembly.vector_builder import (
+        VectorAssemblyEngine,
+    )
+    from karcytics_plugins.synthetic_biology.analysis.models.domain import PlasmidVector
+
+    gfp = (
+        "ATGAGTAAAGGAGAAGAACTTTTCACTGGAGTTGTCCCAATTCTTGTTGAATTAGATGGTGATGTT"
+        "AATGGGCACAAATTTTCTGTCAGTGGAGAGGGTGAAGGTGATGCAACATAC"
+    )
+    fwd, rev = VectorAssemblyEngine.design_primers(
+        gfp, fwd_overhang="GAATTC", rev_overhang="AAGCTT"
+    )
+    assert fwd.rubric_checks, "fixture must carry screening results"
+
+    state = SynBioState()
+    state.set_active_plasmid(PlasmidVector(id="p", name="pTest", sequence=gfp, primers=[fwd, rev]))
+
+    restored = SynBioState()
+    restored.load_from_dict(state.to_dict())
+
+    reopened = restored.get_active_plasmid().primers
+    assert [p.to_dict() for p in reopened] == [fwd.to_dict(), rev.to_dict()]
+    assert reopened[0].rubric_verdict == fwd.rubric_verdict
+    assert reopened[0].gc_content == fwd.gc_content
+    assert reopened[0].overhang_gc_content == fwd.overhang_gc_content
+    assert reopened[0].hairpin_dg == fwd.hairpin_dg
+    assert len(reopened[0].rubric_checks) == len(fwd.rubric_checks)
+
+
+@pytest.mark.unit
+def test_a_primer_saved_before_screening_existed_still_loads():
+    """An older workspace must not read as a passed screen."""
+    from karcytics_plugins.synthetic_biology.analysis.models.domain import Primer
+
+    legacy = {
+        "id": "abc",
+        "name": "Forward_Primer",
+        "sequence": "GAATTCATGAGTAAAGGAGAAGAA",
+        "direction": "FWD",
+        "target_tm": 60.0,
+        "calculated_tm": 59.4,
+        "gc_content": 37.5,
+        "length": 24,
+        "overhang": "GAATTC",
+        "target_region": [0, 18],
+    }
+    primer = Primer.from_dict(legacy)
+
+    assert primer.rubric_verdict == "", "an unscreened primer must not claim a verdict"
+    assert primer.rubric_checks == []
+    assert primer.hairpin_dg is None
+    # Annealing length is still derivable from what the old record did carry.
+    assert primer.annealing_length == len("GAATTCATGAGTAAAGGAGAAGAA") - len("GAATTC")

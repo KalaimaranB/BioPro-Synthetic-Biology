@@ -34,3 +34,35 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+
+      # CLAUDE.md has described these four as running since the project moved to
+      # the Karcytics SDK, but they were never wired up. Added to match the
+      # documentation and the sibling repos (Karcytics, Karcytics-SDK).
+      - id: license-compliance
+        name: License Compliance Check
+        entry: uv run karcytics-sdk check-licenses
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: pytest
+        name: Headless Unit Testing (Pytest)
+        entry: env QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/ --tb=short -q
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: verify-security-ledger
+        name: Verify Security Ledger
+        # Fails when security.json no longer matches the tree; the message tells
+        # you to run 'karcytics-sdk sign .' and commit the result.
+        entry: uv run python scripts/verify_security_ledger.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: conventional-commit-msg
+        name: Conventional Commit Message
+        entry: uv run python scripts/check_commit_msg.py
+        language: system
+        stages: [commit-msg]

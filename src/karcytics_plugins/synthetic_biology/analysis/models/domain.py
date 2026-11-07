@@ -66,10 +66,30 @@ class Primer:
     direction: str  # 'FWD' or 'REV'
     target_tm: float
     calculated_tm: float
+    #: GC % of the **annealing region** only. A 5' restriction tail is excluded,
+    #: because it does not anneal on the first cycle and including it skews the
+    #: figure the rubric judges. Tail composition is `overhang_gc_content`.
     gc_content: float
     length: int
     overhang: str = ""
     target_region: tuple[int, int] | None = None
+
+    # ── Screening results (populated by analysis.assembly.primer_screen) ──
+    #: GC % of the 5' tail alone, or None when there is no tail. Reported
+    #: beside `gc_content`, never folded into it.
+    overhang_gc_content: float | None = None
+    #: Length of the annealing region, i.e. `length` minus the tail.
+    annealing_length: int = 0
+    #: Most stable hairpin / self-dimer ΔG°37, kcal/mol. None when not screened.
+    hairpin_dg: float | None = None
+    self_dimer_dg: float | None = None
+    #: Serialised `RubricCheck`s. Stored as plain dicts so persistence stays
+    #: JSON-safe and does not import the screening layer.
+    rubric_checks: list[dict[str, Any]] = field(default_factory=list)
+    #: "pass" / "fail" / "incomplete", or "" when the primer was never screened.
+    rubric_verdict: str = ""
+    #: Which rubric judged it, so a saved workspace records the standard applied.
+    rubric_name: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -83,6 +103,13 @@ class Primer:
             "length": self.length,
             "overhang": self.overhang,
             "target_region": self.target_region,
+            "overhang_gc_content": self.overhang_gc_content,
+            "annealing_length": self.annealing_length,
+            "hairpin_dg": self.hairpin_dg,
+            "self_dimer_dg": self.self_dimer_dg,
+            "rubric_checks": [dict(c) for c in self.rubric_checks],
+            "rubric_verdict": self.rubric_verdict,
+            "rubric_name": self.rubric_name,
         }
 
     @property
@@ -103,6 +130,18 @@ class Primer:
             length=data.get("length", len(data.get("sequence", ""))),
             overhang=data.get("overhang", ""),
             target_region=tuple(data["target_region"]) if data.get("target_region") else None,
+            # Screening fields default to "not screened" so a workspace saved
+            # before they existed still loads, rather than reading as a pass.
+            overhang_gc_content=data.get("overhang_gc_content"),
+            annealing_length=data.get(
+                "annealing_length",
+                len(data.get("sequence", "")) - len(data.get("overhang", "")),
+            ),
+            hairpin_dg=data.get("hairpin_dg"),
+            self_dimer_dg=data.get("self_dimer_dg"),
+            rubric_checks=list(data.get("rubric_checks") or []),
+            rubric_verdict=data.get("rubric_verdict", ""),
+            rubric_name=data.get("rubric_name", ""),
         )
 
 

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import io
 import uuid
+from dataclasses import replace
+from typing import Any
 
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -18,6 +20,15 @@ from Bio.SeqUtils import MeltingTemp
 
 from ..models.domain import GeneticFeature, PlasmidVector, Primer
 from ..parts.base import BiologicalPart
+from .primer_rubric import PrimerRubric
+from .primer_screen import (
+    RubricCheck,
+    gc_percent,
+    score,
+    screen_pair,
+    screen_primer,
+    summarise,
+)
 
 
 class MissingPartSequenceError(ValueError):
@@ -270,6 +281,269 @@ class VectorAssemblyEngine:
                 return float(n_at * 2 + n_gc * 4)
             return round(float(64.9 + 41.0 * (n_gc - 16.4) / n_total), 2)
 
+    # ── Primer design ──────────────────────────────────────────────────
+    #
+    # Two defects in the original implementation are fixed here, and both
+    # changed reported numbers:
+    #
+    # 1. GC content was computed over the full oligo including the 5'
+    #    restriction tail. A GAATTC tail is 50% GC and drags the figure toward
+    #    50% regardless of what the annealing region actually is, so a primer
+    #    could pass a 40-60% rubric on the strength of its tail. GC is now
+    #    measured on the annealing region, and tail GC is reported separately.
+    # 2. The forward primer was pinned to target[:n] and the reverse to
+    #    target[-n:]. With no way to slide, a poor GC or clamp at the exact end
+    #    of the target had no remedy. Candidates are now generated over a
+    #    bounded offset window as well as a length window.
+    #
+    # Tm is unchanged: still computed on the annealing region only, before the
+    # tail is concatenated, by `calculate_tm`.
+
+    @staticmethod
+    def _build_primer(  # noqa: PLR0913 - a private constructor for one Primer; each value is already decided by the caller
+        name: str,
+        direction: str,
+        binding: str,
+        overhang: str,
+        target_tm: float,
+        region: tuple[int, int],
+        rubric: PrimerRubric,
+    ) -> Primer:
+        """One primer, screened, with its annealing region already decided."""
+        overhang = overhang.upper()
+        full = overhang + binding
+        checks = screen_primer(full, overhang, rubric)
+        by_name = {c.name: c for c in checks}
+
+        def dg(check_name: str) -> float | None:
+            check = by_name.get(check_name)
+            if check is None or check.observed_value is None:
+                return None
+            return float(check.observed_value)
+
+        return Primer(
+            id=str(uuid.uuid4())[:8],
+            name=name,
+            sequence=full,
+            direction=direction,
+            target_tm=target_tm,
+            calculated_tm=round(VectorAssemblyEngine.calculate_tm(binding), 2),
+            gc_content=round(gc_percent(binding), 1),
+            length=len(full),
+            overhang=overhang,
+            target_region=region,
+            overhang_gc_content=round(gc_percent(overhang), 1) if overhang else None,
+            annealing_length=len(binding),
+            hairpin_dg=dg("hairpin"),
+            self_dimer_dg=dg("self_dimer"),
+            rubric_checks=[c.to_dict() for c in checks],
+            rubric_verdict=str(summarise(checks)["verdict"]),
+            rubric_name=rubric.name,
+        )
+
+    @classmethod
+    def _build_primer_grid(  # noqa: PLR0913 - an internal split of one loop; every value is already a parameter of the caller
+        cls,
+        target: str,
+        rubric: PrimerRubric,
+        max_len: int,
+        max_offset: int,
+        fwd_overhang: str,
+        rev_overhang: str,
+        wanted_tm: float,
+    ) -> tuple[list[Primer], list[Primer]]:
+        """Every forward and reverse primer across the length x offset grid."""
+        forwards: list[Primer] = []
+        reverses: list[Primer] = []
+        for offset in range(max_offset + 1):
+            for length in range(rubric.min_length, max_len + 1):
+                fwd_binding = target[offset : offset + length]
+                if len(fwd_binding) == length:
+                    forwards.append(
+                        cls._build_primer(
+                            "Forward_Primer",
+                            "FWD",
+                            fwd_binding,
+                            fwd_overhang,
+                            wanted_tm,
+                            (offset, offset + length),
+                            rubric,
+                        )
+                    )
+                end = len(target) - offset
+                rev_region = target[end - length : end]
+                if len(rev_region) == length:
+                    rev_binding = str(Seq(rev_region).reverse_complement())
+                    reverses.append(
+                        cls._build_primer(
+                            "Reverse_Primer",
+                            "REV",
+                            rev_binding,
+                            rev_overhang,
+                            wanted_tm,
+                            (end - length, end),
+                            rubric,
+                        )
+                    )
+        return forwards, reverses
+
+    @classmethod
+    def generate_primer_candidates(  # noqa: PLR0913 - each argument is a distinct, independent search setting; bundling them would only relocate the list
+        cls,
+        target_sequence: str,
+        rubric: PrimerRubric | None = None,
+        *,
+        fwd_overhang: str = "",
+        rev_overhang: str = "",
+        target_tm: float | None = None,
+        limit: int = 20,
+        require_full_target: bool = False,
+        max_pool: int = 24,
+    ) -> list[dict[str, Any]]:
+        """Rank primer pairs for ``target_sequence`` against ``rubric``.
+
+        Searches both the length window and an offset window at each end, so a
+        bad base composition at the exact end of the target is recoverable.
+
+        Args:
+            max_pool: How many forward and reverse primers to carry into the
+                pairwise stage. Pairing is quadratic — every forward is
+                screened against every reverse — so the full length x offset
+                grid is 169x169 at the default rubric and takes about seven
+                seconds. Each primer is therefore screened on its own first
+                (which is linear), ranked, and only the best ``max_pool`` of
+                each are paired. This is a heuristic: a pair whose members are
+                individually mediocre but complementary could be missed. Raise
+                it to search harder, or set ``max_offset=0`` to make the grid
+                small enough that it does not matter.
+            require_full_target: Keep only pairs whose product spans the whole
+                target. Sliding the annealing start inward trims the ends off
+                the amplicon, which is fine when amplifying a region but drops
+                the start codon when amplifying an ORF to clone. A caller that
+                is going to ligate the product should set this.
+
+        Returns:
+            Up to ``limit`` candidates, best first, each a dict with
+            ``forward``, ``reverse``, ``checks``, ``summary``, ``score``,
+            ``product_bp`` and ``tm_delta``. Ordered by rubric score, then by
+            how close the pair's Tm values sit to each other, then by how close
+            they sit to the target — correctness first, then balance.
+
+        Raises:
+            ValueError: the target is too short, or the rubric is inconsistent.
+        """
+        rub = rubric or PrimerRubric()
+        problems = rub.validate()
+        if problems:
+            raise ValueError("Unusable primer rubric: " + "; ".join(problems))
+
+        target = target_sequence.upper()
+        wanted_tm = rub.target_tm if target_tm is None else target_tm
+
+        if len(target) < rub.min_length * 2:
+            raise ValueError(f"Target sequence too short ({len(target)} bp) for primer design.")
+
+        max_len = min(rub.max_length, len(target) // 2)
+        if max_len < rub.min_length:
+            raise ValueError(
+                f"Target sequence too short ({len(target)} bp) for a "
+                f"{rub.min_length} nt primer at each end."
+            )
+        # Never let the two primers overlap, however wide the offset window is.
+        max_offset = max(0, min(rub.max_offset, len(target) // 2 - max_len))
+
+        forwards, reverses = cls._build_primer_grid(
+            target, rub, max_len, max_offset, fwd_overhang, rev_overhang, wanted_tm
+        )
+
+        # Narrow each end before pairing; see ``max_pool``. Ranked by how well
+        # the primer does on its own, then by distance from the target Tm.
+        def solo_rank(primer: Primer) -> tuple[float, float]:
+            checks = [RubricCheck.from_dict(c) for c in primer.rubric_checks]
+            return (-score(checks), abs(primer.calculated_tm - wanted_tm))
+
+        if require_full_target:
+            # Keep the pool honest: filtering to full coverage after the pool
+            # was chosen could empty it even though valid pairs existed.
+            forwards = [p for p in forwards if p.target_region and p.target_region[0] == 0]
+            reverses = [
+                p for p in reverses if p.target_region and p.target_region[1] == len(target)
+            ]
+
+        forwards = sorted(forwards, key=solo_rank)[:max_pool]
+        reverses = sorted(reverses, key=solo_rank)[:max_pool]
+
+        candidates: list[dict[str, Any]] = []
+        for fwd in forwards:
+            for rev in reverses:
+                assert fwd.target_region is not None and rev.target_region is not None
+                product_bp = rev.target_region[1] - fwd.target_region[0]
+                pair_checks = screen_pair(
+                    fwd.sequence,
+                    rev.sequence,
+                    fwd.calculated_tm,
+                    rev.calculated_tm,
+                    fwd_overhang=fwd.overhang,
+                    rev_overhang=rev.overhang,
+                    product_bp=product_bp,
+                    template=target,
+                    rubric=rub,
+                )
+                all_checks = [
+                    *(type(pair_checks[0]).from_dict(c) for c in fwd.rubric_checks),
+                    *(type(pair_checks[0]).from_dict(c) for c in rev.rubric_checks),
+                    *pair_checks,
+                ]
+                tm_delta = abs(fwd.calculated_tm - rev.calculated_tm)
+                candidates.append(
+                    {
+                        "forward": fwd,
+                        "reverse": rev,
+                        "checks": [c.to_dict() for c in all_checks],
+                        "summary": summarise(all_checks),
+                        "score": round(score(all_checks), 4),
+                        "product_bp": product_bp,
+                        "tm_delta": round(tm_delta, 2),
+                        # Sliding the annealing start inward trims the ends of
+                        # the target off the product. Harmless when amplifying
+                        # a region, but it would drop a start codon when
+                        # amplifying a full ORF for cloning, so it is reported
+                        # rather than left for the reader to infer from
+                        # coordinates.
+                        "covers_full_target": fwd.target_region[0] == 0
+                        and rev.target_region[1] == len(target),
+                        "amplicon_region": (fwd.target_region[0], rev.target_region[1]),
+                        "trimmed_5p": fwd.target_region[0],
+                        "trimmed_3p": len(target) - rev.target_region[1],
+                    }
+                )
+
+        # Rank: rubric score first, then how close the pair sits to the target
+        # Tm, then full-target coverage, then pair balance.
+        #
+        # Target proximity outranks pair balance deliberately. Pair matching is
+        # already a rubric check with its own tolerance, so ranking on it again
+        # double-counts it — and it let a perfectly matched pair 5 °C off target
+        # beat a pair 0.4 °C apart sitting on it. The annealing temperature of
+        # the reaction is set from the target Tm, so proximity is what the
+        # protocol actually depends on; tm_delta remains the final tie-break.
+        if require_full_target and not candidates:
+            raise ValueError(
+                "No primer pair spans the full target within the rubric's length "
+                "window. Widen min_length/max_length, or allow trimming."
+            )
+
+        candidates.sort(
+            key=lambda c: (
+                -c["score"],
+                abs(c["forward"].calculated_tm - wanted_tm)
+                + abs(c["reverse"].calculated_tm - wanted_tm),
+                not c["covers_full_target"],
+                c["tm_delta"],
+            )
+        )
+        return candidates[:limit]
+
     @classmethod
     def design_primers(
         cls,
@@ -279,79 +553,26 @@ class VectorAssemblyEngine:
         max_length: int = 30,
         fwd_overhang: str = "",
         rev_overhang: str = "",
+        rubric: PrimerRubric | None = None,
     ) -> tuple[Primer, Primer]:
-        """Automated algorithm to design Forward and Reverse PCR primers
-        for a target sequence.
+        """Design one Forward/Reverse primer pair for ``target_sequence``.
 
-        Finds optimal length to match target Tm, calculates GC %,
-        and appends overhangs.
+        Thin wrapper over :meth:`generate_primer_candidates` that returns the
+        top-ranked pair, so existing callers keep working unchanged.
+
+        ``min_length`` / ``max_length`` / ``target_tm`` override the rubric
+        when given, which preserves the original keyword behaviour.
         """
-        target_seq = target_sequence.upper()
-        if len(target_seq) < min_length * 2:
-            raise ValueError(f"Target sequence too short ({len(target_seq)} bp) for primer design.")
-
-        # Design Forward Primer
-        best_fwd_len = min_length
-        best_fwd_diff = float("inf")
-        best_fwd_tm = 0.0
-
-        for primer_len in range(min_length, min(max_length + 1, len(target_seq) // 2)):
-            binding_seq = target_seq[:primer_len]
-            tm = cls.calculate_tm(binding_seq)
-            diff = abs(tm - target_tm)
-            if diff < best_fwd_diff:
-                best_fwd_diff = diff
-                best_fwd_len = primer_len
-                best_fwd_tm = tm
-
-        fwd_binding = target_seq[:best_fwd_len]
-        fwd_full_seq = fwd_overhang.upper() + fwd_binding
-        fwd_gc = (fwd_full_seq.count("G") + fwd_full_seq.count("C")) / len(fwd_full_seq) * 100.0
-
-        fwd_primer = Primer(
-            id=str(uuid.uuid4())[:8],
-            name="Forward_Primer",
-            sequence=fwd_full_seq,
-            direction="FWD",
+        base = rubric or PrimerRubric()
+        effective = replace(base, min_length=min_length, max_length=max_length, target_tm=target_tm)
+        ranked = cls.generate_primer_candidates(
+            target_sequence,
+            rubric=effective,
+            fwd_overhang=fwd_overhang,
+            rev_overhang=rev_overhang,
             target_tm=target_tm,
-            calculated_tm=round(best_fwd_tm, 2),
-            gc_content=round(fwd_gc, 1),
-            length=len(fwd_full_seq),
-            overhang=fwd_overhang.upper(),
-            target_region=(0, best_fwd_len),
+            limit=1,
         )
-
-        # Design Reverse Primer (reverse complement of target end)
-        best_rev_len = min_length
-        best_rev_diff = float("inf")
-        best_rev_tm = 0.0
-
-        for primer_len in range(min_length, min(max_length + 1, len(target_seq) // 2)):
-            binding_region = target_seq[-primer_len:]
-            binding_rc = str(Seq(binding_region).reverse_complement())
-            tm = cls.calculate_tm(binding_rc)
-            diff = abs(tm - target_tm)
-            if diff < best_rev_diff:
-                best_rev_diff = diff
-                best_rev_len = primer_len
-                best_rev_tm = tm
-
-        rev_binding_region = target_seq[-best_rev_len:]
-        rev_binding_rc = str(Seq(rev_binding_region).reverse_complement())
-        rev_full_seq = rev_overhang.upper() + rev_binding_rc
-        rev_gc = (rev_full_seq.count("G") + rev_full_seq.count("C")) / len(rev_full_seq) * 100.0
-
-        rev_primer = Primer(
-            id=str(uuid.uuid4())[:8],
-            name="Reverse_Primer",
-            sequence=rev_full_seq,
-            direction="REV",
-            target_tm=target_tm,
-            calculated_tm=round(best_rev_tm, 2),
-            gc_content=round(rev_gc, 1),
-            length=len(rev_full_seq),
-            overhang=rev_overhang.upper(),
-            target_region=(len(target_seq) - best_rev_len, len(target_seq)),
-        )
-
-        return fwd_primer, rev_primer
+        if not ranked:
+            raise ValueError("No primer pair could be generated for this target.")
+        return ranked[0]["forward"], ranked[0]["reverse"]
