@@ -14,7 +14,6 @@
         "scripts/check_commit_msg.py": "c9a81d8e4c67fed88bc0dda286051a490e42a2d590c1dea191cac567bce65021",
         "scripts/run_demo_showcase.py": "e0cc3524af5a8a8880f742d6daee50ac7d859aaa4ab058abd81cfa9a80596ef0",
         "scripts/verify_security_ledger.py": "69405385893e17e4a0700a425eba981c9cf893b7f61c2bf8c93678264fc8ef96",
-        "src/catalogue.json": "da13d1419c1946710e2c260fd027973683431cf88fc5cabb43dfbc2c11edd9c6",
         "src/karcytics_plugins/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "src/karcytics_plugins/synthetic_biology/__init__.py": "c3e5e4af65e8d64ad0b03bd671302024bdcb6b5d45c43822dfb4de1419276f42",
         "src/karcytics_plugins/synthetic_biology/analysis/__init__.py": "e5f7a4db1fca31752fdaf90c617e6e4ee81d3db75f1e4266aedc62ed0c113f43",
@@ -61,7 +60,6 @@
         "src/karcytics_plugins/synthetic_biology/catalogue.json": "d8889d2471471782b49805e5b4765f96570ef68b5ab34637f9e9cc413455bb0e",
         "src/karcytics_plugins/synthetic_biology/models/__init__.py": "560d998373b46685d20c4e6eda42b63c387bfce96303c432fa5665d28266ad9d",
         "src/karcytics_plugins/synthetic_biology/models/inventory_models.py": "594693cf55d114b22f4edc9f0b818b98cb011dfc46b99608a43dc81989276361",
-        "src/karcytics_plugins/synthetic_biology/temp_test_cat.json": "da13d1419c1946710e2c260fd027973683431cf88fc5cabb43dfbc2c11edd9c6",
         "src/karcytics_plugins/synthetic_biology/ui/__init__.py": "e97e9f60942c80a31a5fd004e539c92aa67582a67a7aa26e40f41fdded2d2176",
         "src/karcytics_plugins/synthetic_biology/ui/canvas/__init__.py": "343ff754c0a01f35c4adff6222089bd7f521dec7bcf832ffae9e88216acf028b",
         "src/karcytics_plugins/synthetic_biology/ui/canvas/circuit_canvas.py": "bd2f2bfdc9d27a7745f2c041694388d63d5a0d445c10e3578fbb6edd3b9a6261",
@@ -105,7 +103,6 @@
         "src/karcytics_plugins/synthetic_biology/ui/workspace_persistence.py": "0b4904fafa6ae2ac0fa1148978bf261854dbed616cf9c058b06a7022c77d6c7d",
         "src/karcytics_plugins/synthetic_biology/ui_daemon.py": "a58ef8393fc51955d81c8b697244ba014dbed9073180ba37c51a388ba398facf",
         "src/karcytics_plugins/synthetic_biology/utils/__init__.py": "0dda65bbb80c0638bef7a96093c410614e686e4c46700b5122ee4c8f4d1ec4e8",
-        "src/karcytics_plugins/synthetic_biology/utils/robot_exporter.py": "eba585d71be17878dd36a7bb8236351575554cb183583e3769de770030068627",
-        "src/temp_test_cat.json": "da13d1419c1946710e2c260fd027973683431cf88fc5cabb43dfbc2c11edd9c6"
+        "src/karcytics_plugins/synthetic_biology/utils/robot_exporter.py": "eba585d71be17878dd36a7bb8236351575554cb183583e3769de770030068627"
     }
 }
