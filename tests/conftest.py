@@ -29,11 +29,12 @@ REAL_SDK_PLUGIN_DIR = (
 )
 
 import pytest  # noqa: E402
-from PySide6.QtCore import QObject, Signal  # noqa: E402
+from PySide6.QtCore import QObject, Qt, Signal  # noqa: E402
 from PySide6.QtWidgets import (  # noqa: E402
     QApplication,
     QComboBox,
     QDoubleSpinBox,
+    QFrame,
     QGraphicsScene,
     QGraphicsView,
     QHBoxLayout,
@@ -46,6 +47,7 @@ from PySide6.QtWidgets import (  # noqa: E402
     QSpinBox,
     QSplitter,
     QTableWidget,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -301,6 +303,17 @@ class MockComponents:
     BioTableWidget = DummyTableWidget
     BioScrollArea = DummyScrollArea
     BioProgressDialog = DummyProgressDialog
+
+    # The real karcytics_sdk.plugin.components re-exports these Qt primitives,
+    # so views may legitimately import layouts and containers from the SDK
+    # rather than from PySide6. Without them here __getattr__ hands back a
+    # MagicMock and any widget built on one is itself a Mock.
+    QWidget = QWidget
+    QVBoxLayout = QVBoxLayout
+    QHBoxLayout = QHBoxLayout
+    QLabel = QLabel
+    QFrame = QFrame
+    Qt = Qt
 
     def __getattr__(self, name: str) -> Any:  # noqa: C901, PLR0911
         if "Button" in name:

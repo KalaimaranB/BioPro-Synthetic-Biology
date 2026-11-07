@@ -21,7 +21,7 @@ Three properties the checks hold to:
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from .primer_rubric import THRESHOLD_PROVENANCE, PrimerRubric
@@ -57,6 +57,13 @@ class RubricCheck:
         provenance: ``convention`` or ``sourced`` — whether the threshold is a
             community rule of thumb or follows from a published model. Carried
             so the UI can label it without deciding for itself.
+        provenance_label: The three-way phrase for a badge, covering "our
+            threshold, published mechanism" as well as the two older states.
+        mechanism: Citation keys supporting the rule's shape, if any. Empty
+            when the rule has no published mechanism.
+        remediation: What to do about a failure, in the second person. Lives
+            here rather than in a view because it is advice about the science,
+            and a bare FAIL teaches a student nothing.
         detail: Optional structure data, e.g. a dimer alignment.
     """
 
@@ -66,6 +73,9 @@ class RubricCheck:
     observed_value: float | str | None = None
     threshold: str = ""
     provenance: str = ""
+    provenance_label: str = ""
+    mechanism: tuple[str, ...] = ()
+    remediation: str = ""
     detail: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -80,6 +90,9 @@ class RubricCheck:
             "observed_value": self.observed_value,
             "threshold": self.threshold,
             "provenance": self.provenance,
+            "provenance_label": self.provenance_label,
+            "mechanism": list(self.mechanism),
+            "remediation": self.remediation,
             "detail": dict(self.detail),
         }
 
@@ -92,14 +105,123 @@ class RubricCheck:
             observed_value=data.get("observed_value"),
             threshold=data.get("threshold", ""),
             provenance=data.get("provenance", ""),
+            provenance_label=data.get("provenance_label", ""),
+            mechanism=tuple(data.get("mechanism") or ()),
+            remediation=data.get("remediation", ""),
             detail=dict(data.get("detail") or {}),
         )
 
 
 def _provenance_of(*fields: str) -> str:
     """The provenance shared by the rubric fields a check uses."""
-    kinds = {THRESHOLD_PROVENANCE[f][0] for f in fields if f in THRESHOLD_PROVENANCE}
+    kinds = {THRESHOLD_PROVENANCE[f].kind for f in fields if f in THRESHOLD_PROVENANCE}
     return kinds.pop() if len(kinds) == 1 else "mixed"
+
+
+def _label_of(*fields: str) -> str:
+    """The badge phrase for a check judged against ``fields``.
+
+    Aggregated rather than collapsed to a set: a check can be parameterised by
+    several fields, some of which carry a published mechanism and some not.
+    A check whose values are all published reads as a published value; one
+    whose values are ours but whose rule has a paper behind it reads as the
+    middle case, which is the distinction this phase exists to surface.
+    """
+    entries = [THRESHOLD_PROVENANCE[f] for f in fields if f in THRESHOLD_PROVENANCE]
+    if not entries:
+        return ""
+    if all(e.kind == "sourced" for e in entries):
+        return "published value"
+    if any(e.has_mechanism for e in entries):
+        return "our threshold, published mechanism"
+    return "our convention"
+
+
+def _mechanism_of(*fields: str) -> tuple[str, ...]:
+    """Citation keys for the shape of the rule these fields parameterise."""
+    keys: dict[str, None] = {}
+    for name in fields:
+        entry = THRESHOLD_PROVENANCE.get(name)
+        if entry is not None:
+            for key in entry.mechanism:
+                keys.setdefault(key, None)
+    return tuple(keys)
+
+
+#: Which rubric fields each check is judged against. Kept in one place so a
+#: check's provenance, badge label and mechanism citations are all derived from
+#: the same declaration rather than restated at each call site.
+CHECK_FIELDS: dict[str, tuple[str, ...]] = {
+    GC_CONTENT: ("gc_min_percent", "gc_max_percent"),
+    THREE_PRIME_CLAMP: ("clamp_window", "clamp_min_gc", "clamp_max_gc"),
+    POLY_RUN: ("max_poly_run",),
+    HAIRPIN: ("hairpin_min_dg", "three_prime_window", "three_prime_dimer_min_dg"),
+    SELF_DIMER: ("self_dimer_min_dg", "three_prime_window", "three_prime_dimer_min_dg"),
+    PAIR_TM_MATCH: ("pair_tm_tolerance",),
+    HETERO_DIMER: ("hetero_dimer_min_dg", "three_prime_window", "three_prime_dimer_min_dg"),
+    PRODUCT_SIZE: ("product_min_bp", "product_max_bp"),
+    TEMPLATE_UNIQUENESS: (),
+}
+
+
+#: What to do about each kind of failure, in the second person.
+#:
+#: This lives in the analysis layer deliberately. A bare FAIL teaches a student
+#: nothing, and the advice is about the science — which way to move the window,
+#: what the trade-off costs — so it belongs with the rule it is advice about,
+#: not in whichever view happens to render the result. The GFP start-codon case
+#: is the one that forced it: a correct "fail" on an AT-rich region is useless
+#: unless it also says what a student can actually do instead.
+REMEDIATION: dict[str, str] = {
+    GC_CONTENT: (
+        "Slide the annealing window along the target, or lengthen it, until the "
+        "GC fraction falls inside the rubric. If the region is intrinsically "
+        "AT-rich — a start codon often is — no window will satisfy the rubric: "
+        "extend the primer to raise its Tm instead, or accept a product trimmed "
+        "at this end and record why."
+    ),
+    THREE_PRIME_CLAMP: (
+        "Shift the 3' end by one or two bases so the last few positions carry "
+        "the required number of G/C. Too many is as bad as too few: an all-G/C "
+        "3' end promotes mispriming elsewhere on the template."
+    ),
+    POLY_RUN: (
+        "Move the window so the single-base run falls outside the primer, or "
+        "shorten the primer past it. Long runs slip during synthesis and during "
+        "extension."
+    ),
+    HAIRPIN: (
+        "Shift or shorten the annealing region to break the stem. A hairpin "
+        "involving the 3' end matters most, because that end has to be free to "
+        "be extended."
+    ),
+    SELF_DIMER: (
+        "Choose a window whose own reverse complement it does not contain. "
+        "Self-dimers consume primer and are worst when the 3' ends pair."
+    ),
+    PAIR_TM_MATCH: (
+        "Lengthen the cooler primer or shorten the warmer one until the two Tm "
+        "values sit within the tolerance; a mismatched pair means one primer is "
+        "annealing poorly at whatever temperature you run."
+    ),
+    HETERO_DIMER: (
+        "Re-pick one of the two primers so their 3' ends are not complementary. "
+        "A 3'-anchored heterodimer primes itself and competes with the template."
+    ),
+    PRODUCT_SIZE: (
+        "Move the primers closer together or further apart. If the product must "
+        "be this size, say so and change the rubric rather than the primers."
+    ),
+    TEMPLATE_UNIQUENESS: (
+        "Shift the window into a less repetitive stretch, or lengthen it until "
+        "it is unique. More than one binding site means more than one product."
+    ),
+}
+
+
+def remediation_for(name: str) -> str:
+    """Advice for a failing check, or an empty string if there is none."""
+    return REMEDIATION.get(name, "")
 
 
 def gc_percent(seq: str) -> float:
@@ -129,6 +251,27 @@ def annealing_region(sequence: str, overhang: str) -> str:
     if overhang and sequence.upper().startswith(overhang.upper()):
         return sequence[len(overhang) :]
     return sequence
+
+
+def _enrich(check: RubricCheck) -> RubricCheck:
+    """Fill in the display and advice fields a view must not derive itself.
+
+    Everything a view needs about *why* a check reads the way it does — the
+    badge phrase, the papers behind the rule's shape, what to do about a
+    failure — is attached here, in the analysis layer. A view that had to work
+    any of this out would be making a scientific judgement.
+    """
+    fields = CHECK_FIELDS.get(check.name, ())
+    return replace(
+        check,
+        provenance=check.provenance or _provenance_of(*fields),
+        provenance_label=check.provenance_label or _label_of(*fields),
+        mechanism=check.mechanism or _mechanism_of(*fields),
+        # Advice only where it applies: a pass needs none, and a skipped check
+        # already carries its reason in `message`.
+        remediation=check.remediation
+        or (remediation_for(check.name) if check.passed is False else ""),
+    )
 
 
 # ── Single-primer checks ───────────────────────────────────────────────
@@ -216,14 +359,17 @@ def _structure_check(
         )
         if result.model != "nearest-neighbour":
             message += f" Model: {result.model}."
+    # Keyword arguments deliberately: this used to pass all seven positionally,
+    # so adding a field to RubricCheck silently shifted `detail` into the
+    # provenance slot.
     return RubricCheck(
-        name,
-        passed,
-        message,
-        round(result.delta_g, 2),
-        threshold,
-        _provenance_of(f"{name}_min_dg"),
-        result.to_dict(),
+        name=name,
+        passed=passed,
+        message=message,
+        observed_value=round(result.delta_g, 2),
+        threshold=threshold,
+        provenance=_provenance_of(f"{name}_min_dg"),
+        detail=result.to_dict(),
     )
 
 
@@ -251,11 +397,14 @@ def screen_primer(
     rub = rubric or PrimerRubric()
     anneal = annealing_region(sequence, overhang)
     return [
-        check_gc_content(anneal, rub),
-        check_three_prime_clamp(anneal, rub),
-        check_poly_run(anneal, rub),
-        check_hairpin(sequence, rub),
-        check_self_dimer(sequence, rub),
+        _enrich(check)
+        for check in (
+            check_gc_content(anneal, rub),
+            check_three_prime_clamp(anneal, rub),
+            check_poly_run(anneal, rub),
+            check_hairpin(sequence, rub),
+            check_self_dimer(sequence, rub),
+        )
     ]
 
 
@@ -355,13 +504,16 @@ def check_template_uniqueness(
     rev_hits = count_binding_sites(template, rev_anneal)
     passed = fwd_hits == 1 and rev_hits == 1
     return RubricCheck(
-        TEMPLATE_UNIQUENESS,
-        passed,
-        f"Forward binds {fwd_hits}x and reverse binds {rev_hits}x on the template ({threshold}).",
-        f"{fwd_hits}/{rev_hits}",
-        threshold,
-        "",
-        {"forward_sites": fwd_hits, "reverse_sites": rev_hits},
+        name=TEMPLATE_UNIQUENESS,
+        passed=passed,
+        message=(
+            f"Forward binds {fwd_hits}x and reverse binds {rev_hits}x "
+            f"on the template ({threshold})."
+        ),
+        observed_value=f"{fwd_hits}/{rev_hits}",
+        threshold=threshold,
+        provenance="",
+        detail={"forward_sites": fwd_hits, "reverse_sites": rev_hits},
     )
 
 
@@ -380,14 +532,17 @@ def screen_pair(  # noqa: PLR0913 - one argument per input the pair checks need;
     """Every pair-level check, in a stable order."""
     rub = rubric or PrimerRubric()
     return [
-        check_pair_tm(forward_tm, reverse_tm, rub),
-        check_hetero_dimer(fwd_sequence, rev_sequence, rub),
-        check_product_size(product_bp, rub),
-        check_template_uniqueness(
-            template,
-            annealing_region(fwd_sequence, fwd_overhang),
-            annealing_region(rev_sequence, rev_overhang),
-        ),
+        _enrich(check)
+        for check in (
+            check_pair_tm(forward_tm, reverse_tm, rub),
+            check_hetero_dimer(fwd_sequence, rev_sequence, rub),
+            check_product_size(product_bp, rub),
+            check_template_uniqueness(
+                template,
+                annealing_region(fwd_sequence, fwd_overhang),
+                annealing_region(rev_sequence, rev_overhang),
+            ),
+        )
     ]
 
 
@@ -412,6 +567,9 @@ def summarise(checks: list[RubricCheck]) -> dict[str, Any]:
         verdict = "pass"
     return {
         "verdict": verdict,
+        # `total` is returned rather than left for a caller to add up: a view
+        # that summed these would be deriving a number instead of reading one.
+        "total": len(checks),
         "passed": sum(1 for c in checks if c.passed is True),
         "failed": len(failed),
         "skipped": len(skipped),

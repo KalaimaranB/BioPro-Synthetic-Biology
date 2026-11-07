@@ -471,6 +471,32 @@ def double_digest(
     return digest(sequence, [first, second], circular=circular)
 
 
+def enzymes_for_tail(tail: str) -> tuple[str, ...]:
+    """Name the enzymes whose recognition site a 5' primer tail carries.
+
+    A student types a tail sequence, not an enzyme name, so something has to
+    turn ``GAATTC`` into ``EcoRI``. That is a REBASE lookup, which makes it the
+    engine's job: a view guessing at it would be doing biology.
+
+    Ordered by how specific the match is: longest recognition site first, so
+    the enzyme the tail was designed for leads. Ranking matters because short
+    sites occur inside longer ones — AluI reads AGCT, which is a substring of
+    the HindIII tail AAGCTT, and listing it first would be actively misleading.
+
+    Empty when the tail matches nothing, which is a legitimate answer for a
+    Gibson or ligation-independent overhang.
+    """
+    cleaned = _clean(tail)
+    if not cleaned:
+        return ()
+    matches: dict[str, int] = {}
+    for enzyme in AllEnzymes:
+        site = str(enzyme.site)
+        if site and site in cleaned:
+            matches[str(enzyme)] = len(site)
+    return tuple(sorted(matches, key=lambda name: (-matches[name], name)))
+
+
 def available_enzymes() -> tuple[str, ...]:
     """Every enzyme name available, from REBASE via Biopython."""
     return tuple(sorted(str(e) for e in AllEnzymes))
@@ -530,6 +556,7 @@ __all__ = [
     "double_digest",
     "enzyme_info",
     "enzymes_cutting",
+    "enzymes_for_tail",
     "find_sites",
     "resolve_enzymes",
     "sites_in_region",

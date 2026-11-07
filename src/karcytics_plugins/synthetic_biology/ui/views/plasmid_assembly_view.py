@@ -13,11 +13,16 @@ import json
 
 from karcytics_sdk.plugin.citation_widgets import CitationLabel
 from karcytics_sdk.plugin.components import (
+    BioCaptionLabel,
+    BioComboBox,
     BioDoubleSpinBox,
     BioLineEdit,
     BioListWidget,
+    BioSpinBox,
     BioSplitter,
+    BioStatusLabel,
     BioTableWidget,
+    BioToggleButton,
     PrimaryButton,
     SecondaryButton,
 )
@@ -25,7 +30,7 @@ from karcytics_sdk.plugin.dialogs import show_error, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from karcytics_sdk.plugin.toast import show_toast
 from PySide6.QtCore import QMimeData, Qt, Signal, Slot
-from PySide6.QtGui import QDrag
+from PySide6.QtGui import QBrush, QColor, QDrag
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
@@ -41,13 +46,19 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ...analysis.assembly import restriction as rst
 from ...analysis.citations import FEATURE_CITATIONS
 from ...analysis.models.domain import PlasmidVector
 from ...analysis.parts.base import BiologicalPart
 from ...analysis.parts.components import CDS, RBS, Promoter, Terminator, part_from_dict
 from ...analysis.state import SynBioState
 from ...ui.controllers.plasmid_controller import PlasmidAssemblyController
+from ..widgets.amplification_track import AmplificationTrack
+from ..widgets.bio_tab_widget import BioTabWidget
 from ..widgets.flow_layout import FlowLayout
+from ..widgets.gel_view import GelView
+from ..widgets.rubric_panel import RubricPanel
+from ..workers import AmplificationWorker, InternalSiteWorker, PrimerCandidateWorker
 
 
 class PartPaletteWidget(BioListWidget):
@@ -116,61 +127,347 @@ class AssemblyCanvasWidget(BioListWidget):
 
 
 class PrimerDesignDialog(QDialog):
-    """Modal dialog for automated PCR & assembly primer design."""
+    """Primer design, amplification and the gel that follows, for one target.
+
+    This dialog orchestrates; it does not calculate. Candidate ranking, rubric
+    verdicts, binding sites, digests and band positions all come from
+    ``analysis/``, and every long step runs on a worker. The three panels below
+    render what those engines return.
+    """
 
     def __init__(self, target_sequence: str, controller: PlasmidAssemblyController, parent=None):
         super().__init__(parent)
         self.controller = controller
-        self.target_sequence = target_sequence
-        self.setWindowTitle("Automated Primer Designer")
-        self.setMinimumWidth(520)
+        self.target_sequence = target_sequence or ""
+        self.setWindowTitle("Primer Design & Amplification")
+        self.setMinimumSize(1040, 760)
+
+        self._candidates: list[dict] = []
+        # Held as attributes so Qt does not collect a thread mid-run.
+        self._worker: PrimerCandidateWorker | None = None
+        self._amp_worker: AmplificationWorker | None = None
+        self._site_worker: InternalSiteWorker | None = None
 
         layout = QVBoxLayout(self)
+        layout.addWidget(self._build_inputs())
 
+        self.tabs = BioTabWidget()
+        self.tabs.addTab(self._build_candidates_tab(), "Candidates")
+        self.tabs.addTab(self._build_amplification_tab(), "Amplification")
+        self.tabs.addTab(self._build_gel_tab(), "Gel")
+        layout.addWidget(self.tabs)
+
+        self.status = BioStatusLabel("")
+        layout.addWidget(self.status)
+
+        self._refresh_tail_enzymes()
+
+    # ── Inputs ─────────────────────────────────────────────────────────
+
+    def _build_inputs(self) -> QWidget:
+        box = QWidget()
+        column = QVBoxLayout(box)
         form = QFormLayout()
+
+        self.feature_combo = BioComboBox()
+        self.feature_combo.addItem("Whole target sequence", userData=None)
+        for name, begin, finish in self._annotated_features():
+            self.feature_combo.addItem(f"{name} ({begin}-{finish})", userData=(begin, finish))
+        self.feature_combo.currentIndexChanged.connect(self._on_region_changed)
+        form.addRow("Amplify:", self.feature_combo)
+
+        coords = QWidget()
+        coord_row = QHBoxLayout(coords)
+        coord_row.setContentsMargins(0, 0, 0, 0)
+        self.start_spin = BioSpinBox()
+        self.start_spin.setRange(0, max(len(self.target_sequence), 1))
+        self.end_spin = BioSpinBox()
+        self.end_spin.setRange(0, max(len(self.target_sequence), 1))
+        self.end_spin.setValue(len(self.target_sequence))
+        for widget in (self.start_spin, self.end_spin):
+            widget.valueChanged.connect(self._on_coords_changed)
+        coord_row.addWidget(QLabel("from"))
+        coord_row.addWidget(self.start_spin)
+        coord_row.addWidget(QLabel("to"))
+        coord_row.addWidget(self.end_spin)
+        coord_row.addStretch()
+        form.addRow("Coordinates:", coords)
+
         self.tm_spin = BioDoubleSpinBox()
         self.tm_spin.setRange(45.0, 75.0)
         self.tm_spin.setValue(60.0)
-        form.addRow("Target Tm (°C):", self.tm_spin)
+        form.addRow("Target Tm (\u00b0C):", self.tm_spin)
 
-        self.fwd_overhang_edit = BioLineEdit()
-        self.fwd_overhang_edit.setPlaceholderText("e.g. GAATTC (Restriction / Gibson Overhang)")
-        form.addRow("Forward Overhang 5':", self.fwd_overhang_edit)
+        self.fwd_overhang_edit, self.fwd_enzyme_label, fwd_row = self._build_tail_row("GAATTC")
+        form.addRow("Forward 5' tail:", fwd_row)
 
-        self.rev_overhang_edit = BioLineEdit()
-        self.rev_overhang_edit.setPlaceholderText("e.g. AAGCTT (Restriction / Gibson Overhang)")
-        form.addRow("Reverse Overhang 5':", self.rev_overhang_edit)
+        self.rev_overhang_edit, self.rev_enzyme_label, rev_row = self._build_tail_row("AAGCTT")
+        form.addRow("Reverse 5' tail:", rev_row)
 
-        layout.addLayout(form)
+        self.full_target_toggle = BioToggleButton("Keep the whole target (no trimming)")
+        self.full_target_toggle.setCheckable(True)
+        form.addRow("Coverage:", self.full_target_toggle)
+
+        column.addLayout(form)
+
+        self.internal_site_warning = BioCaptionLabel("")
+        self.internal_site_warning.setWordWrap(True)
+        self.internal_site_warning.setStyleSheet(f"color: {Colors.ACCENT_DANGER};")
+        column.addWidget(self.internal_site_warning)
 
         self.btn_design = PrimaryButton("Design Primers")
         self.btn_design.clicked.connect(self._on_design_clicked)
-        layout.addWidget(self.btn_design)
+        column.addWidget(self.btn_design)
+        return box
 
-        self.result_display = QTextEdit()
-        self.result_display.setReadOnly(True)
-        self.result_display.setStyleSheet("font-family: Menlo, Consolas, 'Courier New', monospace;")
-        layout.addWidget(self.result_display)
+    def _build_tail_row(self, example: str) -> tuple:
+        """A tail entry box plus the enzyme name the digest engine resolves it to."""
+        edit = BioLineEdit()
+        edit.setPlaceholderText(f"e.g. {example}")
+        edit.textChanged.connect(self._refresh_tail_enzymes)
 
-    def _on_design_clicked(self):
-        if not self.target_sequence:
-            self.result_display.setText("Error: Target sequence is empty.")
+        name = BioCaptionLabel("")
+        row = QWidget()
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(edit)
+        layout.addWidget(name)
+        return edit, name, row
+
+    def _annotated_features(self) -> list:
+        """Features offered for selection, read off the construct's vector."""
+        vector = getattr(getattr(self.controller, "state", None), "active_vector", None)
+        features = []
+        for feature in getattr(vector, "features", ()) or ():
+            name = getattr(feature, "name", "") or getattr(feature, "label", "")
+            begin = getattr(feature, "start", None)
+            finish = getattr(feature, "end", None)
+            if name and isinstance(begin, int) and isinstance(finish, int):
+                features.append((name, begin, finish))
+        return features
+
+    def _region(self) -> tuple[int, int]:
+        begin, finish = self.start_spin.value(), self.end_spin.value()
+        if finish <= begin:
+            return 0, len(self.target_sequence)
+        return begin, finish
+
+    def _selected_sequence(self) -> str:
+        begin, finish = self._region()
+        return self.target_sequence[begin:finish]
+
+    def _on_region_changed(self) -> None:
+        span = self.feature_combo.currentData()
+        if span:
+            self.start_spin.setValue(span[0])
+            self.end_spin.setValue(span[1])
+
+    def _on_coords_changed(self) -> None:
+        self._refresh_tail_enzymes()
+
+    # ── Tails and the internal-site warning ────────────────────────────
+
+    def _tail_enzymes(self) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        """Enzyme names for each tail, named by the digest engine."""
+        return (
+            rst.enzymes_for_tail(self.fwd_overhang_edit.text().strip()),
+            rst.enzymes_for_tail(self.rev_overhang_edit.text().strip()),
+        )
+
+    def _refresh_tail_enzymes(self) -> None:
+        fwd, rev = self._tail_enzymes()
+        self.fwd_enzyme_label.setText(f"\u2192 {fwd[0]}" if fwd else "")
+        self.rev_enzyme_label.setText(f"\u2192 {rev[0]}" if rev else "")
+
+        chosen = tuple(dict.fromkeys([n for n in (fwd[:1] + rev[:1]) if n]))
+        if not chosen or not self._selected_sequence():
+            self.internal_site_warning.setText("")
             return
 
-        primers = self.controller.handle_primer_design(
-            sequence=self.target_sequence,
+        self._site_worker = InternalSiteWorker(
+            sequence=self._selected_sequence(), enzymes=chosen, parent=self
+        )
+        self._site_worker.sites_ready.connect(self._on_internal_sites)
+        self._site_worker.error_occurred.connect(self._on_worker_error)
+        self._site_worker.start()
+
+    def _on_internal_sites(self, payload: dict) -> None:
+        sites = payload.get("sites", ())
+        if not sites:
+            self.internal_site_warning.setText("")
+            return
+        cutters = sorted({site.enzyme for site in sites})
+        self.internal_site_warning.setText(
+            f"{', '.join(cutters)} also cuts inside the region you are amplifying "
+            f"({len(sites)} site(s)). Digesting the product with it would destroy "
+            "the insert \u2014 choose a different tail enzyme."
+        )
+
+    # ── Tabs ───────────────────────────────────────────────────────────
+
+    def _build_candidates_tab(self) -> QWidget:
+        page = QWidget()
+        column = QVBoxLayout(page)
+
+        self.candidate_table = BioTableWidget()
+        headers = (
+            "#",
+            "Score",
+            "Forward",
+            "Fwd Tm",
+            "Fwd GC%",
+            "Reverse",
+            "Rev Tm",
+            "Rev GC%",
+            "Product",
+            "Verdict",
+        )
+        self.candidate_table.setColumnCount(len(headers))
+        self.candidate_table.setHorizontalHeaderLabels(list(headers))
+        self.candidate_table.setEditTriggers(BioTableWidget.EditTrigger.NoEditTriggers)
+        self.candidate_table.setSelectionBehavior(BioTableWidget.SelectionBehavior.SelectRows)
+        self.candidate_table.itemSelectionChanged.connect(self._on_candidate_selected)
+        column.addWidget(self.candidate_table)
+
+        column.addWidget(
+            BioCaptionLabel(
+                "Tm and GC are for the annealing region only; a 5' tail does not anneal "
+                "on the first cycle but is carried into the product."
+            )
+        )
+
+        self.rubric_panel = RubricPanel()
+        column.addWidget(self.rubric_panel)
+        column.addWidget(
+            CitationLabel("Screening", FEATURE_CITATIONS["primer_screen"], prefix="Based on")
+        )
+        return page
+
+    def _build_amplification_tab(self) -> QWidget:
+        page = QWidget()
+        column = QVBoxLayout(page)
+        self.amplification_track = AmplificationTrack()
+        column.addWidget(self.amplification_track)
+        column.addWidget(
+            CitationLabel("Amplification", FEATURE_CITATIONS["amplification"], prefix="Based on")
+        )
+        return page
+
+    def _build_gel_tab(self) -> QWidget:
+        page = QWidget()
+        column = QVBoxLayout(page)
+        self.gel_view = GelView()
+        column.addWidget(self.gel_view)
+        return page
+
+    # ── Running ────────────────────────────────────────────────────────
+
+    def _on_design_clicked(self) -> None:
+        sequence = self._selected_sequence()
+        if not sequence:
+            self.status.setText("Select a region with at least one base.")
+            return
+
+        self.btn_design.setEnabled(False)
+        self.status.setText("Ranking candidates\u2026")
+        fwd, rev = self._tail_enzymes()
+
+        self._worker = PrimerCandidateWorker(
+            target_sequence=sequence,
             target_tm=self.tm_spin.value(),
             fwd_overhang=self.fwd_overhang_edit.text().strip(),
             rev_overhang=self.rev_overhang_edit.text().strip(),
+            require_full_target=self.full_target_toggle.isChecked(),
+            parent=self,
         )
+        self._worker.candidates_ready.connect(self._on_candidates)
+        self._worker.error_occurred.connect(self._on_worker_error)
+        self._worker.start()
 
-        out = "=== AUTOMATED PCR PRIMERS DESIGNED ===\n\n"
-        for p in primers:
-            out += (
-                f"[{p.name}]\nSequence 5'->3': {p.sequence}\n"
-                f"Tm: {p.tm:.1f}°C | GC%: {p.gc_content:.1f}%\n\n"
+    def _on_worker_error(self, message: str) -> None:
+        self.btn_design.setEnabled(True)
+        self.status.setText(message)
+        show_warning(self, title="Primer design failed", message=message)
+
+    def _on_candidates(self, candidates: list) -> None:
+        self.btn_design.setEnabled(True)
+        self._candidates = list(candidates or [])
+        self._fill_candidate_table()
+        if not self._candidates:
+            self.status.setText("No candidate primers could be generated for this region.")
+            self.rubric_panel.clear()
+            return
+        self.status.setText(f"{len(self._candidates)} candidates ranked.")
+        self.candidate_table.selectRow(0)
+
+    def _fill_candidate_table(self) -> None:
+        self.candidate_table.setRowCount(len(self._candidates))
+        for row, candidate in enumerate(self._candidates):
+            fwd, rev = candidate["forward"], candidate["reverse"]
+            verdict = candidate["summary"]["verdict"]
+            cells = (
+                str(row + 1),
+                f"{candidate['score']:.0f}",
+                fwd.sequence,
+                f"{fwd.calculated_tm:.1f}",
+                f"{fwd.gc_content:.1f}",
+                rev.sequence,
+                f"{rev.calculated_tm:.1f}",
+                f"{rev.gc_content:.1f}",
+                f"{candidate['product_bp']} bp",
+                verdict.upper(),
             )
-        self.result_display.setText(out)
+            for column, text in enumerate(cells):
+                item = QTableWidgetItem(text)
+                item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+                if column == len(cells) - 1:
+                    item.setForeground(
+                        QBrush(QColor(_VERDICT_COLOUR.get(verdict, Colors.FG_PRIMARY)))
+                    )
+                self.candidate_table.setItem(row, column, item)
+        self.candidate_table.resizeColumnsToContents()
+
+    def _on_candidate_selected(self) -> None:
+        row = self.candidate_table.currentRow()
+        if not (0 <= row < len(self._candidates)):
+            return
+        candidate = self._candidates[row]
+        self.rubric_panel.show_candidate(candidate["checks"], candidate["summary"])
+        self._run_amplification(candidate)
+
+    def _run_amplification(self, candidate: dict) -> None:
+        fwd, rev = candidate["forward"], candidate["reverse"]
+        fwd_enz, rev_enz = self._tail_enzymes()
+        enzymes = tuple(dict.fromkeys([n for n in (fwd_enz[:1] + rev_enz[:1]) if n]))
+
+        self._amp_worker = AmplificationWorker(
+            template=self.target_sequence,
+            forward_primer=fwd.sequence,
+            reverse_primer=rev.sequence,
+            forward_tail=fwd.overhang or "",
+            reverse_tail=rev.overhang or "",
+            enzymes=enzymes,
+            parent=self,
+        )
+        self._amp_worker.amplification_ready.connect(self._on_amplification)
+        self._amp_worker.error_occurred.connect(self._on_worker_error)
+        self._amp_worker.start()
+
+    def _on_amplification(self, payload: dict) -> None:
+        self.amplification_track.show_result(payload["result"], payload["template_bp"])
+        gel = payload.get("gel")
+        if gel is not None:
+            self.gel_view.show_gel(gel)
+        else:
+            self.gel_view.clear()
+
+
+#: Engine verdict -> theme token. The engine decides the verdict.
+_VERDICT_COLOUR = {
+    "pass": Colors.ACCENT_SUCCESS,
+    "fail": Colors.ACCENT_DANGER,
+    "incomplete": Colors.ACCENT_WARNING,
+}
 
 
 class PlasmidAssemblyView(QWidget):
