@@ -55,6 +55,7 @@ from Bio.Restriction import AllEnzymes, RestrictionBatch  # type: ignore[attr-de
 from Bio.Seq import Seq
 
 from ..provenance import SOURCED, Provenance
+from ..sequence_input import SequenceRejectedError, clean_sequence
 
 #: Overhang polarity labels, used in results and surfaced to the user.
 FIVE_PRIME = "5'"
@@ -257,7 +258,17 @@ def _cuts_outside_site(enzyme: Any) -> bool:
 
 
 def _clean(sequence: str) -> str:
-    return "".join(sequence.split()).upper()
+    """Normalise a sequence for searching, refusing what is not DNA.
+
+    Shares the one validator rather than stripping locally, so a digest cannot
+    run over an ambiguity code that the enzyme search would silently miss.
+    """
+    if not sequence:
+        return ""
+    result = clean_sequence(sequence, label="Sequence to digest")
+    if not result.ok:
+        raise SequenceRejectedError(result)
+    return result.sequence
 
 
 def _site_start(

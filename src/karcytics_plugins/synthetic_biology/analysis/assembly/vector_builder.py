@@ -20,6 +20,7 @@ from Bio.SeqUtils import MeltingTemp
 
 from ..models.domain import GeneticFeature, PlasmidVector, Primer
 from ..parts.base import BiologicalPart
+from ..sequence_input import require_sequence
 from .primer_rubric import PrimerRubric
 from .primer_screen import (
     RubricCheck,
@@ -432,12 +433,24 @@ class VectorAssemblyEngine:
         Raises:
             ValueError: the target is too short, or the rubric is inconsistent.
         """
+        # Validated here, at the engine boundary, rather than in a view: every
+        # caller must be stopped from designing against a sequence the
+        # thermodynamic model has no parameters for. Previously an mRNA or a
+        # pasted ORIGIN block produced a confident Tm.
+        target_sequence = require_sequence(target_sequence, label="Target sequence")
+        fwd_overhang = (
+            require_sequence(fwd_overhang, label="Forward 5' tail") if fwd_overhang else ""
+        )
+        rev_overhang = (
+            require_sequence(rev_overhang, label="Reverse 5' tail") if rev_overhang else ""
+        )
+
         rub = rubric or PrimerRubric()
         problems = rub.validate()
         if problems:
             raise ValueError("Unusable primer rubric: " + "; ".join(problems))
 
-        target = target_sequence.upper()
+        target = target_sequence
         wanted_tm = rub.target_tm if target_tm is None else target_tm
 
         if len(target) < rub.min_length * 2:

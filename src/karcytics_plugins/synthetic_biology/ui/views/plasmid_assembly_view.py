@@ -51,6 +51,7 @@ from ...analysis.citations import FEATURE_CITATIONS
 from ...analysis.models.domain import PlasmidVector
 from ...analysis.parts.base import BiologicalPart
 from ...analysis.parts.components import CDS, RBS, Promoter, Terminator, part_from_dict
+from ...analysis.sequence_input import clean_sequence, validate_region
 from ...analysis.state import SynBioState
 from ...ui.controllers.plasmid_controller import PlasmidAssemblyController
 from ..widgets.amplification_track import AmplificationTrack
@@ -210,6 +211,11 @@ class PrimerDesignDialog(QDialog):
 
         column.addLayout(form)
 
+        self.input_problem = BioCaptionLabel("")
+        self.input_problem.setWordWrap(True)
+        self.input_problem.setStyleSheet(f"color: {Colors.ACCENT_DANGER};")
+        column.addWidget(self.input_problem)
+
         self.internal_site_warning = BioCaptionLabel("")
         self.internal_site_warning.setWordWrap(True)
         self.internal_site_warning.setStyleSheet(f"color: {Colors.ACCENT_DANGER};")
@@ -247,10 +253,21 @@ class PrimerDesignDialog(QDialog):
         return features
 
     def _region(self) -> tuple[int, int]:
-        begin, finish = self.start_spin.value(), self.end_spin.value()
-        if finish <= begin:
+        """The selected span, or (0, len) when nothing narrower is valid.
+
+        Validity is decided by the analysis layer, not here — see
+        :func:`analysis.sequence_input.validate_region`.
+        """
+        selection = self._validated_region()
+        if not selection.ok:
             return 0, len(self.target_sequence)
-        return begin, finish
+        return selection.start, selection.end
+
+    def _validated_region(self):
+        """Run the engine's coordinate check over the current spin values."""
+        return validate_region(
+            self.start_spin.value(), self.end_spin.value(), len(self.target_sequence)
+        )
 
     def _selected_sequence(self) -> str:
         begin, finish = self._region()
@@ -363,11 +380,24 @@ class PrimerDesignDialog(QDialog):
     # ── Running ────────────────────────────────────────────────────────
 
     def _on_design_clicked(self) -> None:
-        sequence = self._selected_sequence()
-        if not sequence:
-            self.status.setText("Select a region with at least one base.")
+        # An inverted or empty range used to fall through to the whole
+        # template, so a mistyped coordinate silently amplified everything.
+        selection = self._validated_region()
+        if not selection.ok:
+            self._show_problem(selection.summary())
             return
 
+        cleaned = clean_sequence(self._selected_sequence(), label="Target sequence")
+        if not cleaned.ok:
+            self._show_problem(cleaned.summary())
+            return
+        if cleaned.was_transformed:
+            # Say what was changed rather than changing it behind their back.
+            self.status.setText(cleaned.summary())
+
+        sequence = cleaned.sequence
+
+        self.input_problem.setText("")
         self.btn_design.setEnabled(False)
         self.status.setText("Ranking candidates\u2026")
         fwd, rev = self._tail_enzymes()
@@ -383,6 +413,12 @@ class PrimerDesignDialog(QDialog):
         self._worker.candidates_ready.connect(self._on_candidates)
         self._worker.error_occurred.connect(self._on_worker_error)
         self._worker.start()
+
+    def _show_problem(self, message: str) -> None:
+        """Report a refusal from the analysis layer, in its own words."""
+        self.status.setText(message)
+        self.input_problem.setText(message)
+        show_warning(self, title="Cannot design primers", message=message)
 
     def _on_worker_error(self, message: str) -> None:
         self.btn_design.setEnabled(True)

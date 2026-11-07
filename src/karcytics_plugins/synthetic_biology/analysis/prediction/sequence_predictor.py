@@ -18,6 +18,8 @@ import math
 from abc import ABC, abstractmethod
 from typing import Any
 
+from ..sequence_input import clean_sequence, require_sequence
+
 
 def levenshtein_distance(seq1: str, seq2: str) -> int:
     """Computes the Levenshtein (edit) distance between two DNA sequences."""
@@ -750,7 +752,10 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
         candidate_parts: list[Any],
         **kwargs,  # noqa: ARG002 — accepts caller-supplied extra options across predictor variants
     ) -> dict[str, Any]:
-        clean_query = "".join(c for c in query_sequence.upper() if c in "ACGTN")
+        # Was: "".join(c for c in query_sequence.upper() if c in "ACGTN") —
+        # which silently discarded anything unrecognised and admitted N, a base
+        # the scanning model cannot score. Both failures are now reported.
+        clean_query = require_sequence(query_sequence, label="Promoter sequence")
         if not clean_query or len(clean_query) < self.MIN_WINDOW_LEN:
             raise ValueError(
                 f"Promoter sequence length ({len(clean_query)} bp) is below the "
@@ -939,9 +944,10 @@ class CDSStructuralStrategy(PredictionStrategy):
         candidate_parts: list[Any],
         **kwargs,  # noqa: ARG002 — accepts caller-supplied extra options across predictor variants
     ) -> dict[str, Any]:
-        clean_query = "".join(c for c in query_sequence.upper() if c in "ACGTN")
-        if not clean_query:
-            raise ValueError("Empty sequence provided for CDS prediction.")
+        # Second instance of the same silent-strip pattern as the promoter
+        # predictor: it discarded unrecognised characters and admitted N, then
+        # translated the result as if it were a real CDS.
+        clean_query = require_sequence(query_sequence, label="CDS sequence")
 
         if len(clean_query) % 3 != 0:
             raise ValueError(
@@ -994,7 +1000,11 @@ class CDSStructuralStrategy(PredictionStrategy):
 
         # Case A: Explicit reference sequence provided
         if ref_seq_arg:
-            clean_ref_dna = "".join(c for c in ref_seq_arg.upper() if c in "ACGTN")
+            # Third instance of the silent-strip pattern. A reference sequence
+            # is user-supplied too, and a baseline built from a quietly
+            # mangled reference makes every distance reported against it wrong.
+            ref_result = clean_sequence(ref_seq_arg, label="Reference sequence")
+            clean_ref_dna = ref_result.sequence if ref_result.ok else ""
             if clean_ref_dna and len(clean_ref_dna) % 3 == 0:
                 try:
                     protein_ref = translate_dna_to_protein(clean_ref_dna)

@@ -38,6 +38,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..provenance import CONVENTION, Provenance
+from ..sequence_input import require_sequence
 from . import restriction as rst
 from .primer_rubric import DEFAULT_RUBRIC, PrimerRubric
 from .thermodynamics import hetero_dimer, reverse_complement
@@ -64,6 +65,14 @@ MAX_MISMATCHES = 2
 #: Longest product this engine will resolve, in bp. A search setting, not a
 #: statement about what a polymerase can do.
 DEFAULT_MAX_PRODUCT_BP = 10_000
+
+#: Most amplicons this engine will build for one reaction. Pairing is
+#: quadratic in binding sites, and each amplicon materialises its full
+#: sequence, so a repetitive template is not a rounding error: a (AC)x500
+#: microsatellite gives 491 forward sites and 491 reverse sites, which is
+#: 115,921 full-length products and several seconds of work. Hitting the cap
+#: is reported, never silent, because the explosion is itself the finding.
+DEFAULT_MAX_AMPLICONS = 200
 
 
 @dataclass(frozen=True)
@@ -175,6 +184,9 @@ class AmplificationResult:
     dimer_delta_g: float
     dimer_involves_three_prime: bool
     dimer_risk: bool
+    #: True when the amplicon search stopped at the cap, so ``amplicons`` is a
+    #: sample rather than the complete set.
+    truncated: bool = False
     #: Human-readable reasons, for a UI to show without re-deriving anything.
     notes: tuple[str, ...] = ()
     diagnostics: dict[str, Any] = field(default_factory=dict)
@@ -193,6 +205,7 @@ class AmplificationResult:
             "dimer_delta_g": round(self.dimer_delta_g, 2),
             "dimer_involves_three_prime": self.dimer_involves_three_prime,
             "dimer_risk": self.dimer_risk,
+            "truncated": self.truncated,
             "notes": list(self.notes),
             "diagnostics": dict(self.diagnostics),
         }
@@ -457,6 +470,22 @@ def _no_product_notes(
     return notes
 
 
+def _truncation_note(
+    fwd_sites: tuple[BindingSite, ...], rev_sites: tuple[BindingSite, ...], cap: int
+) -> str:
+    """Explain a truncated search in terms of what it says about the template."""
+    possible = len(fwd_sites) * len(rev_sites)
+    return (
+        f"Stopped after {cap} products: these primers have {len(fwd_sites)} "
+        f"forward and {len(rev_sites)} reverse binding sites on this template, "
+        f"which is up to {possible:,} possible products. That many sites means "
+        "the template is repetitive in the region you are priming — a "
+        "microsatellite or a repeated element — and no primer pair will give a "
+        "clean single band there. Move the primers to unique sequence. The "
+        "products listed below are a sample, not the full set."
+    )
+
+
 def _classify(  # noqa: PLR0913 - the classification genuinely depends on all six
     amplicons: list[Amplicon],
     fwd_sites: tuple[BindingSite, ...],
@@ -502,6 +531,7 @@ def amplify(  # noqa: PLR0913 - each argument is an independent input to the rea
     reverse_tail: str = "",
     circular: bool = False,
     max_product_bp: int = DEFAULT_MAX_PRODUCT_BP,
+    max_amplicons: int = DEFAULT_MAX_AMPLICONS,
     three_prime_exact: int = THREE_PRIME_EXACT,
     max_mismatches: int = MAX_MISMATCHES,
     enzymes: str | Any = (),
@@ -512,7 +542,13 @@ def amplify(  # noqa: PLR0913 - each argument is an independent input to the rea
     Returns an :class:`AmplificationResult` in every case. No product, several
     products and primer-dimer are outcomes, not exceptions.
     """
-    template = _clean(template)
+    # Refuse what the model cannot represent, before any number is computed.
+    template = require_sequence(template, label="Template")
+    forward_primer = require_sequence(forward_primer, label="Forward primer")
+    reverse_primer = require_sequence(reverse_primer, label="Reverse primer")
+    forward_tail = require_sequence(forward_tail, label="Forward 5' tail") if forward_tail else ""
+    reverse_tail = require_sequence(reverse_tail, label="Reverse 5' tail") if reverse_tail else ""
+
     rubric = rubric or DEFAULT_RUBRIC
     pair = PrimerPair(forward_primer, reverse_primer, forward_tail, reverse_tail)
 
@@ -550,9 +586,15 @@ def amplify(  # noqa: PLR0913 - each argument is an independent input to the rea
     dimer_risk = dimer.delta_g < cutoff
 
     amplicons: list[Amplicon] = []
+    truncated = False
     length = len(template)
     for fwd in fwd_sites:
+        if truncated:
+            break
         for rev in rev_sites:
+            if len(amplicons) >= max_amplicons:
+                truncated = True
+                break
             # The reverse primer must lie downstream of the forward primer,
             # pointing back at it; on a circle "downstream" can wrap.
             span = rev.three_prime_index - fwd.three_prime_index
@@ -570,6 +612,8 @@ def amplify(  # noqa: PLR0913 - each argument is an independent input to the rea
     amplicons.sort(key=lambda a: (a.template_start, a.length))
 
     outcome, notes = _classify(amplicons, fwd_sites, rev_sites, dimer, dimer_risk, cutoff)
+    if truncated:
+        notes = (_truncation_note(fwd_sites, rev_sites, max_amplicons), *notes)
 
     return AmplificationResult(
         outcome=outcome,
@@ -579,6 +623,7 @@ def amplify(  # noqa: PLR0913 - each argument is an independent input to the rea
         dimer_delta_g=dimer.delta_g,
         dimer_involves_three_prime=dimer.involves_three_prime,
         dimer_risk=dimer_risk,
+        truncated=truncated,
         notes=notes,
         diagnostics={
             "template_bp": length,
@@ -586,6 +631,7 @@ def amplify(  # noqa: PLR0913 - each argument is an independent input to the rea
             "three_prime_exact": three_prime_exact,
             "max_mismatches": max_mismatches,
             "max_product_bp": max_product_bp,
+            "max_amplicons": max_amplicons,
         },
     )
 
