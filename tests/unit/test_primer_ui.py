@@ -306,10 +306,17 @@ def test_the_gel_view_states_that_the_mobility_model_is_a_convention(app, destro
 
 
 @pytest.mark.unit
-def test_digest_limitations_are_visible_beside_the_gel(app, destroy_after):
-    """Not buried in a methods dialog: a student comparing to a real gel needs them."""
+def test_digest_limitations_are_visible_beside_a_gel_that_has_a_digest(app, destroy_after):
+    """Not buried in a methods dialog: a student comparing to a real gel needs them.
+
+    Scoped to a gel that actually carries a digest. A PCR-only gel used to
+    show these, which says nothing about a PCR — see test_gel_caveats.
+    """
     view = destroy_after(GelView())
-    view.show_gel(gel_engine.build_gel([gel_engine.product_lane(500)]))
+    digest = rst.digest("AAAGAATTCAAAAAAAAGAATTCTTT", "EcoRI")
+    view.show_gel(
+        gel_engine.build_gel([gel_engine.product_lane(500), gel_engine.digest_lane(digest)])
+    )
 
     shown = view.limitations.text() + view.limitations.toolTip()
     for name, _ in rst.DIGEST_LIMITATIONS:

@@ -86,6 +86,11 @@ class Ladder:
 
     name: str
     sizes: tuple[int, ...]
+    #: Where this band list came from, and how far it should be trusted.
+    #: Checked against supplier listings rather than assumed: formulations of
+    #: the same trade name differ, so a band list that looks authoritative but
+    #: is not would be worse than one that says what it is.
+    provenance: str = ""
     #: Relative mass of each band, where the supplier loads some bands heavier
     #: as orientation markers. Empty means equimolar.
     reference_bands: tuple[int, ...] = ()
@@ -131,7 +136,19 @@ LADDERS: dict[str, Ladder] = {
             100,
         ),
         reference_bands=(1650,),
-        note="Wide range; the 1650 bp band is loaded heavier as an orientation marker.",
+        note=(
+            "Wide range; the 1650 bp band is loaded heavier as an orientation "
+            "marker, forming a doublet with the 2000 bp band."
+        ),
+        provenance=(
+            "Representative 1 kb-plus-style band list, NOT verified against a "
+            "specific catalogue number. Supplier listings for products sold "
+            "under this name disagree: the range is quoted as 100-15,000 bp "
+            "with 18-19 fragments including bands above 10 kb, and the "
+            "orientation band is quoted as both 1,500 bp and 1,650 bp. Confirm "
+            "against the datasheet for the ladder you actually run before "
+            "reading a size off this gel."
+        ),
     ),
     "100bp": Ladder(
         name="100 bp DNA ladder",
@@ -161,6 +178,12 @@ class Band:
     #: True when the fragment lies outside the gel's resolving window, so its
     #: position is clamped and must not be read as a measurement.
     out_of_range: bool = False
+    #: Which edge it ran off: True above the largest resolvable fragment,
+    #: False below the smallest. Decided here so a renderer does not have to
+    #: infer it from the mobility value.
+    off_scale_high: bool = False
+    #: True for a supplier's overloaded orientation band.
+    is_reference: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -170,6 +193,8 @@ class Band:
             "intensity": round(self.intensity, 4),
             "label": self.label,
             "out_of_range": self.out_of_range,
+            "off_scale_high": self.off_scale_high,
+            "is_reference": self.is_reference,
         }
 
 
@@ -184,6 +209,10 @@ class Lane:
     max_bp: int = DEFAULT_MAX_BP
     lane_length_mm: float = DEFAULT_LANE_LENGTH_MM
     notes: tuple[str, ...] = ()
+    #: Carried from the Ladder so a view can describe a clicked band without
+    #: reaching back into the ladder table.
+    reference_bands: tuple[int, ...] = ()
+    provenance: str = ""
 
     @property
     def sizes(self) -> tuple[int, ...]:
@@ -211,6 +240,16 @@ class Gel:
     lane_length_mm: float = DEFAULT_LANE_LENGTH_MM
     model: str = "log-linear"
     notes: tuple[str, ...] = field(default_factory=tuple)
+
+    @property
+    def lane_kinds(self) -> tuple[str, ...]:
+        """The kinds of lane on this gel, excluding the ladder."""
+        return tuple(lane.kind for lane in self.lanes if lane.kind != "ladder")
+
+    @property
+    def limitations(self) -> tuple[tuple[str, str], ...]:
+        """Caveats that apply to what this gel actually shows."""
+        return limitations_for(self.lane_kinds)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -259,7 +298,7 @@ def is_resolvable(
     return min_bp < size_bp < max_bp
 
 
-def _bands(
+def _bands(  # noqa: PLR0913 - each argument is an independent lane property
     sizes: list[int],
     *,
     min_bp: int,
@@ -267,6 +306,7 @@ def _bands(
     lane_length_mm: float,
     masses: dict[int, float] | None = None,
     labels: dict[int, str] | None = None,
+    reference_bands: tuple[int, ...] = (),
 ) -> tuple[Band, ...]:
     """Build bands, merging equal sizes because they co-migrate as one band."""
     labels = labels or {}
@@ -291,6 +331,8 @@ def _bands(
                 intensity=merged[size] / brightest if brightest else 0.0,
                 label=label,
                 out_of_range=not is_resolvable(size, min_bp=min_bp, max_bp=max_bp),
+                off_scale_high=size >= max_bp,
+                is_reference=size in reference_bands,
             )
         )
     return tuple(bands)
@@ -318,11 +360,14 @@ def ladder_lane(
             max_bp=max_bp,
             lane_length_mm=lane_length_mm,
             masses=masses,
+            reference_bands=definition.reference_bands,
         ),
         min_bp=min_bp,
         max_bp=max_bp,
         lane_length_mm=lane_length_mm,
         notes=(definition.note,) if definition.note else (),
+        reference_bands=definition.reference_bands,
+        provenance=definition.provenance,
     )
 
 
@@ -406,6 +451,8 @@ def _reposition(lane: Lane, min_bp: int, max_bp: int, lane_length_mm: float) -> 
                 intensity=band.intensity,
                 label=band.label,
                 out_of_range=not is_resolvable(band.size_bp, min_bp=min_bp, max_bp=max_bp),
+                off_scale_high=band.size_bp >= max_bp,
+                is_reference=band.is_reference,
             )
         )
     return Lane(
@@ -416,6 +463,8 @@ def _reposition(lane: Lane, min_bp: int, max_bp: int, lane_length_mm: float) -> 
         max_bp=max_bp,
         lane_length_mm=lane_length_mm,
         notes=lane.notes,
+        reference_bands=lane.reference_bands,
+        provenance=lane.provenance,
     )
 
 
@@ -440,8 +489,9 @@ def build_gel(
     notes = []
     if any(b.out_of_range for lane in collected for b in lane.bands):
         notes.append(
-            f"Some fragments fall outside the {min_bp}-{max_bp} bp resolving window; "
-            "their positions are clamped and are not measurements."
+            f"Some fragments fall outside the {min_bp}-{max_bp} bp resolving "
+            "window. They are shown off scale rather than placed at the edge, "
+            "because this gel cannot resolve a size for them."
         )
     return Gel(
         lanes=tuple(collected),
@@ -450,6 +500,59 @@ def build_gel(
         lane_length_mm=lane_length_mm,
         notes=tuple(notes),
     )
+
+
+#: What a gel of each kind does not model. Chosen by what the gel actually
+#: contains: a PCR-only gel was showing the restriction-digest caveats
+#: (methylation sensitivity, star activity, isoschizomers), which say nothing
+#: about a PCR and leave its real failure modes unmentioned.
+PCR_LIMITATIONS: tuple[tuple[str, str], ...] = (
+    (
+        "primer-dimers",
+        "Primers that prime each other give a small, often bright band near "
+        "the dye front. The screening engine reports dimer free energies, but "
+        "no dimer product is placed on this gel.",
+    ),
+    (
+        "non-specific amplification",
+        "Partial matches elsewhere on the template can prime at low annealing "
+        "temperatures and give extra bands that this model does not predict.",
+    ),
+    (
+        "secondary structure",
+        "Hairpins in the template can stall the polymerase, weakening or "
+        "removing a band that is predicted here.",
+    ),
+    (
+        "polymerase errors",
+        "Misincorporation is not modelled; every predicted product is an exact "
+        "copy of the template between the primers.",
+    ),
+    (
+        "yield and band intensity",
+        "Intensity here follows fragment mass only. Real brightness depends on "
+        "amplification efficiency, cycle number and template amount.",
+    ),
+)
+
+
+def limitations_for(kinds: Any) -> tuple[tuple[str, str], ...]:
+    """The caveats that apply to a gel carrying lanes of these kinds.
+
+    A gel showing a PCR product and its digest gets both sets, in that order,
+    because both reactions stand between the prediction and the photograph.
+    """
+    from .restriction import DIGEST_LIMITATIONS
+
+    present = set(kinds or ())
+    chosen: list[tuple[str, str]] = []
+    if present & {"pcr_product", "sample"}:
+        chosen.extend(PCR_LIMITATIONS)
+    if "digest" in present:
+        chosen.extend(DIGEST_LIMITATIONS)
+    if not chosen:
+        chosen.extend(PCR_LIMITATIONS)
+    return tuple(chosen)
 
 
 #: Provenance per field. The mobility model is the one place this module could

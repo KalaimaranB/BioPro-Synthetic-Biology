@@ -224,6 +224,34 @@ def remediation_for(name: str) -> str:
     return REMEDIATION.get(name, "")
 
 
+#: Coordinates are 0-based and half-open throughout: a target given as
+#: ``0-984`` is ``sequence[0:984]`` and is 984 bp. Inputs, product length, the
+#: gel label and the exports all use this one convention.
+def product_length(
+    template_start: int,
+    template_end: int,
+    fwd_tail_bp: int = 0,
+    rev_tail_bp: int = 0,
+) -> int:
+    """Length of the amplicon in bp, tails included.
+
+    The single definition. It used to be computed in two places that
+    disagreed: the candidate table reported ``rev.end - fwd.start`` while the
+    amplification track reported ``len(product.sequence)``, which carries the
+    5' tails, so a tailed design showed 984 bp on one tab and 996 bp on the
+    next for the same primer pair.
+
+    Args:
+        template_start: 0-based index of the forward primer's first annealing
+            base on the template.
+        template_end: Half-open end of the reverse primer's annealing footprint.
+        fwd_tail_bp: Length of the forward 5' tail, which is in the product
+            but not on the template.
+        rev_tail_bp: Length of the reverse 5' tail.
+    """
+    return max(template_end - template_start, 0) + fwd_tail_bp + rev_tail_bp
+
+
 def gc_percent(seq: str) -> float:
     """GC content of ``seq`` as a percentage; 0.0 for an empty string."""
     s = seq.upper()

@@ -25,11 +25,30 @@ from .primer_rubric import PrimerRubric
 from .primer_screen import (
     RubricCheck,
     gc_percent,
+    product_length,
     score,
     screen_pair,
     screen_primer,
     summarise,
 )
+
+
+def _coverage_note(trimmed_5p: int, trimmed_3p: int, product_bp: int) -> str:
+    """Say so when the best pair does not span the whole target.
+
+    Returning a shorter product without saying anything is how a student ends
+    up cloning a construct missing its start codon. The note names how much
+    came off each end and what the product actually is, so the choice to
+    accept it or to relax the limits is theirs.
+    """
+    if not trimmed_5p and not trimmed_3p:
+        return ""
+    return (
+        "No acceptable primers at the exact target ends; best pair gives "
+        f"{product_bp} bp, trimming {trimmed_5p} bp at 5' and {trimmed_3p} bp "
+        "at 3'. Turn on \u201ckeep the whole target\u201d to force the ends, "
+        "or relax the Tm and rubric limits."
+    )
 
 
 class MissingPartSequenceError(ValueError):
@@ -490,7 +509,14 @@ class VectorAssemblyEngine:
         for fwd in forwards:
             for rev in reverses:
                 assert fwd.target_region is not None and rev.target_region is not None
-                product_bp = rev.target_region[1] - fwd.target_region[0]
+                # One definition, shared with the amplification engine, so
+                # every surface reports the same number for the same pair.
+                product_bp = product_length(
+                    fwd.target_region[0],
+                    rev.target_region[1],
+                    len(fwd_overhang),
+                    len(rev_overhang),
+                )
                 pair_checks = screen_pair(
                     fwd.sequence,
                     rev.sequence,
@@ -528,6 +554,11 @@ class VectorAssemblyEngine:
                         "amplicon_region": (fwd.target_region[0], rev.target_region[1]),
                         "trimmed_5p": fwd.target_region[0],
                         "trimmed_3p": len(target) - rev.target_region[1],
+                        "coverage_note": _coverage_note(
+                            fwd.target_region[0],
+                            len(target) - rev.target_region[1],
+                            product_bp,
+                        ),
                     }
                 )
 

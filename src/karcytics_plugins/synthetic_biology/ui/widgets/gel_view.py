@@ -33,17 +33,24 @@ from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
 from PySide6.QtCore import QPointF, QRectF, Signal
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 
+from ...analysis.assembly.gel import DEFAULT_MAX_BP, DEFAULT_MIN_BP
+
 _LANE_WIDTH = 86
 #: Room to the right of each lane for its band size labels.
 _LABEL_GUTTER = 68
 _LANE_GAP = 20
-_TOP = 34
+#: Space above the resolving area for the lane name, the well slot and an
+#: off-scale marker, which previously collided with the lane name.
+_TOP = 52
 _BOTTOM = 26
 _BAND_HEIGHT = 5
 
 #: Minimum vertical gap between two band labels, in px. Below this they
 #: overlap and neither is readable.
 _MIN_LABEL_GAP = 14
+
+#: Height of the drawn well slot, above the resolving area.
+_WELL_HEIGHT = 5
 
 #: A soft floor only. Small enough that this view's layout minimum stays
 #: under what the dialog actually allots, so the captions can never be laid
@@ -67,6 +74,8 @@ class _GelCanvas(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._lanes: list[Any] = []
+        self._min_bp = DEFAULT_MIN_BP
+        self._max_bp = DEFAULT_MAX_BP
         #: Hit rectangles recorded while painting, so clicking uses exactly
         #: the geometry that was drawn rather than recomputing a position.
         self._hits: list[tuple[QRectF, Any, Any]] = []
@@ -75,8 +84,11 @@ class _GelCanvas(QWidget):
         # the bottom of the gel and must not start out below the fold.
         self.setMinimumHeight(130)
 
-    def set_lanes(self, lanes: list[Any]) -> None:
+    def set_lanes(
+        self, lanes: list[Any], min_bp: int = DEFAULT_MIN_BP, max_bp: int = DEFAULT_MAX_BP
+    ) -> None:
         self._lanes = list(lanes or [])
+        self._min_bp, self._max_bp = min_bp, max_bp
         # Each lane needs its own width plus a gutter for the size labels
         # drawn beside it, or the right-hand lane's labels are clipped.
         per_lane = _LANE_WIDTH + _LABEL_GUTTER + _LANE_GAP
@@ -128,15 +140,24 @@ class _GelCanvas(QWidget):
             QRectF(x, 6, _LANE_WIDTH + _LABEL_GUTTER, 20), int(Qt.AlignmentFlag.AlignLeft), name
         )
 
-        # The well.
+        # The well, drawn ABOVE the gel rather than just inside its top edge.
+        # Inside, a filled 4 px bar at the very top of the window read as a
+        # faint band at ~10 kb sitting above the real product — it was
+        # reported as a stray fragment. It is now outside the resolving area
+        # and outlined rather than filled, so it cannot be mistaken for DNA.
         painter.setPen(QPen(QColor(Colors.BORDER), 1))
-        painter.setBrush(QBrush(QColor(Colors.BG_MEDIUM)))
-        painter.drawRect(QRectF(x, gel_top + 2, _LANE_WIDTH, 4))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRect(QRectF(x, gel_top - _WELL_HEIGHT - 2, _LANE_WIDTH, _WELL_HEIGHT))
 
         last_label_y = float("-inf")
         for band in getattr(lane, "bands", ()) or ():
             # Straight from the engine. No mobility maths in the view.
             y = gel_top + band.relative_mobility * lane_height
+            if band.out_of_range:
+                # Drawing it at the clamped edge invents a position. An arrow
+                # outside the gel says "off scale" without implying a size.
+                self._draw_off_scale(painter, band, x, gel_top, lane_height, colour)
+                continue
             alpha = int(60 + 195 * max(0.0, min(1.0, band.intensity)))
             fill = QColor(colour)
             fill.setAlpha(alpha)
@@ -161,6 +182,34 @@ class _GelCanvas(QWidget):
                     label += " *"
                 painter.drawText(QPointF(x + _LANE_WIDTH + 4, y + _BAND_HEIGHT), label)
                 last_label_y = y
+
+    def _draw_off_scale(
+        self,
+        painter: QPainter,
+        band: Any,
+        x: float,
+        gel_top: float,
+        lane_height: float,
+        colour: QColor,
+    ) -> None:
+        """Mark a fragment the gel cannot resolve, without placing a band."""
+        # The engine decides which edge; the view only draws it.
+        above = band.off_scale_high
+        y = gel_top - 4 if above else gel_top + lane_height + 10
+        arrow = "\u25b2" if above else "\u25bc"
+        bound = f">{self._max_bp} bp" if above else f"<{self._min_bp} bp"
+
+        painter.setPen(QPen(colour, 1))
+        painter.drawText(QPointF(x, y), f"{arrow} {band.size_bp} bp off scale ({bound})")
+        self._hits.append(
+            (QRectF(x, y - 12, _LANE_WIDTH + _LABEL_GUTTER, 16), self._lane_of(band), band)
+        )
+
+    def _lane_of(self, band: Any) -> Any:
+        for lane in self._lanes:
+            if band in getattr(lane, "bands", ()):
+                return lane
+        return None
 
     def mousePressEvent(self, event: Any) -> None:  # noqa: N802 - Qt override
         """Select the band under the cursor, if any."""
@@ -197,6 +246,14 @@ class GelView(QWidget):
         scroll.setMinimumHeight(_MIN_GEL_HEIGHT)
         column.addWidget(scroll, stretch=1)
 
+        self.legend = BioCaptionLabel(
+            "\u2605 = high-intensity reference band.  "
+            "* = at the edge of the resolving window; position approximate.  "
+            "\u25b2/\u25bc = off scale, size shown but not positioned."
+        )
+        self.legend.setWordWrap(True)
+        column.addWidget(self.legend)
+
         self.selection_note = BioCaptionLabel("Click a band to identify it.")
         self.selection_note.setWordWrap(True)
         column.addWidget(self.selection_note)
@@ -221,23 +278,42 @@ class GelView(QWidget):
 
     def _on_band_clicked(self, lane: Any, band: Any) -> None:
         """Describe the clicked band, reading only what the engine put on it."""
-        parts = [f"{band.label or str(band.size_bp) + ' bp'} in {lane.name}."]
+        label = band.label or f"{band.size_bp} bp"
+        reference = band.is_reference
+        if lane.kind == "ladder":
+            sentence = f"The {label} band of the {lane.name}"
+            sentence += (
+                " is the high-intensity reference band, loaded heavier as an orientation marker."
+                if reference
+                else " is a size standard."
+            )
+        else:
+            sentence = f"{label} is a predicted fragment in the {lane.name} lane."
+
+        parts = [sentence]
         if band.out_of_range:
             parts.append(
-                "This band is outside the gel's resolving window, so its "
-                "position is clamped and is not a measurement."
+                "It falls outside the gel's resolving window, so it is shown "
+                "off scale: its position is not a measurement."
             )
+        provenance = getattr(lane, "provenance", "")
+        if provenance:
+            parts.append(provenance)
         self.selection_note.setText(" ".join(parts))
         self.band_selected.emit(lane, band)
 
     def show_gel(self, gel: Any) -> None:
         """Render a ``Gel``. Mobility and intensity come from its bands."""
-        self.canvas.set_lanes(list(getattr(gel, "lanes", ()) or ()))
+        self.canvas.set_lanes(
+            list(getattr(gel, "lanes", ()) or ()),
+            getattr(gel, "min_bp", DEFAULT_MIN_BP),
+            getattr(gel, "max_bp", DEFAULT_MAX_BP),
+        )
         self.heading.setText(
             f"Predicted gel — {getattr(gel, 'min_bp', '')}-{getattr(gel, 'max_bp', '')} bp window"
         )
         self._show_model_basis(gel)
-        self._show_limitations()
+        self._show_limitations(gel)
 
     def _show_model_basis(self, gel: Any) -> None:
         """State at the point of display that the mobility form is a convention."""
@@ -254,16 +330,21 @@ class GelView(QWidget):
         self.model_note.setText(headline)
         self.model_note.setToolTip(" ".join([entry.explanation, *notes]))
 
-    def _show_limitations(self) -> None:
-        """DIGEST_LIMITATIONS belongs beside the gel, not in a methods dialog."""
-        from ...analysis.assembly.restriction import DIGEST_LIMITATIONS
+    def _show_limitations(self, gel: Any) -> None:
+        """The caveats that apply to THIS gel, beside it rather than buried.
 
-        names = ", ".join(name for name, _ in DIGEST_LIMITATIONS)
+        A PCR-only gel used to show the restriction-digest caveats --
+        methylation sensitivity, star activity, isoschizomers -- which say
+        nothing about a PCR and left its real failure modes unmentioned. The
+        engine picks the set from the lane kinds actually present.
+        """
+        limitations = getattr(gel, "limitations", ())
+        names = ", ".join(name for name, _ in limitations)
         self.limitations.setText(
             f"Not modelled: {names}. A real gel can differ from this for any of those reasons."
         )
         self.limitations.setToolTip(
-            "\n\n".join(f"{name}: {reason}" for name, reason in DIGEST_LIMITATIONS)
+            "\n\n".join(f"{name}: {reason}" for name, reason in limitations)
         )
 
     def clear(self) -> None:

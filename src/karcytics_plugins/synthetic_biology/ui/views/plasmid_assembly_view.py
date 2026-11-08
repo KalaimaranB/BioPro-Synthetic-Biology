@@ -76,6 +76,10 @@ logger = logging.getLogger(__name__)
 _TAIL_DEBOUNCE_MS = 250
 
 #: Shown on the Amplification and Gel tabs until a candidate is chosen.
+#: The coverage switch states, written so the label always says which is live.
+_COVERAGE_OFF = "Trimming allowed \u2014 click to keep the whole target"
+_COVERAGE_ON = "\u2713 Keeping the whole target (no trimming)"
+
 _SELECT_HINT = (
     "Design primers, then select a candidate in the Candidates tab to see "
     "its amplification and predicted gel."
@@ -367,31 +371,31 @@ class PrimerDesignDialog(QDialog):
         self.rev_overhang_edit, self.rev_enzyme_label, rev_row = self._build_tail_row("AAGCTT")
         form.addRow("Reverse 5' tail:", rev_row)
 
-        self.full_target_toggle = BioToggleButton("Keep the whole target (no trimming)")
+        self.full_target_toggle = BioToggleButton(_COVERAGE_OFF)
         self.full_target_toggle.setCheckable(True)
+        # The label used to read "Keep the whole target (no trimming)" whether
+        # the toggle was on or off, so it looked like a statement of current
+        # behaviour. It is an OFF switch by default, and a user who read it as
+        # fact got a trimmed product and no warning.
+        self.full_target_toggle.toggled.connect(self._on_coverage_toggled)
         form.addRow("Coverage:", self.full_target_toggle)
 
         column.addLayout(form)
 
-        self.input_note = BioCaptionLabel("")
-        self.input_note.setWordWrap(True)
-        self.input_note.setVisible(False)
-        column.addWidget(self.input_note)
-
-        self.input_problem = BioCaptionLabel("")
-        self.input_problem.setWordWrap(True)
-        self.input_problem.setVisible(False)
-        self.input_problem.setStyleSheet(f"color: {Colors.ACCENT_DANGER};")
-        column.addWidget(self.input_problem)
-
-        self.internal_site_warning = BioCaptionLabel("")
-        self.internal_site_warning.setVisible(False)
-        self.internal_site_warning.setWordWrap(True)
-        self.internal_site_warning.setStyleSheet(f"color: {Colors.ACCENT_DANGER};")
-        column.addWidget(self.internal_site_warning)
+        self.input_note = self._add_caption(column)
+        self.input_problem = self._add_caption(column, colour=Colors.ACCENT_DANGER)
+        self.internal_site_warning = self._add_caption(column, colour=Colors.ACCENT_DANGER)
 
         column.addWidget(self._build_run_row())
         return box
+
+    def _on_coverage_toggled(self, checked: bool) -> None:
+        """Say which way the switch is set, and drop results from the other way."""
+        self.full_target_toggle.setText(_COVERAGE_ON if checked else _COVERAGE_OFF)
+        if self._candidates:
+            self._invalidate_candidates(
+                "Coverage changed. Press Design Primers to rank candidates again."
+            )
 
     def _build_run_row(self) -> QWidget:
         """The Design button and the cancel that long runs need."""
@@ -408,6 +412,17 @@ class PrimerDesignDialog(QDialog):
         self.btn_cancel.setVisible(False)
         layout.addWidget(self.btn_cancel)
         return row
+
+    @staticmethod
+    def _add_caption(column: Any, colour: str = "") -> Any:
+        """A wrapped caption row that stays hidden until it has something to say."""
+        label = BioCaptionLabel("")
+        label.setWordWrap(True)
+        label.setVisible(False)
+        if colour:
+            label.setStyleSheet(f"color: {colour};")
+        column.addWidget(label)
+        return label
 
     @staticmethod
     def _set_caption(label: Any, text: str) -> None:
@@ -759,6 +774,8 @@ class PrimerDesignDialog(QDialog):
         if not (0 <= row < len(self._candidates)):
             return
         candidate = self._candidates[row]
+        # The engine says when the best pair could not sit on the target ends.
+        self._set_caption(self.input_problem, candidate.get("coverage_note", ""))
         self.btn_export.setEnabled(True)
         self.btn_copy.setEnabled(True)
         self.rubric_panel.show_candidate(candidate["checks"], candidate["summary"])
