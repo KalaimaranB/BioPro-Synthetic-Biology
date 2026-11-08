@@ -241,4 +241,4 @@ def test_clicking_a_clamped_band_warns_it_is_not_a_measurement(app, destroy_afte
     view.show_gel(built)
     view._on_band_clicked(lane, lane.bands[0])
 
-    assert "not a measurement" in view.selection_note.text()
+    assert "this gel cannot place it" in view.selection_note.text()

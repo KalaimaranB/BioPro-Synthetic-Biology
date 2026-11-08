@@ -433,3 +433,108 @@ def test_adding_tails_increases_every_reported_size_by_the_same_amount():
         TARGET, limit=1, require_full_target=True, fwd_overhang=ECORI, rev_overhang=HINDIII
     )[0]
     assert tailed["product_bp"] - bare["product_bp"] == len(ECORI) + len(HINDIII)
+
+
+# ── Follow-up: defects visible in the 0-801 + tails screenshot ────────
+
+
+@pytest.mark.unit
+def test_the_ladder_keeps_its_own_top_and_bottom_bands():
+    """is_resolvable was strict, so 100 and 10000 were "unresolvable".
+
+    Once off-scale markers existed, the 1 kb Plus ladder's own edge bands
+    stopped being drawn and turned into arrows — the ladder lost its top and
+    bottom, and the "*" legend described nothing.
+    """
+    lane = gel_engine.ladder_lane("1kb_plus")
+    assert [b.size_bp for b in lane.bands if b.out_of_range] == []
+
+    edges = {b.size_bp for b in lane.bands if b.at_edge}
+    assert edges == {100, 10_000}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("size", "resolvable"),
+    [(99, False), (100, True), (101, True), (9_999, True), (10_000, True), (10_001, False)],
+)
+def test_the_window_bounds_are_inclusive(size, resolvable):
+    assert gel_engine.is_resolvable(size) is resolvable
+
+
+@pytest.mark.unit
+def test_a_band_on_the_bound_is_at_the_edge_not_off_scale():
+    assert gel_engine.is_at_edge(10_000) is True
+    assert gel_engine.is_at_edge(100) is True
+    assert gel_engine.is_at_edge(5_000) is False
+
+    band = gel_engine.product_lane(10_000).bands[0]
+    assert band.at_edge is True
+    assert band.out_of_range is False
+    assert "*" in band.label or band.at_edge
+
+
+@pytest.mark.unit
+def test_a_band_beyond_the_bound_is_off_scale_not_at_the_edge():
+    band = gel_engine.product_lane(10_001).bands[0]
+    assert band.out_of_range is True
+    assert band.off_scale_high is True
+    assert band.at_edge is False
+
+
+@pytest.mark.unit
+def test_two_fragments_off_the_same_end_get_separate_markers(app, destroy_after):
+    """An 813 bp product cut with EcoRI + HindIII leaves 1 bp and 5 bp.
+
+    Both are below the window; their markers were drawn at the same y and
+    printed on top of each other.
+    """
+    lane = gel_engine.digest_lane([1, 807, 5])
+    below = [b for b in lane.bands if b.out_of_range and not b.off_scale_high]
+    assert len(below) == 2
+
+    view = destroy_after(GelView())
+    view.show_gel(gel_engine.build_gel([lane], ladder=None))
+    view.canvas.resize(500, 320)
+    view.canvas.grab()
+
+    ys = sorted(rect.y() for rect, _lane, band in view.canvas._hits if band.out_of_range)
+    assert len(ys) == 2
+    assert ys[1] - ys[0] >= 10, "stacked markers must not share a line"
+
+
+@pytest.mark.unit
+def test_an_off_scale_marker_stays_inside_its_own_lane_column(app, destroy_after):
+    """The marker text used to run across the neighbouring lane."""
+    view = destroy_after(GelView())
+    built = gel_engine.build_gel(
+        [gel_engine.product_lane(50_000), gel_engine.product_lane(500)], ladder=None
+    )
+    view.show_gel(built)
+    view.canvas.resize(600, 320)
+    view.canvas.grab()
+
+    marker = next((rect for rect, _lane, band in view.canvas._hits if band.out_of_range), None)
+    assert marker is not None
+    lane_pitch = 86 + 68 + 20  # _LANE_WIDTH + _LABEL_GUTTER + _LANE_GAP
+    assert marker.width() <= lane_pitch
+
+
+@pytest.mark.unit
+def test_the_digest_of_a_tailed_product_sums_to_the_product(app, destroy_after):
+    """0-801 with EcoRI/HindIII tails: 813 bp in, 1 + 807 + 5 out."""
+    target = _target(801)
+    candidate = V.generate_primer_candidates(
+        target, limit=1, require_full_target=True, fwd_overhang=ECORI, rev_overhang=HINDIII
+    )[0]
+    assert candidate["product_bp"] == 813
+
+    result = amp.amplify(
+        target,
+        candidate["forward"].sequence,
+        candidate["reverse"].sequence,
+        forward_tail=ECORI,
+        reverse_tail=HINDIII,
+    )
+    digest = rst.digest(result.product.sequence, ["EcoRI", "HindIII"])
+    assert sum(digest.fragment_lengths) == 813

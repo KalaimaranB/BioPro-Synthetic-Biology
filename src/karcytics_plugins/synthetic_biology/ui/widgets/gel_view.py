@@ -41,7 +41,7 @@ _LABEL_GUTTER = 68
 _LANE_GAP = 20
 #: Space above the resolving area for the lane name, the well slot and an
 #: off-scale marker, which previously collided with the lane name.
-_TOP = 52
+_TOP = 58
 _BOTTOM = 26
 _BAND_HEIGHT = 5
 
@@ -51,6 +51,9 @@ _MIN_LABEL_GAP = 14
 
 #: Height of the drawn well slot, above the resolving area.
 _WELL_HEIGHT = 5
+
+#: Vertical step between stacked off-scale markers, in px.
+_OFF_SCALE_STEP = 13
 
 #: A soft floor only. Small enough that this view's layout minimum stays
 #: under what the dialog actually allots, so the captions can never be laid
@@ -79,9 +82,11 @@ class _GelCanvas(QWidget):
         #: Hit rectangles recorded while painting, so clicking uses exactly
         #: the geometry that was drawn rather than recomputing a position.
         self._hits: list[tuple[QRectF, Any, Any]] = []
-        # Kept under the scroll area's own floor so the canvas expands to fill
-        # the viewport rather than forcing a scrollbar: a PCR product runs near
-        # the bottom of the gel and must not start out below the fold.
+        # Deliberately low. Raising it to 230 so the lane is roomier made the
+        # canvas taller than the viewport on a 783 px dialog, and the PCR
+        # product -- which runs near the bottom -- ended up below the fold
+        # behind a scrollbar. Everything visible in a cramped gel beats a
+        # roomier one you have to scroll to read.
         self.setMinimumHeight(130)
 
     def set_lanes(
@@ -150,13 +155,24 @@ class _GelCanvas(QWidget):
         painter.drawRect(QRectF(x, gel_top - _WELL_HEIGHT - 2, _LANE_WIDTH, _WELL_HEIGHT))
 
         last_label_y = float("-inf")
+        off_scale_above = 0
+        off_scale_below = 0
         for band in getattr(lane, "bands", ()) or ():
             # Straight from the engine. No mobility maths in the view.
             y = gel_top + band.relative_mobility * lane_height
             if band.out_of_range:
                 # Drawing it at the clamped edge invents a position. An arrow
                 # outside the gel says "off scale" without implying a size.
-                self._draw_off_scale(painter, band, x, gel_top, lane_height, colour)
+                if band.off_scale_high:
+                    self._draw_off_scale(
+                        painter, band, x, gel_top, lane_height, colour, off_scale_above
+                    )
+                    off_scale_above += 1
+                else:
+                    self._draw_off_scale(
+                        painter, band, x, gel_top, lane_height, colour, off_scale_below
+                    )
+                    off_scale_below += 1
                 continue
             alpha = int(60 + 195 * max(0.0, min(1.0, band.intensity)))
             fill = QColor(colour)
@@ -183,7 +199,7 @@ class _GelCanvas(QWidget):
                 painter.drawText(QPointF(x + _LANE_WIDTH + 4, y + _BAND_HEIGHT), label)
                 last_label_y = y
 
-    def _draw_off_scale(
+    def _draw_off_scale(  # noqa: PLR0913 - position, colour and stacking index
         self,
         painter: QPainter,
         band: Any,
@@ -191,19 +207,32 @@ class _GelCanvas(QWidget):
         gel_top: float,
         lane_height: float,
         colour: QColor,
+        index: int = 0,
     ) -> None:
-        """Mark a fragment the gel cannot resolve, without placing a band."""
+        """Mark a fragment the gel cannot resolve, without placing a band.
+
+        Stacked by ``index`` so several fragments off the same end stay
+        readable -- an 813 bp product cut with two enzymes leaves 1 bp and
+        5 bp, and both markers were printed at the same y -- and elided to
+        the lane's own column so a long marker does not run across its
+        neighbour.
+        """
         # The engine decides which edge; the view only draws it.
         above = band.off_scale_high
-        y = gel_top - 4 if above else gel_top + lane_height + 10
+        step = index * _OFF_SCALE_STEP
+        y = (gel_top - 6 - step) if above else (gel_top + lane_height + 14 + step)
         arrow = "\u25b2" if above else "\u25bc"
-        bound = f">{self._max_bp} bp" if above else f"<{self._min_bp} bp"
+        bound = f">{self._max_bp}" if above else f"<{self._min_bp}"
 
-        painter.setPen(QPen(colour, 1))
-        painter.drawText(QPointF(x, y), f"{arrow} {band.size_bp} bp off scale ({bound})")
-        self._hits.append(
-            (QRectF(x, y - 12, _LANE_WIDTH + _LABEL_GUTTER, 16), self._lane_of(band), band)
+        width = _LANE_WIDTH + _LABEL_GUTTER
+        text = painter.fontMetrics().elidedText(
+            f"{arrow} {band.size_bp} bp off scale ({bound} bp)",
+            Qt.TextElideMode.ElideRight,
+            int(width),
         )
+        painter.setPen(QPen(colour, 1))
+        painter.drawText(QPointF(x, y), text)
+        self._hits.append((QRectF(x, y - 12, width, 16), self._lane_of(band), band))
 
     def _lane_of(self, band: Any) -> Any:
         for lane in self._lanes:
@@ -294,7 +323,12 @@ class GelView(QWidget):
         if band.out_of_range:
             parts.append(
                 "It falls outside the gel's resolving window, so it is shown "
-                "off scale: its position is not a measurement."
+                "off scale: its size is known but this gel cannot place it."
+            )
+        elif band.at_edge:
+            parts.append(
+                "It sits exactly on the edge of the resolving window, so its "
+                "position is approximate."
             )
         provenance = getattr(lane, "provenance", "")
         if provenance:

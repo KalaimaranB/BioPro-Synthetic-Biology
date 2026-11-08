@@ -182,6 +182,10 @@ class Band:
     #: False below the smallest. Decided here so a renderer does not have to
     #: infer it from the mobility value.
     off_scale_high: bool = False
+    #: Sitting exactly on a window bound. Drawn as a band at the extreme and
+    #: labelled "*", rather than thrown off scale: the size IS known, it is
+    #: only the position that is at the limit of what the gel resolves.
+    at_edge: bool = False
     #: True for a supplier's overloaded orientation band.
     is_reference: bool = False
 
@@ -194,6 +198,7 @@ class Band:
             "label": self.label,
             "out_of_range": self.out_of_range,
             "off_scale_high": self.off_scale_high,
+            "at_edge": self.at_edge,
             "is_reference": self.is_reference,
         }
 
@@ -294,8 +299,22 @@ def relative_mobility(
 def is_resolvable(
     size_bp: float, *, min_bp: int = DEFAULT_MIN_BP, max_bp: int = DEFAULT_MAX_BP
 ) -> bool:
-    """Whether the gel's window can place this fragment without clamping."""
-    return min_bp < size_bp < max_bp
+    """Whether this fragment lies within the gel's resolving window.
+
+    Inclusive of the bounds. It used to be strict, which made a fragment of
+    exactly 100 or exactly 10000 bp "unresolvable" -- so the 1 kb Plus
+    ladder's own top and bottom bands were flagged and, once off-scale
+    markers were introduced, vanished from the gel entirely. A fragment
+    sitting exactly on the window edge is at the edge, not beyond it.
+    """
+    return min_bp <= size_bp <= max_bp
+
+
+def is_at_edge(
+    size_bp: float, *, min_bp: int = DEFAULT_MIN_BP, max_bp: int = DEFAULT_MAX_BP
+) -> bool:
+    """Whether the fragment sits exactly on a bound, where position is extreme."""
+    return size_bp in (min_bp, max_bp)
 
 
 def _bands(  # noqa: PLR0913 - each argument is an independent lane property
@@ -331,7 +350,8 @@ def _bands(  # noqa: PLR0913 - each argument is an independent lane property
                 intensity=merged[size] / brightest if brightest else 0.0,
                 label=label,
                 out_of_range=not is_resolvable(size, min_bp=min_bp, max_bp=max_bp),
-                off_scale_high=size >= max_bp,
+                off_scale_high=size > max_bp,
+                at_edge=is_at_edge(size, min_bp=min_bp, max_bp=max_bp),
                 is_reference=size in reference_bands,
             )
         )
@@ -451,7 +471,8 @@ def _reposition(lane: Lane, min_bp: int, max_bp: int, lane_length_mm: float) -> 
                 intensity=band.intensity,
                 label=band.label,
                 out_of_range=not is_resolvable(band.size_bp, min_bp=min_bp, max_bp=max_bp),
-                off_scale_high=band.size_bp >= max_bp,
+                off_scale_high=band.size_bp > max_bp,
+                at_edge=is_at_edge(band.size_bp, min_bp=min_bp, max_bp=max_bp),
                 is_reference=band.is_reference,
             )
         )
@@ -640,6 +661,7 @@ __all__ = [
     "Lane",
     "build_gel",
     "digest_lane",
+    "is_at_edge",
     "is_resolvable",
     "ladder_lane",
     "product_lane",
