@@ -41,8 +41,10 @@ _TOP = 34
 _BOTTOM = 26
 _BAND_HEIGHT = 5
 
-#: Floor for the visible gel area, so captions cannot collapse it.
-_MIN_GEL_HEIGHT = 340
+#: A soft floor only. Small enough that this view's layout minimum stays
+#: under what the dialog actually allots, so the captions can never be laid
+#: over the canvas; the gel grows past it via the stretch factor.
+_MIN_GEL_HEIGHT = 140
 
 #: Lane kind -> theme token for its label.
 _KIND_COLOUR = {
@@ -58,10 +60,10 @@ class _GelCanvas(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._lanes: list[Any] = []
-        # Below the scroll area's floor, so the canvas expands to fill the
-        # viewport instead of overflowing it: a PCR product runs near the
-        # bottom of the gel and must not start out below the fold.
-        self.setMinimumHeight(300)
+        # Kept under the scroll area's own floor so the canvas expands to fill
+        # the viewport rather than forcing a scrollbar: a PCR product runs near
+        # the bottom of the gel and must not start out below the fold.
+        self.setMinimumHeight(130)
 
     def set_lanes(self, lanes: list[Any]) -> None:
         self._lanes = list(lanes or [])
@@ -153,8 +155,13 @@ class GelView(QWidget):
         scroll = BioScrollArea()
         scroll.setWidget(self.canvas)
         scroll.setWidgetResizable(True)
-        # Without a floor the explanatory captions below squeeze the gel to a
-        # couple of bands, which is the one part that has to stay legible.
+        # No hard floor here. A floor of 340 px made this layout's minimum
+        # 450 px; inside the real dialog the tab allots 393 px, Qt could not
+        # satisfy the minimums, and it laid the captions ON TOP of the canvas
+        # -- the bands were not escaping their box, the captions were being
+        # drawn over them. The gel is the stretch item instead, so it takes
+        # whatever is left after the captions have their (small) natural
+        # height, and it scrolls when that is tight.
         scroll.setMinimumHeight(_MIN_GEL_HEIGHT)
         column.addWidget(scroll, stretch=1)
 

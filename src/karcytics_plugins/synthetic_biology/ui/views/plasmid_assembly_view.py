@@ -32,7 +32,7 @@ from karcytics_sdk.plugin.components import (
 from karcytics_sdk.plugin.dialogs import show_error, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from karcytics_sdk.plugin.toast import show_toast
-from PySide6.QtCore import QMimeData, Qt, Signal, Slot
+from PySide6.QtCore import QMimeData, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QBrush, QColor, QDrag
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -66,6 +66,16 @@ from ..widgets.rubric_panel import RubricPanel
 from ..workers import AmplificationWorker, InternalSiteWorker, PrimerCandidateWorker
 
 logger = logging.getLogger(__name__)
+
+#: How long to wait after the last keystroke before resolving a tail to an
+#: enzyme. Typing 'GAATTC' used to spawn a worker per resolving keystroke.
+_TAIL_DEBOUNCE_MS = 250
+
+#: Shown on the Amplification and Gel tabs until a candidate is chosen.
+_SELECT_HINT = (
+    "Design primers, then select a candidate in the Candidates tab to see "
+    "its amplification and predicted gel."
+)
 
 
 class PartPaletteWidget(BioListWidget):
@@ -156,6 +166,17 @@ class PrimerDesignDialog(QDialog):
         self._site_worker: InternalSiteWorker | None = None
         self._methods_dialog: Any = None
         self._last_rubric = PrimerRubric()
+        # Monotonic request ids. A worker's result is discarded unless it is
+        # still the newest request of its kind: typing a tail or arrow-keying
+        # the candidate table used to let a slow earlier result land after a
+        # newer one and overwrite it.
+        self._site_request = 0
+        self._design_request = 0
+        self._amp_request = 0
+        self._tail_debounce = QTimer(self)
+        self._tail_debounce.setSingleShot(True)
+        self._tail_debounce.setInterval(_TAIL_DEBOUNCE_MS)
+        self._tail_debounce.timeout.connect(self._refresh_tail_enzymes)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self._build_inputs())
@@ -274,6 +295,10 @@ class PrimerDesignDialog(QDialog):
 
         column.addLayout(form)
 
+        self.input_note = BioCaptionLabel("")
+        self.input_note.setWordWrap(True)
+        column.addWidget(self.input_note)
+
         self.input_problem = BioCaptionLabel("")
         self.input_problem.setWordWrap(True)
         self.input_problem.setStyleSheet(f"color: {Colors.ACCENT_DANGER};")
@@ -284,16 +309,30 @@ class PrimerDesignDialog(QDialog):
         self.internal_site_warning.setStyleSheet(f"color: {Colors.ACCENT_DANGER};")
         column.addWidget(self.internal_site_warning)
 
+        column.addWidget(self._build_run_row())
+        return box
+
+    def _build_run_row(self) -> QWidget:
+        """The Design button and the cancel that long runs need."""
+        row = QWidget()
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(0, 0, 0, 0)
+
         self.btn_design = PrimaryButton("Design Primers")
         self.btn_design.clicked.connect(self._on_design_clicked)
-        column.addWidget(self.btn_design)
-        return box
+        layout.addWidget(self.btn_design)
+
+        self.btn_cancel = SecondaryButton("Cancel")
+        self.btn_cancel.clicked.connect(self._on_cancel)
+        self.btn_cancel.setVisible(False)
+        layout.addWidget(self.btn_cancel)
+        return row
 
     def _build_tail_row(self, example: str) -> tuple:
         """A tail entry box plus the enzyme name the digest engine resolves it to."""
         edit = BioLineEdit()
         edit.setPlaceholderText(f"e.g. {example}")
-        edit.textChanged.connect(self._refresh_tail_enzymes)
+        edit.textChanged.connect(self._on_tail_edited)
 
         name = BioCaptionLabel("")
         row = QWidget()
@@ -341,6 +380,11 @@ class PrimerDesignDialog(QDialog):
         if span:
             self.start_spin.setValue(span[0])
             self.end_spin.setValue(span[1])
+        else:
+            # "Whole target sequence" must mean it. Re-selecting it used to
+            # leave whatever coordinates the previous feature had set.
+            self.start_spin.setValue(0)
+            self.end_spin.setValue(len(self.target_sequence))
 
     def _on_coords_changed(self) -> None:
         self._refresh_tail_enzymes()
@@ -354,6 +398,32 @@ class PrimerDesignDialog(QDialog):
             rst.enzymes_for_tail(self.rev_overhang_edit.text().strip()),
         )
 
+    def _on_tail_edited(self) -> None:
+        """Coalesce keystrokes, and never leave results from an older tail up.
+
+        Designing with GAATTC and then typing AAGCTT used to leave the old
+        primers in the table while the enzyme used for site annotation had
+        already changed, so the two disagreed on screen.
+        """
+        self._tail_debounce.start()
+        if self._candidates:
+            self._invalidate_candidates(
+                "Tails changed. Press Design Primers to rank candidates for the new tails."
+            )
+
+    def _invalidate_candidates(self, reason: str) -> None:
+        """Drop results computed against inputs that are no longer on screen."""
+        self._candidates = []
+        self._design_request += 1
+        self._amp_request += 1
+        self.candidate_table.setRowCount(0)
+        self.rubric_panel.clear()
+        self.amplification_track.clear()
+        self.gel_view.clear()
+        self.amplification_hint.setVisible(True)
+        self.gel_hint.setVisible(True)
+        self.status.setText(reason)
+
     def _refresh_tail_enzymes(self) -> None:
         fwd, rev = self._tail_enzymes()
         self.fwd_enzyme_label.setText(f"\u2192 {fwd[0]}" if fwd else "")
@@ -364,14 +434,20 @@ class PrimerDesignDialog(QDialog):
             self.internal_site_warning.setText("")
             return
 
+        self._site_request += 1
+        request = self._site_request
         self._site_worker = InternalSiteWorker(
             sequence=self._selected_sequence(), enzymes=chosen, parent=self
         )
-        self._site_worker.sites_ready.connect(self._on_internal_sites)
+        self._site_worker.sites_ready.connect(
+            lambda payload, r=request: self._on_internal_sites(payload, r)
+        )
         self._site_worker.error_occurred.connect(self._on_worker_error)
         self._site_worker.start()
 
-    def _on_internal_sites(self, payload: dict) -> None:
+    def _on_internal_sites(self, payload: dict, request: int = 0) -> None:
+        if request and request != self._site_request:
+            return  # superseded by a newer tail
         sites = payload.get("sites", ())
         if not sites:
             self.internal_site_warning.setText("")
@@ -426,6 +502,10 @@ class PrimerDesignDialog(QDialog):
     def _build_amplification_tab(self) -> QWidget:
         page = QWidget()
         column = QVBoxLayout(page)
+        self.amplification_hint = BioCaptionLabel(_SELECT_HINT)
+        self.amplification_hint.setWordWrap(True)
+        column.addWidget(self.amplification_hint)
+
         self.amplification_track = AmplificationTrack()
         column.addWidget(self.amplification_track)
         column.addWidget(
@@ -436,6 +516,10 @@ class PrimerDesignDialog(QDialog):
     def _build_gel_tab(self) -> QWidget:
         page = QWidget()
         column = QVBoxLayout(page)
+        self.gel_hint = BioCaptionLabel(_SELECT_HINT)
+        self.gel_hint.setWordWrap(True)
+        column.addWidget(self.gel_hint)
+
         self.gel_view = GelView()
         column.addWidget(self.gel_view)
         return page
@@ -454,14 +538,17 @@ class PrimerDesignDialog(QDialog):
         if not cleaned.ok:
             self._show_problem(cleaned.summary())
             return
-        if cleaned.was_transformed:
-            # Say what was changed rather than changing it behind their back.
-            self.status.setText(cleaned.summary())
+        # Say what was changed rather than changing it behind their back, and
+        # keep saying it: the status line is overwritten the moment the run
+        # finishes, so the note gets a label of its own.
+        self.input_note.setText(" ".join(cleaned.transformations))
 
         sequence = cleaned.sequence
 
         self.input_problem.setText("")
-        self.btn_design.setEnabled(False)
+        self._set_running(True)
+        self._design_request += 1
+        request = self._design_request
         self.status.setText("Ranking candidates\u2026")
         fwd, rev = self._tail_enzymes()
 
@@ -473,23 +560,41 @@ class PrimerDesignDialog(QDialog):
             require_full_target=self.full_target_toggle.isChecked(),
             parent=self,
         )
-        self._worker.candidates_ready.connect(self._on_candidates)
+        self._worker.candidates_ready.connect(
+            lambda found, r=request: self._on_candidates(found, r)
+        )
         self._worker.error_occurred.connect(self._on_worker_error)
         self._worker.start()
 
     def _show_problem(self, message: str) -> None:
         """Report a refusal from the analysis layer, in its own words."""
+        self.input_note.setText("")
         self.status.setText(message)
         self.input_problem.setText(message)
         show_warning(self, title="Cannot design primers", message=message)
 
+    def _set_running(self, running: bool) -> None:
+        """Show that work is in flight, and offer a way out of it."""
+        self.btn_design.setEnabled(not running)
+        self.btn_design.setText("Ranking\u2026" if running else "Design Primers")
+        self.btn_cancel.setVisible(running)
+
+    def _on_cancel(self) -> None:
+        """Abandon the in-flight run: bump the generation so its result is dropped."""
+        self._design_request += 1
+        self._amp_request += 1
+        self._set_running(False)
+        self.status.setText("Cancelled.")
+
     def _on_worker_error(self, message: str) -> None:
-        self.btn_design.setEnabled(True)
+        self._set_running(False)
         self.status.setText(message)
         show_warning(self, title="Primer design failed", message=message)
 
-    def _on_candidates(self, candidates: list) -> None:
-        self.btn_design.setEnabled(True)
+    def _on_candidates(self, candidates: list, request: int = 0) -> None:
+        if request and request != self._design_request:
+            return  # a newer design run has already started
+        self._set_running(False)
         self._candidates = list(candidates or [])
         self._last_rubric = PrimerRubric()
         self._fill_candidate_table()
@@ -555,11 +660,19 @@ class PrimerDesignDialog(QDialog):
             enzymes=enzymes,
             parent=self,
         )
-        self._amp_worker.amplification_ready.connect(self._on_amplification)
+        self._amp_request += 1
+        request = self._amp_request
+        self._amp_worker.amplification_ready.connect(
+            lambda payload, r=request: self._on_amplification(payload, r)
+        )
         self._amp_worker.error_occurred.connect(self._on_worker_error)
         self._amp_worker.start()
 
-    def _on_amplification(self, payload: dict) -> None:
+    def _on_amplification(self, payload: dict, request: int = 0) -> None:
+        if request and request != self._amp_request:
+            return  # a different candidate is selected now
+        self.amplification_hint.setVisible(False)
+        self.gel_hint.setVisible(False)
         self.amplification_track.show_result(payload["result"], payload["template_bp"])
         self._record(lambda: self.controller.record_amplification(payload["result"]))
 
