@@ -14,6 +14,7 @@ Uses the Strategy Pattern to route prediction queries:
 """
 
 import contextlib
+import logging
 import math
 from abc import ABC, abstractmethod
 from typing import Any
@@ -450,6 +451,9 @@ def get_blosum62_score(aa1: str, aa2: str) -> int:
     return -4  # Default score for non-standard amino acid substitution
 
 
+logger = logging.getLogger(__name__)
+
+
 class PredictionStrategy(ABC):
     """Abstract base class for sequence parameter prediction strategies."""
 
@@ -564,10 +568,21 @@ class KNNPredictionStrategy(PredictionStrategy):
                     if val is not None:
                         try:
                             fval = float(val)
+                        except (ValueError, TypeError):
+                            # A catalogue part carrying a non-numeric value for
+                            # a kinetic parameter is a data problem, not a
+                            # normal case: it silently drops that neighbour
+                            # from the weighted average and shifts the
+                            # prediction, so it is logged rather than ignored.
+                            logger.warning(
+                                "Skipping %r for %s: %r is not numeric",
+                                getattr(part, "id", part),
+                                pname,
+                                val,
+                            )
+                        else:
                             weighted_sum += fval * w
                             valid_weight_sum += w
-                        except (ValueError, TypeError):
-                            pass
 
                 if valid_weight_sum > 0:
                     predicted_params[pname] = round(weighted_sum / valid_weight_sum, 4)
