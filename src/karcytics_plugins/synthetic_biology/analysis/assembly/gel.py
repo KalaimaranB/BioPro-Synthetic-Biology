@@ -58,6 +58,28 @@ DEFAULT_MAX_BP = 10_000
 DEFAULT_LANE_LENGTH_MM = 80.0
 
 
+#: Resolving window per agarose percentage, in bp. A convention: these are the
+#: ranges agarose suppliers quote for routine work, not a measurement, and the
+#: real window also depends on voltage, buffer and run time — none of which
+#: this model takes. Exposed so a student can match the gel they actually
+#: poured instead of being locked to one window.
+AGAROSE_WINDOWS: dict[str, tuple[int, int]] = {
+    "0.7%": (800, 20_000),
+    "1.0%": (100, 10_000),
+    "1.5%": (80, 4_000),
+    "2.0%": (50, 2_000),
+    "3.0%": (20, 1_000),
+}
+
+#: The percentage used when none is chosen.
+DEFAULT_AGAROSE = "1.0%"
+
+
+def window_for_agarose(percentage: str) -> tuple[int, int]:
+    """Resolving window for an agarose percentage, falling back to the default."""
+    return AGAROSE_WINDOWS.get(percentage, AGAROSE_WINDOWS[DEFAULT_AGAROSE])
+
+
 @dataclass(frozen=True)
 class Ladder:
     """A size standard, as data. Sizes in bp, largest first when displayed."""
@@ -462,9 +484,10 @@ THRESHOLD_PROVENANCE: dict[str, Provenance] = {
     "resolving_window": Provenance(
         kind=CONVENTION,
         explanation=(
-            "100-10000 bp stands in for a typical 1% agarose gel. The real "
-            "window depends on agarose percentage, voltage and run time, none "
-            "of which this model takes."
+            "The window is the range an agarose percentage resolves, as "
+            "suppliers quote it for routine work rather than as a measured "
+            "result. The real window also depends on voltage, buffer and run "
+            "time, none of which this model takes."
         ),
     ),
     "lane_length_mm": Provenance(
@@ -501,6 +524,8 @@ THRESHOLD_PROVENANCE: dict[str, Provenance] = {
 }
 
 __all__ = [
+    "AGAROSE_WINDOWS",
+    "DEFAULT_AGAROSE",
     "DEFAULT_LANE_LENGTH_MM",
     "DEFAULT_MAX_BP",
     "DEFAULT_MIN_BP",
@@ -516,4 +541,5 @@ __all__ = [
     "ladder_lane",
     "product_lane",
     "relative_mobility",
+    "window_for_agarose",
 ]

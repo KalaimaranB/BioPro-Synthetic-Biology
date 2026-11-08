@@ -29,13 +29,14 @@ from karcytics_sdk.plugin.components import (
     SecondaryButton,
     WorkspaceSaveButton,
 )
-from karcytics_sdk.plugin.dialogs import show_error, show_warning
+from karcytics_sdk.plugin.dialogs import get_save_path, show_error, show_warning
 from karcytics_sdk.plugin.theme_fallback import Colors, theme_manager
 from karcytics_sdk.plugin.toast import show_toast
 from PySide6.QtCore import QMimeData, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QBrush, QColor, QDrag
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QDialog,
     QFileDialog,
     QFormLayout,
@@ -49,6 +50,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ...analysis import citations
+from ...analysis.assembly import gel as gel_engine
+from ...analysis.assembly import primer_export
 from ...analysis.assembly import restriction as rst
 from ...analysis.assembly.primer_rubric import PrimerRubric
 from ...analysis.citations import FEATURE_CITATIONS
@@ -185,7 +189,11 @@ class PrimerDesignDialog(QDialog):
         self.tabs.addTab(self._build_candidates_tab(), "Candidates")
         self.tabs.addTab(self._build_amplification_tab(), "Amplification")
         self.tabs.addTab(self._build_gel_tab(), "Gel")
-        layout.addWidget(self.tabs)
+        # The results take every pixel the inputs do not need. Without this
+        # the fixed-height input form absorbed the slack and the tables and
+        # the gel were squeezed into ~95 px, which put 16 ladder labels on
+        # top of each other.
+        layout.addWidget(self.tabs, stretch=1)
 
         layout.addWidget(self._build_footer())
 
@@ -209,12 +217,82 @@ class PrimerDesignDialog(QDialog):
         self.btn_methods.clicked.connect(self._open_methods)
         row.addWidget(self.btn_methods)
 
+        self.btn_export = SecondaryButton("Export primers\u2026")
+        self.btn_export.clicked.connect(self._export)
+        self.btn_export.setEnabled(False)
+        row.addWidget(self.btn_export)
+
+        self.btn_copy = SecondaryButton("Copy forward primer")
+        self.btn_copy.clicked.connect(self._copy_selected)
+        self.btn_copy.setEnabled(False)
+        row.addWidget(self.btn_copy)
+
         row.addStretch()
 
         self.save_button = WorkspaceSaveButton(bar)
         self.save_button.clicked.connect(self._save_workspace)
         row.addWidget(self.save_button)
         return bar
+
+    def _selected_candidate(self) -> dict | None:
+        row = self.candidate_table.currentRow()
+        return self._candidates[row] if 0 <= row < len(self._candidates) else None
+
+    def _export(self) -> None:
+        """Write the submission: primers, rubric checks and the methods text."""
+        candidate = self._selected_candidate()
+        if candidate is None:
+            show_warning(
+                self,
+                title="Nothing to export",
+                message="Select a candidate in the Candidates tab first.",
+            )
+            return
+
+        path = get_save_path(
+            self,
+            title="Export primer design",
+            file_filter="CSV (*.csv);;FASTA (*.fasta)",
+        )
+        if not path:
+            return
+
+        state = getattr(self.controller, "state", None)
+        methods = (
+            citations.methods_text(state.data.methods_log)
+            if state is not None and state.data.methods_log
+            else ""
+        )
+        fwd_enz, rev_enz = self._tail_enzymes()
+        # One enzyme name per primer, in forward/reverse order, blank if the
+        # tail does not resolve to one.
+        enzyme_names = [fwd_enz[0] if fwd_enz else "", rev_enz[0] if rev_enz else ""]
+        try:
+            if str(path).lower().endswith((".fasta", ".fa")):
+                payload = primer_export.to_fasta(candidate)
+            else:
+                payload = primer_export.to_csv(
+                    candidate,
+                    methods=methods,
+                    tail_enzymes=enzyme_names,
+                    rubric_name=getattr(self._last_rubric, "name", ""),
+                )
+            with open(path, "w", encoding="utf-8", newline="") as handle:
+                handle.write(payload)
+        except OSError as exc:
+            logger.warning("Primer export failed: %s", exc)
+            show_warning(self, title="Export failed", message=str(exc))
+            return
+        show_toast(f"Exported to {path}")
+
+    def _copy_selected(self) -> None:
+        """Put the forward primer on the clipboard, ready for an order form."""
+        candidate = self._selected_candidate()
+        if candidate is None:
+            return
+        text = primer_export.clipboard_text(candidate["forward"])
+        QApplication.clipboard().setText(text)
+        show_toast("Forward primer copied.")
 
     def _open_methods(self) -> None:
         """Show the same Methods & References dialog the main panel uses."""
@@ -297,14 +375,17 @@ class PrimerDesignDialog(QDialog):
 
         self.input_note = BioCaptionLabel("")
         self.input_note.setWordWrap(True)
+        self.input_note.setVisible(False)
         column.addWidget(self.input_note)
 
         self.input_problem = BioCaptionLabel("")
         self.input_problem.setWordWrap(True)
+        self.input_problem.setVisible(False)
         self.input_problem.setStyleSheet(f"color: {Colors.ACCENT_DANGER};")
         column.addWidget(self.input_problem)
 
         self.internal_site_warning = BioCaptionLabel("")
+        self.internal_site_warning.setVisible(False)
         self.internal_site_warning.setWordWrap(True)
         self.internal_site_warning.setStyleSheet(f"color: {Colors.ACCENT_DANGER};")
         column.addWidget(self.internal_site_warning)
@@ -327,6 +408,16 @@ class PrimerDesignDialog(QDialog):
         self.btn_cancel.setVisible(False)
         layout.addWidget(self.btn_cancel)
         return row
+
+    @staticmethod
+    def _set_caption(label: Any, text: str) -> None:
+        """Set a caption and hide it when empty.
+
+        An empty label still reserves a row, and three of them stacked above
+        the Design button cost ~70 px of blank space that the results needed.
+        """
+        label.setText(text)
+        label.setVisible(bool(text))
 
     def _build_tail_row(self, example: str) -> tuple:
         """A tail entry box plus the enzyme name the digest engine resolves it to."""
@@ -417,6 +508,8 @@ class PrimerDesignDialog(QDialog):
         self._design_request += 1
         self._amp_request += 1
         self.candidate_table.setRowCount(0)
+        self.btn_export.setEnabled(False)
+        self.btn_copy.setEnabled(False)
         self.rubric_panel.clear()
         self.amplification_track.clear()
         self.gel_view.clear()
@@ -450,13 +543,14 @@ class PrimerDesignDialog(QDialog):
             return  # superseded by a newer tail
         sites = payload.get("sites", ())
         if not sites:
-            self.internal_site_warning.setText("")
+            self._set_caption(self.internal_site_warning, "")
             return
         cutters = sorted({site.enzyme for site in sites})
-        self.internal_site_warning.setText(
+        self._set_caption(
+            self.internal_site_warning,
             f"{', '.join(cutters)} also cuts inside the region you are amplifying "
             f"({len(sites)} site(s)). Digesting the product with it would destroy "
-            "the insert \u2014 choose a different tail enzyme."
+            "the insert \u2014 choose a different tail enzyme.",
         )
 
     # ── Tabs ───────────────────────────────────────────────────────────
@@ -483,7 +577,7 @@ class PrimerDesignDialog(QDialog):
         self.candidate_table.setEditTriggers(BioTableWidget.EditTrigger.NoEditTriggers)
         self.candidate_table.setSelectionBehavior(BioTableWidget.SelectionBehavior.SelectRows)
         self.candidate_table.itemSelectionChanged.connect(self._on_candidate_selected)
-        column.addWidget(self.candidate_table)
+        column.addWidget(self.candidate_table, stretch=3)
 
         column.addWidget(
             BioCaptionLabel(
@@ -493,7 +587,7 @@ class PrimerDesignDialog(QDialog):
         )
 
         self.rubric_panel = RubricPanel()
-        column.addWidget(self.rubric_panel)
+        column.addWidget(self.rubric_panel, stretch=4)
         column.addWidget(
             CitationLabel("Screening", FEATURE_CITATIONS["primer_screen"], prefix="Based on")
         )
@@ -507,7 +601,7 @@ class PrimerDesignDialog(QDialog):
         column.addWidget(self.amplification_hint)
 
         self.amplification_track = AmplificationTrack()
-        column.addWidget(self.amplification_track)
+        column.addWidget(self.amplification_track, stretch=1)
         column.addWidget(
             CitationLabel("Amplification", FEATURE_CITATIONS["amplification"], prefix="Based on")
         )
@@ -520,9 +614,37 @@ class PrimerDesignDialog(QDialog):
         self.gel_hint.setWordWrap(True)
         column.addWidget(self.gel_hint)
 
+        controls = QWidget()
+        control_row = QHBoxLayout(controls)
+        control_row.setContentsMargins(0, 0, 0, 0)
+
+        control_row.addWidget(QLabel("Ladder:"))
+        self.ladder_combo = BioComboBox()
+        for key, ladder in gel_engine.LADDERS.items():
+            self.ladder_combo.addItem(ladder.name, userData=key)
+        self.ladder_combo.setCurrentIndex(max(list(gel_engine.LADDERS).index("1kb_plus"), 0))
+        self.ladder_combo.currentIndexChanged.connect(self._rerun_amplification)
+        control_row.addWidget(self.ladder_combo)
+
+        control_row.addWidget(QLabel("Agarose:"))
+        self.agarose_combo = BioComboBox()
+        for percentage in gel_engine.AGAROSE_WINDOWS:
+            self.agarose_combo.addItem(percentage, userData=percentage)
+        self.agarose_combo.setCurrentText(gel_engine.DEFAULT_AGAROSE)
+        self.agarose_combo.currentIndexChanged.connect(self._rerun_amplification)
+        control_row.addWidget(self.agarose_combo)
+        control_row.addStretch()
+        column.addWidget(controls)
+
         self.gel_view = GelView()
-        column.addWidget(self.gel_view)
+        column.addWidget(self.gel_view, stretch=1)
         return page
+
+    def _rerun_amplification(self) -> None:
+        """Re-run with the current gel settings, if a candidate is selected."""
+        candidate = self._selected_candidate()
+        if candidate is not None:
+            self._run_amplification(candidate)
 
     # ── Running ────────────────────────────────────────────────────────
 
@@ -541,11 +663,11 @@ class PrimerDesignDialog(QDialog):
         # Say what was changed rather than changing it behind their back, and
         # keep saying it: the status line is overwritten the moment the run
         # finishes, so the note gets a label of its own.
-        self.input_note.setText(" ".join(cleaned.transformations))
+        self._set_caption(self.input_note, " ".join(cleaned.transformations))
 
         sequence = cleaned.sequence
 
-        self.input_problem.setText("")
+        self._set_caption(self.input_problem, "")
         self._set_running(True)
         self._design_request += 1
         request = self._design_request
@@ -568,9 +690,9 @@ class PrimerDesignDialog(QDialog):
 
     def _show_problem(self, message: str) -> None:
         """Report a refusal from the analysis layer, in its own words."""
-        self.input_note.setText("")
+        self._set_caption(self.input_note, "")
         self.status.setText(message)
-        self.input_problem.setText(message)
+        self._set_caption(self.input_problem, message)
         show_warning(self, title="Cannot design primers", message=message)
 
     def _set_running(self, running: bool) -> None:
@@ -637,6 +759,8 @@ class PrimerDesignDialog(QDialog):
         if not (0 <= row < len(self._candidates)):
             return
         candidate = self._candidates[row]
+        self.btn_export.setEnabled(True)
+        self.btn_copy.setEnabled(True)
         self.rubric_panel.show_candidate(candidate["checks"], candidate["summary"])
         # Record the design and screening that produced the pair now on screen.
         self._record(
@@ -658,6 +782,8 @@ class PrimerDesignDialog(QDialog):
             forward_tail=fwd.overhang or "",
             reverse_tail=rev.overhang or "",
             enzymes=enzymes,
+            ladder=self.ladder_combo.currentData() or "1kb_plus",
+            agarose=self.agarose_combo.currentData() or gel_engine.DEFAULT_AGAROSE,
             parent=self,
         )
         self._amp_request += 1

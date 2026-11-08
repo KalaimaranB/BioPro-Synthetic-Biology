@@ -30,7 +30,7 @@ from karcytics_sdk.plugin.components import (
     QWidget,
 )
 from karcytics_sdk.plugin.theme_fallback import Colors, Fonts
-from PySide6.QtCore import QPointF, QRectF
+from PySide6.QtCore import QPointF, QRectF, Signal
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 
 _LANE_WIDTH = 86
@@ -40,6 +40,10 @@ _LANE_GAP = 20
 _TOP = 34
 _BOTTOM = 26
 _BAND_HEIGHT = 5
+
+#: Minimum vertical gap between two band labels, in px. Below this they
+#: overlap and neither is readable.
+_MIN_LABEL_GAP = 14
 
 #: A soft floor only. Small enough that this view's layout minimum stays
 #: under what the dialog actually allots, so the captions can never be laid
@@ -57,9 +61,15 @@ _KIND_COLOUR = {
 class _GelCanvas(QWidget):
     """The painted gel. One lane per column, bands placed by relative mobility."""
 
+    #: Emitted with (lane, band) when a band is clicked.
+    band_clicked = Signal(object, object)
+
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._lanes: list[Any] = []
+        #: Hit rectangles recorded while painting, so clicking uses exactly
+        #: the geometry that was drawn rather than recomputing a position.
+        self._hits: list[tuple[QRectF, Any, Any]] = []
         # Kept under the scroll area's own floor so the canvas expands to fill
         # the viewport rather than forcing a scrollbar: a PCR product runs near
         # the bottom of the gel and must not start out below the fold.
@@ -82,6 +92,7 @@ class _GelCanvas(QWidget):
             painter.end()
 
     def _paint(self, painter: QPainter) -> None:
+        self._hits = []
         if not self._lanes:
             return
 
@@ -122,6 +133,7 @@ class _GelCanvas(QWidget):
         painter.setBrush(QBrush(QColor(Colors.BG_MEDIUM)))
         painter.drawRect(QRectF(x, gel_top + 2, _LANE_WIDTH, 4))
 
+        last_label_y = float("-inf")
         for band in getattr(lane, "bands", ()) or ():
             # Straight from the engine. No mobility maths in the view.
             y = gel_top + band.relative_mobility * lane_height
@@ -131,14 +143,33 @@ class _GelCanvas(QWidget):
 
             painter.setBrush(QBrush(fill))
             painter.setPen(QPen(fill.darker(130), 1))
-            painter.drawRect(QRectF(x, y, _LANE_WIDTH, _BAND_HEIGHT))
+            rect = QRectF(x, y, _LANE_WIDTH, _BAND_HEIGHT)
+            painter.drawRect(rect)
+            # A band is only a few pixels tall; widen the hit area so it can
+            # actually be clicked.
+            self._hits.append((rect.adjusted(0, -4, 0, 4), lane, band))
 
-            painter.setPen(QPen(QColor(Colors.FG_SECONDARY), 1))
-            label = band.label or f"{band.size_bp} bp"
-            if band.out_of_range:
-                # Clamped, so its position is not a measurement.
-                label += " *"
-            painter.drawText(QPointF(x + _LANE_WIDTH + 4, y + _BAND_HEIGHT), label)
+            # Label only where there is room. A 16-band ladder in a short lane
+            # cannot carry 16 labels: drawing them all put the text on top of
+            # itself and made every size unreadable. The band is still drawn;
+            # it is the label that is dropped, and clicking still identifies it.
+            if y - last_label_y >= _MIN_LABEL_GAP:
+                painter.setPen(QPen(QColor(Colors.FG_SECONDARY), 1))
+                label = band.label or f"{band.size_bp} bp"
+                if band.out_of_range:
+                    # Clamped, so its position is not a measurement.
+                    label += " *"
+                painter.drawText(QPointF(x + _LANE_WIDTH + 4, y + _BAND_HEIGHT), label)
+                last_label_y = y
+
+    def mousePressEvent(self, event: Any) -> None:  # noqa: N802 - Qt override
+        """Select the band under the cursor, if any."""
+        point = event.position()
+        for rect, lane, band in self._hits:
+            if rect.contains(point):
+                self.band_clicked.emit(lane, band)
+                return
+        super().mousePressEvent(event)
 
 
 class GelView(QWidget):
@@ -152,6 +183,7 @@ class GelView(QWidget):
         column.addWidget(self.heading)
 
         self.canvas = _GelCanvas()
+        self.canvas.band_clicked.connect(self._on_band_clicked)
         scroll = BioScrollArea()
         scroll.setWidget(self.canvas)
         scroll.setWidgetResizable(True)
@@ -164,6 +196,10 @@ class GelView(QWidget):
         # height, and it scrolls when that is tight.
         scroll.setMinimumHeight(_MIN_GEL_HEIGHT)
         column.addWidget(scroll, stretch=1)
+
+        self.selection_note = BioCaptionLabel("Click a band to identify it.")
+        self.selection_note.setWordWrap(True)
+        column.addWidget(self.selection_note)
 
         self.model_note = BioCaptionLabel("")
         self.model_note.setWordWrap(True)
@@ -180,6 +216,20 @@ class GelView(QWidget):
             CitationLabel("Gel model", FEATURE_CITATIONS["gel_migration"], prefix="Based on")
         )
 
+    #: Re-emitted so a container can react without reaching into the canvas.
+    band_selected = Signal(object, object)
+
+    def _on_band_clicked(self, lane: Any, band: Any) -> None:
+        """Describe the clicked band, reading only what the engine put on it."""
+        parts = [f"{band.label or str(band.size_bp) + ' bp'} in {lane.name}."]
+        if band.out_of_range:
+            parts.append(
+                "This band is outside the gel's resolving window, so its "
+                "position is clamped and is not a measurement."
+            )
+        self.selection_note.setText(" ".join(parts))
+        self.band_selected.emit(lane, band)
+
     def show_gel(self, gel: Any) -> None:
         """Render a ``Gel``. Mobility and intensity come from its bands."""
         self.canvas.set_lanes(list(getattr(gel, "lanes", ()) or ()))
@@ -194,13 +244,15 @@ class GelView(QWidget):
         from ...analysis.assembly.gel import THRESHOLD_PROVENANCE
 
         entry = THRESHOLD_PROVENANCE["mobility_model"]
-        lines = [
-            f"Mobility model: {getattr(gel, 'model', '')} ({entry.label()}).",
-            entry.explanation,
-        ]
         notes = list(getattr(gel, "notes", ()) or ())
-        lines.extend(notes)
-        self.model_note.setText(" ".join(lines))
+        # One visible line, full reasoning on hover. The label must still say
+        # "our convention" at the point of display -- that is the rule -- but
+        # a four-line paragraph here was taking the room the gel needs.
+        headline = f"Mobility model: {getattr(gel, 'model', '')} ({entry.label()})."
+        if notes:
+            headline += " " + notes[0]
+        self.model_note.setText(headline)
+        self.model_note.setToolTip(" ".join([entry.explanation, *notes]))
 
     def _show_limitations(self) -> None:
         """DIGEST_LIMITATIONS belongs beside the gel, not in a methods dialog."""

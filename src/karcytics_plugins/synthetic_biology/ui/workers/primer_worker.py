@@ -88,6 +88,7 @@ class AmplificationWorker(OneShotWorkerThread):
         circular: bool = False,
         enzymes: Any = (),
         ladder: str = "1kb_plus",
+        agarose: str = gel_engine.DEFAULT_AGAROSE,
         parent: Any = None,
     ) -> None:
         super().__init__(parent)  # type: ignore[arg-type]
@@ -100,6 +101,9 @@ class AmplificationWorker(OneShotWorkerThread):
         self.circular = circular
         self.enzymes = tuple(enzymes or ())
         self.ladder = ladder
+        # The gel's resolving window follows the agarose percentage; the
+        # mapping is the engine's, labelled a convention there.
+        self.agarose = agarose
 
     def _execute(self) -> None:
         result = amp.amplify(
@@ -126,7 +130,12 @@ class AmplificationWorker(OneShotWorkerThread):
             for index, amplicon in enumerate(result.amplicons, start=1):
                 lanes.append(gel_engine.product_lane(amplicon.length, name=f"Product {index}"))
 
-        built = gel_engine.build_gel(lanes, ladder=self.ladder) if lanes else None
+        min_bp, max_bp = gel_engine.window_for_agarose(self.agarose)
+        built = (
+            gel_engine.build_gel(lanes, ladder=self.ladder, min_bp=min_bp, max_bp=max_bp)
+            if lanes
+            else None
+        )
 
         self.amplification_ready.emit(
             {
