@@ -109,13 +109,13 @@ def test_retuning_hill_n_survives_pressing_run(destroy_after):
     # The circuit's own n is adopted when it first loads.
     view._load_active_design()
     view._describe_topology()
-    assert view.hill_n_spin.value() == pytest.approx(2.5)
+    assert view.hill_n_spin.value() == pytest.approx(3.5)
 
     # A deliberate retune then sticks across a reload of the same circuit.
-    view.hill_n_spin.setValue(2.1)
+    view.hill_n_spin.setValue(2.0)
     view._load_active_design()
     view._describe_topology()
-    assert view.hill_n_spin.value() == pytest.approx(2.1)
+    assert view.hill_n_spin.value() == pytest.approx(2.0)
 
 
 @pytest.mark.unit

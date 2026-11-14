@@ -41,6 +41,7 @@ from ...analysis.citations import FEATURE_CITATIONS, tellurium_step
 from ...analysis.parts.components import CDS, Promoter, sgRNA
 from ...analysis.prediction.graphing_utils import apply_standard_axes  # noqa: F401
 from ...analysis.simulation.topology import circuit_from_parts
+from ...analysis.units import MOLECULE_COUNT_LABEL, PROTEIN_AXIS_LABEL
 from ..workers.base_worker import BaseSDKWorker
 
 # stdout carries the Hub wire protocol in an isolated plugin, so timing
@@ -358,7 +359,7 @@ class SimulateView(QWidget):
             "Run a kinetic simulation to plot time-series traces.</span>"
         )
         self.plot_widget.setLabel("bottom", "Time (minutes)", color=Colors.FG_SECONDARY)
-        self.plot_widget.setLabel("left", "Protein concentration (RPU)", color=Colors.FG_SECONDARY)
+        self.plot_widget.setLabel("left", PROTEIN_AXIS_LABEL, color=Colors.FG_SECONDARY)
 
         # Matplotlib compatibility fallback attributes for tests/inspectors if referenced
         self.figure = Figure(figsize=(8, 6), dpi=100)
@@ -534,11 +535,13 @@ class SimulateView(QWidget):
                 pen=pen,
             )
 
-        # y_max / translation_rate are documented in RPU on CircuitComponent, so
-        # the deterministic trace is in RPU. The Gillespie path multiplies the
-        # initial condition by 10 to get integer molecule counts, so it is not
-        # the same quantity and must not carry the same unit.
-        y_label = "Protein concentration (RPU)" if method == "ode" else "Molecule count"
+        # The deterministic trace is in RPU: production is scaled by the
+        # degradation rate, so a gene settles at the output level its Cello
+        # parameters describe. Both strings come from analysis/units.py, which
+        # owns the unit, rather than being written out here. The Gillespie path
+        # multiplies the initial condition by 10 to get integer molecule
+        # counts, so it is not the same quantity and carries no unit.
+        y_label = PROTEIN_AXIS_LABEL if method == "ode" else MOLECULE_COUNT_LABEL
         self.plot_widget.setTitle(
             f"<span style='color: {Colors.FG_PRIMARY}; font-weight: bold; font-size: 14px;'>{title}</span>"
         )
@@ -734,7 +737,14 @@ class SimulateView(QWidget):
                 antimony_lines.append(f"  species {product_name} = {init_val};")
                 is_first_product = False
 
-                antimony_lines.append(f"  J_prod_{product_name}: => {product_name}; {equation};")
+                # Scaled by the degradation rate, exactly as the SciPy engine
+                # scales it, so the Antimony model has the same fixed point
+                # ([P]* = y, in RPU) and the two simulators keep agreeing.
+                # Unscaled this reaction gave [P]* = y / deg_rate, i.e.
+                # RPU x min. test_simulator_agreement pins the two together.
+                antimony_lines.append(
+                    f"  J_prod_{product_name}: => {product_name}; {deg_rate} * ({equation});"
+                )
                 antimony_lines.append(
                     f"  J_deg_{product_name}: {product_name} => ; {deg_rate} * {product_name};"
                 )

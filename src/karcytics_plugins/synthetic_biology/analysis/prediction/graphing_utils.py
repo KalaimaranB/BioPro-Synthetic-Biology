@@ -13,6 +13,8 @@ import numpy as np
 from karcytics_sdk.plugin.theme_fallback import Colors
 from matplotlib.figure import Figure
 
+from ..units import PROMOTER_OUTPUT_AXIS_LABEL
+
 DARK_BG = getattr(Colors, "BG_DARKEST", "#0d1117")
 TEXT_COLOR = getattr(Colors, "FG_PRIMARY", "#c9d1d9")
 WT_COLOR = getattr(Colors, "SUCCESS", "#4caf50")
@@ -228,7 +230,7 @@ def generate_transfer_curve(
             ax=ax,
             fig=fig,
             x_label="Repressor Concentration ([R])",
-            y_label="Output Expression (RPU)",
+            y_label=PROMOTER_OUTPUT_AXIS_LABEL,
             title=title,
             is_log_x=True,
         )

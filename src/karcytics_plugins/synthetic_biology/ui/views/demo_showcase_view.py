@@ -56,15 +56,17 @@ from ...analysis.state import SynBioState
 
 # Kinetics shared by all three transcription units of the demo oscillator.
 #
-# n = 2.5 is deliberate and load-bearing. A three-gene repressor ring only
-# oscillates above a Hopf threshold in the Hill coefficient — about n = 2.15 for
-# these kinetics, where a small limit cycle first appears and then grows; at the n = 2.1 this
-# demo used to request, the shipped engine returns a visibly damping trace
-# (amplitude 15.3 -> 1.4 RPU over 400 min), which is why the old hand-written
-# "sustained limit cycle" caption did not match the engine. At n = 2.5 the same
-# engine sustains the cycle (amplitude 24.3 -> 23.1 RPU over the same window),
-# so the caption and the plot now agree.
-DEMO_HILL_N = 2.5
+# n = 3.5 is deliberate and load-bearing. A three-gene repressor ring only
+# oscillates above a Hopf threshold in the Hill coefficient — n = 2.4514 for
+# these kinetics now that production is scaled by the degradation rate (it was
+# 2.1484 before, which is the figure this comment used to quote). At n = 3.5 the
+# engine holds the cycle (LacI amplitude 7.208 -> 6.439 RPU over 400 min, 89%
+# retained, period 27.8 min), so the "sustained limit cycle" caption and the
+# plot agree. 3.5 is above the cooperativity LacI, TetR and cI actually
+# provide: for a three-node ring the loop gain cannot exceed n, so n > 2 is
+# required and no physiological value oscillates in this reduction. See
+# CircuitSimulationEngine.create_preset_repressilator for the derivation.
+DEMO_HILL_N = 3.5
 DEMO_K_D = 1.0
 DEMO_Y_MAX = 10.0
 DEMO_Y_MIN = 0.001

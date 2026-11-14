@@ -220,32 +220,39 @@ def build_demo_tour_steps() -> list[TourStep]:
         TourStep(
             title="Predicted behaviour",
             narration=(
-                "Three phase-shifted oscillations, period about 35 minutes, amplitude "
-                "steady out to 400. Each gene represses the next in a ring of three: "
-                "production follows a Hill function, degradation is first-order."
+                "Three phase-shifted oscillations, period about 28 minutes, holding "
+                "89% of their amplitude out to 400. Each gene represses the next in a "
+                "ring of three: production follows a Hill function, scaled so a gene "
+                "settles at the output level its parameters describe, and degradation "
+                "is first-order. Note n = 3.5 is higher than real repressors provide — "
+                "this one-species-per-gene reduction needs more cooperativity than the "
+                "published two-species model."
             ),
             tab_index=TAB_CIRCUIT_SIM,
-            action=lambda panel: _run_circuit_sim(panel, hill_n=2.5),
+            action=lambda panel: _run_circuit_sim(panel, hill_n=3.5),
         ),
         TourStep(
             title="Below the threshold",
             narration=(
-                "Same circuit, Hill coefficient dropped from 2.5 to 2.1 — the oscillation "
-                "damps out. That is a Hopf bifurcation: below a threshold in "
+                "Same circuit, Hill coefficient dropped from 3.5 to 2.0 — the oscillation "
+                "damps to flat. That is a Hopf bifurcation: below a threshold in "
                 "cooperativity the ring settles to a steady state instead of cycling. "
-                "One slider, a real dynamical-systems result."
+                "This threshold is 2.4514, and 2.0 is not just under it — for a "
+                "three-gene ring the loop gain can never exceed n, so at n = 2 no "
+                "choice of any other parameter would make it cycle. One slider, a real "
+                "dynamical-systems result."
             ),
             tab_index=TAB_CIRCUIT_SIM,
-            action=lambda panel: _run_circuit_sim(panel, hill_n=2.1),
+            action=lambda panel: _run_circuit_sim(panel, hill_n=2.0),
         ),
         TourStep(
             title="Back above it",
             narration=(
-                "Restored to 2.5 and the cycle returns. The threshold is a property of "
+                "Restored to 3.5 and the cycle returns. The threshold is a property of "
                 "the network, not of the solver."
             ),
             tab_index=TAB_CIRCUIT_SIM,
-            action=lambda panel: _run_circuit_sim(panel, hill_n=2.5),
+            action=lambda panel: _run_circuit_sim(panel, hill_n=3.5),
         ),
         TourStep(
             title="Molecule by molecule",

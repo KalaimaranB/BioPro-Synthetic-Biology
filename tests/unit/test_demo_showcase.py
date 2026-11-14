@@ -219,7 +219,7 @@ def test_loading_the_demo_records_its_methods(destroy_after):
 
     by_kind = {e["kind"]: e for e in state.methods_log}
     assert set(by_kind) == {"design", "assembly", "crispr_scan", "circuit_ode"}
-    assert by_kind["circuit_ode"]["parameters"]["Hill coefficient n"] == "2.5"
+    assert by_kind["circuit_ode"]["parameters"]["Hill coefficient n"] == "3.5"
     assert by_kind["circuit_ode"]["parameters"]["duration"] == "400 min"
     assert by_kind["crispr_scan"]["parameters"]["candidates"] == len(scan_demo_target())
     assert by_kind["assembly"]["description"].startswith(

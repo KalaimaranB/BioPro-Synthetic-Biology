@@ -23,7 +23,7 @@ from karcytics_plugins.synthetic_biology.analysis.simulation.kinetics import (
 def _asymmetric_circuit() -> tuple[list[CircuitComponent], list[CircuitEdge]]:
     """A repressor whose K_d / n differ from the gene it regulates.
 
-    The preset repressilator shares K_d=1.0, n=2.5 across all three nodes,
+    The preset repressilator shares K_d=1.0, n=3.5 across all three nodes,
     which is exactly why it hid the disagreement.
     """
     repressor = CircuitComponent(
