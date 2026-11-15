@@ -15,6 +15,9 @@ become edges from whichever gene produces that molecule.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from typing import Any
+
 from ..models.domain import CircuitComponent, CircuitEdge
 from ..parts.base import BiologicalPart
 from ..parts.components import CDS, Promoter, Terminator, sgRNA
@@ -25,6 +28,71 @@ from .kinetics import (
     DEFAULT_Y_MAX,
     DEFAULT_Y_MIN,
 )
+
+MIN_RING_NODES = 3
+
+
+def is_repressor_ring(components: Sequence[Any], edges: Sequence[Any]) -> bool:
+    """True when the circuit is a single cyclic ring of repression.
+
+    This is the topology Elowitz & Leibler (2000) establish, and the only
+    shape their citation may be attached to. The test is deliberately strict:
+
+    * every edge is repression - one activating edge makes it a different motif;
+    * at least three nodes - a two-node mutual-repression pair is a toggle
+      switch, which is Gardner et al., not a ring oscillator;
+    * every node has exactly one repressor in and one target out; and
+    * the edges form ONE cycle through all of them, not two disjoint loops.
+
+    Without the last condition two separate 3-rings in the same workspace would
+    pass every other check and silently collect the citation.
+    """
+    if len(components) < MIN_RING_NODES or len(edges) != len(components):
+        return False
+    if any(str(getattr(e, "interaction_type", "")).lower() != "repression" for e in edges):
+        return False
+
+    node_ids = {str(getattr(c, "id", "")) for c in components}
+    if len(node_ids) != len(components) or "" in node_ids:
+        return False
+
+    successor = _one_in_one_out(edges, node_ids)
+    if successor is None:
+        return False
+
+    return _is_single_cycle(successor, node_ids)
+
+
+def _one_in_one_out(edges: Sequence[Any], node_ids: set[str]) -> dict[str, str] | None:
+    """Map each node to the one it represses, or None if any node repeats."""
+    successor: dict[str, str] = {}
+    targets: set[str] = set()
+    for edge in edges:
+        src = str(getattr(edge, "source_id", ""))
+        dst = str(getattr(edge, "target_id", ""))
+        if src not in node_ids or dst not in node_ids:
+            return None
+        if src in successor or dst in targets:
+            return None  # a node regulating twice, or regulated twice
+        successor[src] = dst
+        targets.add(dst)
+    return successor
+
+
+def _is_single_cycle(successor: dict[str, str], node_ids: set[str]) -> bool:
+    """True when following the edges visits every node once and returns."""
+    # Walk the ring: a single cycle returns to the start after exactly n steps.
+    start = next(iter(node_ids))
+    seen = 0
+    node = start
+    while seen < len(node_ids):
+        node = successor.get(node, "")
+        if not node:
+            return False
+        seen += 1
+        if node == start:
+            break
+    return node == start and seen == len(node_ids)
 
 
 def product_name(part: BiologicalPart) -> str:

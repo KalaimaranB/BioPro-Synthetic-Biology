@@ -133,7 +133,10 @@ _CI_CDS = (
     "GAAGAGACGTTTGGCTGA"
 )
 
-# Elowitz & Leibler (2000) repressilator, as a strand. The ring is
+# The cyclic repressor-ring topology of Elowitz & Leibler (2000), as a strand.
+# The simulator integrates a reduced, protein-only form of their model - see
+# simulation.circuit_engine.MODEL_PROVENANCE - so this is their wiring, not
+# their dynamics. The ring is
 # TetR -| LacI -| cI -| TetR: each promoter is repressed by the product of the
 # transcription unit before it, so ``circuit_from_parts`` recovers a three-node
 # negative-feedback cycle with no hand-written topology.

@@ -16,8 +16,39 @@ from ..models.domain import (
     SimulationParameters,
     SimulationResult,
 )
+from ..provenance import CONVENTION, Provenance
 from .kinetics import regulation_factor as regulation_factor_term
 from .kinetics import resolve_edge_params
+
+#: Where this simulator's model form comes from, in the same three-way scheme
+#: the rest of the module uses (see ``analysis/provenance.py``). The topology is
+#: published; the reduced one-species-per-gene dynamics are ours. Recording the
+#: split here is what keeps the citation attached to the part of the claim the
+#: paper actually supports - the same treatment the gel's log-linear mobility
+#: form receives, where Southern (1979) supports the size dependence but not
+#: that particular equation.
+MODEL_PROVENANCE: dict[str, Provenance] = {
+    "repressilator_topology": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "The three-gene cyclic repressor ring is taken from the published "
+            "design. The dynamics integrated here are a reduced, protein-only "
+            "form of it and are this module's own modelling choice, not the "
+            "published model."
+        ),
+        mechanism=("elowitz2000",),
+        mechanism_claim=(
+            "Elowitz & Leibler (2000) establish that a cyclic ring of three "
+            "mutually repressing genes oscillates, and this preset reproduces "
+            "that wiring. Their model carries three mRNA species in addition "
+            "to the three proteins, and the transcription-translation delay it "
+            "supplies is part of what drives the cycle. This simulator omits "
+            "the mRNA stage, so the paper supports the topology and not these "
+            "dynamics - in particular it does not support this system's Hopf "
+            "threshold near n = 2.15, which is a property of the reduction."
+        ),
+    ),
+}
 
 
 class CircuitSimulationEngine:
@@ -74,20 +105,38 @@ class CircuitSimulationEngine:
     def create_preset_repressilator(
         cls,
     ) -> tuple[list[CircuitComponent], list[CircuitEdge]]:
-        """Constructs Elowitz & Leibler (2000) 3-gene Repressilator ring oscillator
-        network.
+        """Build a reduced, protein-only form of the Elowitz & Leibler ring.
 
-        Topology is the cyclic repressor ring TetR -| LacI -| cI -| TetR.
+        The topology is theirs: the cyclic repressor ring
+        TetR -| LacI -| cI -| TetR, in which each gene represses the next and
+        the third closes the loop.
+
+        **The dynamics are not theirs.** Elowitz & Leibler (2000) integrate six
+        coupled equations - an mRNA species and a protein species for each of
+        the three genes - and it is the transcription-translation step that
+        supplies the delay driving the oscillation. This preset carries one
+        species per gene. Production is a Hill function of the upstream
+        repressor applied directly to the protein, with first-order decay, so
+        the mRNA stage and its delay are absent.
+
+        That reduction is deliberate and common, but it is a different
+        dynamical system, and the difference is measurable here: removing the
+        mRNA stage removes a lag from the feedback loop, so this system needs
+        more cooperativity to oscillate than the published one does. Its Hopf
+        threshold sits near n = 2.15. Do not read the numbers below as
+        reproducing the paper.
 
         The Hill coefficient is 2.5 rather than the 2.1 this preset originally
         carried. A symmetric three-node repressor ring only holds its cycle
-        above a threshold in n: integrating this preset at n = 2.1 gives a
+        above a threshold in n: integrating this reduced model at n = 2.1 gives a
         visibly damping trace (LacI amplitude 15.3 RPU over the first third of a
         400-min window, 1.4 RPU over the last), so the UI labelled it a
         sustained limit cycle while the engine was returning decay. At n = 2.5
         the amplitude holds (24.4 -> 23.1 RPU across the same window) with a
         period of about 35 min, which is the behaviour the preset's name
-        promises. Lower n to see the Hopf threshold from the other side.
+        promises. Lower n to see the Hopf threshold from the other side. These
+        amplitudes were measured from this reduced model and are correct for
+        it; the two-species system would place the threshold elsewhere.
         """
         tetR = CircuitComponent(  # noqa: N806
             id="TetR",

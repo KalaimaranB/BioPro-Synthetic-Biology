@@ -502,7 +502,14 @@ register(*CITATIONS)
 # ── Which work each feature is built on ───────────────────────────────────
 
 FEATURE_CITATIONS: dict[str, tuple[str, ...]] = {
-    # Hill-repression ODE model, integrated with SciPy's solve_ivp.
+    # Hill-repression ODE model, integrated with SciPy's solve_ivp. Elowitz &
+    # Leibler (2000) is cited for the cyclic repressor-ring TOPOLOGY only. The
+    # dynamics here are a reduced, protein-only form of their model: they
+    # integrate three mRNA species alongside the three proteins, and the
+    # transcription-translation delay that supplies is absent here. See
+    # simulation.circuit_engine.MODEL_PROVENANCE, which records the split the
+    # same way gel.THRESHOLD_PROVENANCE records Southern (1979) supporting the
+    # size dependence but not the log-linear equation.
     "circuit_simulation": ("elowitz2000", "virtanen2020"),
     "repressilator": ("elowitz2000",),
     # Simulate tab: an Antimony model run in Tellurium. libRoadRunner's default
@@ -821,11 +828,17 @@ def circuit_ode_step(
     num_points: int,
 ) -> dict[str, Any]:
     """The SciPy simulation on the Circuit Simulation tab (and the demo)."""
+    from .simulation.topology import is_repressor_ring
+
     hill = sorted({float(c.n) for c in components if getattr(c, "n", None) is not None})
-    has_repression = any(str(e.interaction_type).lower() == "repression" for e in edges)
+    # Attached only to the topology the paper establishes. This used to fire on
+    # ANY repressing edge, so a two-gene toggle switch or a single repressed
+    # gene collected the citation too, and the over-claim reached every methods
+    # paragraph a student generated from a repressive circuit.
+    ring = is_repressor_ring(components, edges)
 
     keys: list[str] = []
-    if has_repression:
+    if ring:
         keys.append("elowitz2000")
     keys.append("virtanen2020")
     keys.extend(SOLVER_CITATIONS.get(solver, ()))
@@ -840,15 +853,26 @@ def circuit_ode_step(
     elif hill:
         parameters["Hill coefficient n"] = f"{hill[0]:g}–{hill[-1]:g}"
 
-    return _entry(
-        "circuit_ode",
+    # The write-up has to name the model that ran. A student pasting this into
+    # a report must not end up asserting they integrated the published
+    # six-equation system when they integrated a reduced one.
+    description = (
         f"Protein dynamics of the {len(components)}-gene circuit were simulated as "
-        "ordinary differential equations in which each gene's production is a Hill "
-        "function of its repressors and activators and its protein decays at a "
-        "first-order rate, integrated with SciPy's solve_ivp",
-        keys,
-        parameters,
+        "ordinary differential equations in which each gene is represented by a "
+        "single protein species whose production is a Hill function of its "
+        "repressors and activators and which decays at a first-order rate, "
+        "integrated with SciPy's solve_ivp"
     )
+    if ring:
+        description += (
+            "; the circuit is a cyclic repressor ring of the kind introduced by "
+            "Elowitz & Leibler (2000), but this is a reduced, protein-only form "
+            "of their model, which additionally carries an mRNA species per gene "
+            "and the transcription-translation delay that comes with it"
+        )
+        parameters["model"] = "reduced protein-only ring (no mRNA species)"
+
+    return _entry("circuit_ode", description, keys, parameters)
 
 
 def tellurium_step(method: str, duration_min: float) -> dict[str, Any]:

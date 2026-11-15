@@ -21,8 +21,37 @@ class _Comp:
 
 
 class _Edge:
-    def __init__(self, interaction_type: str = "repression") -> None:
+    def __init__(
+        self,
+        interaction_type: str = "repression",
+        source_id: str = "",
+        target_id: str = "",
+    ) -> None:
         self.interaction_type = interaction_type
+        self.source_id = source_id
+        self.target_id = target_id
+
+
+def _ring(n: float = 2.5, size: int = 3):
+    """A cyclic repressor ring: the topology Elowitz & Leibler establish."""
+    ids = [chr(ord("A") + i) for i in range(size)]
+    comps = []
+    for node in ids:
+        comp = _Comp(n)
+        comp.id = node
+        comps.append(comp)
+    edges = [_Edge("repression", ids[i], ids[(i + 1) % size]) for i in range(size)]
+    return comps, edges
+
+
+def _toggle():
+    """Two genes repressing each other - a toggle switch, not a ring."""
+    comps = []
+    for node in ("A", "B"):
+        comp = _Comp(2.0)
+        comp.id = node
+        comps.append(comp)
+    return comps, [_Edge("repression", "A", "B"), _Edge("repression", "B", "A")]
 
 
 # ── Registry integrity ─────────────────────────────────────────────────────
@@ -102,7 +131,9 @@ def test_simulate_tab_cites_the_integrator_tellurium_actually_uses():
 
 @pytest.mark.unit
 def test_circuit_step_cites_the_solver_that_ran():
-    rk45 = cites.circuit_ode_step([_Comp()] * 3, [_Edge()] * 3, "RK45", 400, 1600)
+    # A real cyclic repressor ring, because elowitz2000 is now attached to that
+    # topology rather than to any repressing edge.
+    rk45 = cites.circuit_ode_step(*_ring(n=2.5), "RK45", 400, 1600)
     assert rk45["citations"] == ["elowitz2000", "virtanen2020", "dormand1980"]
     assert rk45["parameters"]["Hill coefficient n"] == "2.5"
 
