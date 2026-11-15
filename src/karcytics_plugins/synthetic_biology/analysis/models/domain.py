@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..units import OUTPUT_UNIT
+
 
 @dataclass
 class GeneticFeature:
@@ -374,6 +376,11 @@ class SimulationResult:
     species_concentrations: dict[str, list[float]] = field(default_factory=dict)
     status_message: str = "Success"
     success: bool = True
+    #: The unit the concentrations are in. Travels with the result so a view
+    #: labels its axis from what it was handed rather than from a constant it
+    #: hopes still applies -- which is how four axes came to read RPU while
+    #: the engine was returning RPU x min.
+    unit: str = OUTPUT_UNIT
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -381,6 +388,7 @@ class SimulationResult:
             "species_concentrations": self.species_concentrations,
             "status_message": self.status_message,
             "success": self.success,
+            "unit": self.unit,
         }
 
     @classmethod
@@ -390,4 +398,7 @@ class SimulationResult:
             species_concentrations=data.get("species_concentrations", {}),
             status_message=data.get("status_message", "Success"),
             success=data.get("success", True),
+            # Default rather than "" so a payload from an older build is read
+            # as RPU instead of as a trace with no unit at all.
+            unit=data.get("unit", OUTPUT_UNIT),
         )

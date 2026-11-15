@@ -16,7 +16,7 @@ from ..models.domain import (
     SimulationParameters,
     SimulationResult,
 )
-from ..provenance import CONVENTION, Provenance
+from ..provenance import CONVENTION, SOURCED, Provenance
 from .kinetics import regulation_factor as regulation_factor_term
 from .kinetics import resolve_edge_params
 
@@ -45,7 +45,83 @@ MODEL_PROVENANCE: dict[str, Provenance] = {
             "supplies is part of what drives the cycle. This simulator omits "
             "the mRNA stage, so the paper supports the topology and not these "
             "dynamics - in particular it does not support this system's Hopf "
-            "threshold near n = 2.15, which is a property of the reduction."
+            "threshold of n = 2.4514, nor the preset's n = 3.5, which is above "
+            "the cooperativity the real repressors provide. Both are properties "
+            "of the reduction."
+        ),
+    ),
+}
+
+
+#: Where each number in ``create_preset_repressilator`` comes from. The split
+#: that matters for citing this tool: y_min/y_max are Cello UCF output levels,
+#: while K_d, n, gamma and the initial conditions are chosen - and for the
+#: chosen ones, this records the constraint they were chosen to satisfy rather
+#: than leaving a reader to assume they were measured.
+PRESET_PROVENANCE: dict[str, Provenance] = {
+    "y_min": Provenance(
+        kind=SOURCED,
+        explanation=(
+            "0.001 RPU basal output. Relative promoter units as defined by the "
+            "Cello UCF, whose signal_carrier_units is RPU; the leakiness floor "
+            "is the UCF's own order of magnitude for a repressed promoter."
+        ),
+    ),
+    "y_max": Provenance(
+        kind=SOURCED,
+        explanation=(
+            "10.0 RPU fully derepressed output, a Cello UCF output level. Now "
+            "that production is scaled by the degradation rate this is also "
+            "the level a fully derepressed gene settles at, which is the "
+            "invariant the unit fix restored."
+        ),
+    ),
+    "K_d": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "1.0 RPU. Chosen, not measured: it sets the repression midpoint at "
+            "the same scale as y_max so the ring operates on the steep part of "
+            "its Hill curve, where the demo is legible. The oscillation "
+            "criterion does not depend on it - sup(loop gain) = n for every "
+            "K_d - so it trades no scientific claim for that legibility."
+        ),
+    ),
+    "n": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "3.5, chosen to sit 42.8% above this reduced model's Hopf "
+            "threshold of 2.4514 so the limit cycle is visibly sustained "
+            "across a 400-min window. Above the ~2 that LacI, TetR and cI "
+            "actually provide: a three-node protein-only ring cannot oscillate "
+            "at any parameters unless n > 2, so no physiological value would "
+            "work here. Stated rather than hidden."
+        ),
+        mechanism=("elowitz2000",),
+        mechanism_claim=(
+            "Elowitz & Leibler (2000) establish that the three-gene repressor "
+            "ring oscillates, which is why a Hill coefficient exists to tune "
+            "at all. They do not supply this value: their model carries an "
+            "mRNA species whose transcription-translation lag provides phase "
+            "margin that this reduction replaces with extra cooperativity. The "
+            "paper supports the existence of the oscillation, not n = 3.5."
+        ),
+    ),
+    "degradation_rate": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "0.2 min^-1, a ~3.5-min protein half-life. Chosen to set the "
+            "timescale: it now sets the period (27.8 min at n = 3.5) without "
+            "moving the Hopf threshold, because scaling production by gamma "
+            "removes gamma from the loop gain entirely."
+        ),
+    ),
+    "initial_concentration": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "5.0 / 0.1 / 0.1 RPU. Chosen asymmetric on purpose: the symmetric "
+            "fixed point is an equilibrium, so equal initial values sit on it "
+            "and nothing oscillates however high n is. The asymmetry is what "
+            "perturbs the system off that point."
         ),
     ),
 }
@@ -115,28 +191,70 @@ class CircuitSimulationEngine:
         coupled equations - an mRNA species and a protein species for each of
         the three genes - and it is the transcription-translation step that
         supplies the delay driving the oscillation. This preset carries one
-        species per gene. Production is a Hill function of the upstream
-        repressor applied directly to the protein, with first-order decay, so
-        the mRNA stage and its delay are absent.
+        species per gene: production is a Hill function of the upstream
+        repressor applied directly to the protein, scaled by the degradation
+        rate so a gene settles at the output level its Cello parameters
+        describe. The mRNA stage and its delay are absent.
 
         That reduction is deliberate and common, but it is a different
-        dynamical system, and the difference is measurable here: removing the
-        mRNA stage removes a lag from the feedback loop, so this system needs
-        more cooperativity to oscillate than the published one does. Its Hopf
-        threshold sits near n = 2.15. Do not read the numbers below as
-        reproducing the paper.
+        dynamical system, and the difference is measurable here. Do not read
+        the numbers below as reproducing the paper.
 
-        The Hill coefficient is 2.5 rather than the 2.1 this preset originally
-        carried. A symmetric three-node repressor ring only holds its cycle
-        above a threshold in n: integrating this reduced model at n = 2.1 gives a
-        visibly damping trace (LacI amplitude 15.3 RPU over the first third of a
-        400-min window, 1.4 RPU over the last), so the UI labelled it a
-        sustained limit cycle while the engine was returning decay. At n = 2.5
-        the amplitude holds (24.4 -> 23.1 RPU across the same window) with a
-        period of about 35 min, which is the behaviour the preset's name
-        promises. Lower n to see the Hopf threshold from the other side. These
-        amplitudes were measured from this reduced model and are correct for
-        it; the two-species system would place the threshold elsewhere.
+        Why n = 3.5, and why that is a finding rather than a tuning
+        ----------------------------------------------------------
+        For a symmetric three-node ring the loop gain is ``|f'(P*)|`` at the
+        symmetric fixed point ``P* = f(P*)``, and the cycle is unstable - it
+        oscillates - exactly when that gain exceeds 2. Writing
+        ``u = (P*/K_d)^n``, ``m = y_min`` and ``D = y_max - y_min``:
+
+            gain = D * n * u / [ (1 + u) * (m * (1 + u) + D) ]
+
+        which is bounded above by ``n * u / (1 + u) < n``, approached as
+        ``y_min -> 0`` and ``K_d -> 0``. So
+
+            **sup(loop gain) over every K_d, y_max and y_min = n, exactly.**
+
+        A three-node protein-only ring therefore **cannot oscillate at any
+        parameter choice unless n > 2**. Confirmed numerically to six decimal
+        places over a grid in all three parameters.
+
+        Measured Hill coefficients for LacI, TetR and lambda cI are all around
+        2. **This reduced model consequently cannot oscillate at physiological
+        cooperativity**, and n = 3.5 is above what the real repressors supply.
+        That is a property of the reduction, not of the biology, and it is the
+        quantitative reason Elowitz & Leibler carry an mRNA species: the
+        transcription-translation lag buys the phase margin that extra
+        cooperativity is standing in for here. A preset that silently used
+        non-physiological cooperativity to make a demo oscillate would make
+        this tool unciteable, so it is stated instead.
+
+        The numbers
+        -----------
+        With production scaled by gamma, the analytic Hopf threshold for this
+        preset is **n* = 2.4514** (root of ``loop gain = 2``; it was 2.1484
+        before the scaling, which is the figure the H-1 note quoted). Measured
+        on this engine over a 400-min window, LacI peak-to-trough amplitude in
+        the first third versus the last:
+
+            n = 3.5   7.208 -> 6.439 RPU   89% retained, period 27.8 min
+                      sustained; +42.8% above n*
+            n = 2.0   4.023 -> 0.000 RPU   damps to flat
+                      -18.4% below n*, and at the hard bound above
+
+        Both margins exceed 15%. n = 2.2 was rejected: it damps, but sits only
+        10.3% below the threshold. Note the finite-time threshold is higher
+        than the analytic one - bisecting "still oscillating after 400 min"
+        against this engine gives n = 2.6572, because just above n* the growth
+        rate is too small to show inside the plotted window. Both figures are
+        correct; they answer different questions, and a demo needs the
+        finite-time one.
+
+        Method, so this is reproducible: amplitude is peak-to-trough of the
+        LacI trace over the first and last third of ``t_end = 400`` min at
+        1600 points; period is the mean peak-to-peak spacing over the last
+        half; the threshold is ``brentq`` on ``loop gain - 2`` using the
+        analytic derivative above, cross-checked by bisection on the engine.
+        See ``PRESET_PROVENANCE`` for where each parameter came from.
         """
         tetR = CircuitComponent(  # noqa: N806
             id="TetR",
@@ -145,7 +263,7 @@ class CircuitSimulationEngine:
             y_min=0.001,
             y_max=10.0,
             K_d=1.0,
-            n=2.5,
+            n=3.5,
             degradation_rate=0.2,
             initial_concentration=5.0,
         )
@@ -156,7 +274,7 @@ class CircuitSimulationEngine:
             y_min=0.001,
             y_max=10.0,
             K_d=1.0,
-            n=2.5,
+            n=3.5,
             degradation_rate=0.2,
             initial_concentration=0.1,
         )
@@ -167,7 +285,7 @@ class CircuitSimulationEngine:
             y_min=0.001,
             y_max=10.0,
             K_d=1.0,
-            n=2.5,
+            n=3.5,
             degradation_rate=0.2,
             initial_concentration=0.1,
         )
@@ -178,21 +296,21 @@ class CircuitSimulationEngine:
                 target_id="LacI",
                 interaction_type="repression",
                 K_d=1.0,
-                n=2.5,
+                n=3.5,
             ),
             CircuitEdge(
                 source_id="LacI",
                 target_id="cI",
                 interaction_type="repression",
                 K_d=1.0,
-                n=2.5,
+                n=3.5,
             ),
             CircuitEdge(
                 source_id="cI",
                 target_id="TetR",
                 interaction_type="repression",
                 K_d=1.0,
-                n=2.5,
+                n=3.5,
             ),
         ]
 
@@ -208,9 +326,16 @@ class CircuitSimulationEngine:
         """Solves the differential equation system for the network topology.
 
         Models transcription and translation with non-linear Hill functions:
-        d[P_i]/dt = y_min + (y_max - y_min) * Prod_repressors(1 / (1 + (R_j/K_d)^n))
-                    * Prod_activators((A_k/K_d)^n / (1 + (A_k/K_d)^n))
-                    - degradation * [P_i]
+        d[P_i]/dt = gamma_i * (y_i([R], [A]) - [P_i])
+        where
+        y_i = y_min + (y_max - y_min) * Prod_repressors(1 / (1 + (R_j/K_d)^n))
+                                      * Prod_activators((A_k/K_d)^n / (1 + (A_k/K_d)^n))
+
+        Production is scaled by the degradation rate gamma, so the steady state
+        of a gene is the output level y its Cello parameters describe:
+        [P_i]* = y_i, in RPU. Without that scaling [P_i]* = y_i / gamma_i,
+        which is RPU x min and not what any axis in this application claims to
+        show. The returned :class:`SimulationResult` carries its own ``unit``.
         """
         if params is None:
             params = SimulationParameters()
@@ -264,9 +389,16 @@ class CircuitSimulationEngine:
                     if hill is not None:
                         regulation_factor *= hill
 
-                production_rate = y_min + (y_max - y_min) * regulation_factor
-                degradation_term = deg * current_conc
-                dydt[idx] = production_rate - degradation_term
+                # Production is scaled by the degradation rate, so the fixed
+                # point is the promoter's own output level: [P]* = y, in RPU.
+                # Unscaled this read [P]* = y / gamma, i.e. RPU x min, while
+                # four axes called it RPU -- the category error that let this
+                # preset peak at 24.5 on an axis whose promoters cap at 10.
+                # See analysis/units.py. Scaling moves the Hopf threshold
+                # (2.1484 -> 2.4514 for a symmetric 3-ring) because it changes
+                # the Jacobian; the preset below is retuned for the new one.
+                target_level = y_min + (y_max - y_min) * regulation_factor
+                dydt[idx] = deg * (target_level - current_conc)
 
             return dydt
 
