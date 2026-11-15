@@ -54,6 +54,9 @@ from typing import Any
 from Bio.Restriction import AllEnzymes, RestrictionBatch  # type: ignore[attr-defined]
 from Bio.Seq import Seq
 
+from ..provenance import SOURCED, Provenance
+from ..sequence_input import SequenceRejectedError, clean_sequence
+
 #: Overhang polarity labels, used in results and surfaced to the user.
 FIVE_PRIME = "5'"
 THREE_PRIME = "3'"
@@ -255,7 +258,17 @@ def _cuts_outside_site(enzyme: Any) -> bool:
 
 
 def _clean(sequence: str) -> str:
-    return "".join(sequence.split()).upper()
+    """Normalise a sequence for searching, refusing what is not DNA.
+
+    Shares the one validator rather than stripping locally, so a digest cannot
+    run over an ambiguity code that the enzyme search would silently miss.
+    """
+    if not sequence:
+        return ""
+    result = clean_sequence(sequence, label="Sequence to digest")
+    if not result.ok:
+        raise SequenceRejectedError(result)
+    return result.sequence
 
 
 def _site_start(
@@ -469,6 +482,32 @@ def double_digest(
     return digest(sequence, [first, second], circular=circular)
 
 
+def enzymes_for_tail(tail: str) -> tuple[str, ...]:
+    """Name the enzymes whose recognition site a 5' primer tail carries.
+
+    A student types a tail sequence, not an enzyme name, so something has to
+    turn ``GAATTC`` into ``EcoRI``. That is a REBASE lookup, which makes it the
+    engine's job: a view guessing at it would be doing biology.
+
+    Ordered by how specific the match is: longest recognition site first, so
+    the enzyme the tail was designed for leads. Ranking matters because short
+    sites occur inside longer ones — AluI reads AGCT, which is a substring of
+    the HindIII tail AAGCTT, and listing it first would be actively misleading.
+
+    Empty when the tail matches nothing, which is a legitimate answer for a
+    Gibson or ligation-independent overhang.
+    """
+    cleaned = _clean(tail)
+    if not cleaned:
+        return ()
+    matches: dict[str, int] = {}
+    for enzyme in AllEnzymes:
+        site = str(enzyme.site)
+        if site and site in cleaned:
+            matches[str(enzyme)] = len(site)
+    return tuple(sorted(matches, key=lambda name: (-matches[name], name)))
+
+
 def available_enzymes() -> tuple[str, ...]:
     """Every enzyme name available, from REBASE via Biopython."""
     return tuple(sorted(str(e) for e in AllEnzymes))
@@ -488,23 +527,28 @@ def enzymes_cutting(sequence: str, *, circular: bool = False, batch: Any = None)
     return {str(enzyme): len(hits) for enzyme, hits in found.items() if hits}
 
 
-#: Why each reported quantity is trustworthy, per field, in the same spirit as
-#: ``primer_rubric.THRESHOLD_PROVENANCE``. There are no thresholds in this
-#: module — nothing here is a judgement call — so every entry is sourced.
-THRESHOLD_PROVENANCE: dict[str, tuple[str, str]] = {
-    "recognition_site": (
-        "sourced",
-        "Recognition sequences come from REBASE as distributed with Biopython.",
+#: Why each reported quantity is trustworthy. This engine makes no judgement
+#: calls -- there are no thresholds and nothing to tune -- so every entry is
+#: sourced and none needs a mechanism: the rules *are* the enzyme geometry.
+THRESHOLD_PROVENANCE: dict[str, Provenance] = {
+    "recognition_site": Provenance(
+        kind=SOURCED,
+        explanation=("Recognition sequences come from REBASE as distributed with Biopython."),
     ),
-    "cut_position": (
-        "sourced",
-        "Top- and bottom-strand cut offsets come from REBASE as distributed "
-        "with Biopython; this module converts them to 0-based coordinates.",
+    "cut_position": Provenance(
+        kind=SOURCED,
+        explanation=(
+            "Top- and bottom-strand cut offsets come from REBASE as distributed "
+            "with Biopython; this module converts them to 0-based coordinates."
+        ),
     ),
-    "overhang": (
-        "sourced",
-        "Overhang polarity and length come from REBASE; the overhang sequence "
-        "is read from the template, which is what makes Type IIS assembly work.",
+    "overhang": Provenance(
+        kind=SOURCED,
+        explanation=(
+            "Overhang polarity and length come from REBASE; the overhang "
+            "sequence is read from the template, which is what makes Type IIS "
+            "assembly work."
+        ),
     ),
 }
 
@@ -523,6 +567,7 @@ __all__ = [
     "double_digest",
     "enzyme_info",
     "enzymes_cutting",
+    "enzymes_for_tail",
     "find_sites",
     "resolve_enzymes",
     "sites_in_region",

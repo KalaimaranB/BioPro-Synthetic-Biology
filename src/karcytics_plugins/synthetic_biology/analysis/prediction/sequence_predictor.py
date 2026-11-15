@@ -14,9 +14,12 @@ Uses the Strategy Pattern to route prediction queries:
 """
 
 import contextlib
+import logging
 import math
 from abc import ABC, abstractmethod
 from typing import Any
+
+from ..sequence_input import clean_sequence, require_sequence
 
 
 def levenshtein_distance(seq1: str, seq2: str) -> int:
@@ -448,6 +451,9 @@ def get_blosum62_score(aa1: str, aa2: str) -> int:
     return -4  # Default score for non-standard amino acid substitution
 
 
+logger = logging.getLogger(__name__)
+
+
 class PredictionStrategy(ABC):
     """Abstract base class for sequence parameter prediction strategies."""
 
@@ -562,10 +568,21 @@ class KNNPredictionStrategy(PredictionStrategy):
                     if val is not None:
                         try:
                             fval = float(val)
+                        except (ValueError, TypeError):
+                            # A catalogue part carrying a non-numeric value for
+                            # a kinetic parameter is a data problem, not a
+                            # normal case: it silently drops that neighbour
+                            # from the weighted average and shifts the
+                            # prediction, so it is logged rather than ignored.
+                            logger.warning(
+                                "Skipping %r for %s: %r is not numeric",
+                                getattr(part, "id", part),
+                                pname,
+                                val,
+                            )
+                        else:
                             weighted_sum += fval * w
                             valid_weight_sum += w
-                        except (ValueError, TypeError):
-                            pass
 
                 if valid_weight_sum > 0:
                     predicted_params[pname] = round(weighted_sum / valid_weight_sum, 4)
@@ -750,7 +767,10 @@ class PromoterBiophysicsStrategy(PredictionStrategy):
         candidate_parts: list[Any],
         **kwargs,  # noqa: ARG002 — accepts caller-supplied extra options across predictor variants
     ) -> dict[str, Any]:
-        clean_query = "".join(c for c in query_sequence.upper() if c in "ACGTN")
+        # Was: "".join(c for c in query_sequence.upper() if c in "ACGTN") —
+        # which silently discarded anything unrecognised and admitted N, a base
+        # the scanning model cannot score. Both failures are now reported.
+        clean_query = require_sequence(query_sequence, label="Promoter sequence")
         if not clean_query or len(clean_query) < self.MIN_WINDOW_LEN:
             raise ValueError(
                 f"Promoter sequence length ({len(clean_query)} bp) is below the "
@@ -939,9 +959,10 @@ class CDSStructuralStrategy(PredictionStrategy):
         candidate_parts: list[Any],
         **kwargs,  # noqa: ARG002 — accepts caller-supplied extra options across predictor variants
     ) -> dict[str, Any]:
-        clean_query = "".join(c for c in query_sequence.upper() if c in "ACGTN")
-        if not clean_query:
-            raise ValueError("Empty sequence provided for CDS prediction.")
+        # Second instance of the same silent-strip pattern as the promoter
+        # predictor: it discarded unrecognised characters and admitted N, then
+        # translated the result as if it were a real CDS.
+        clean_query = require_sequence(query_sequence, label="CDS sequence")
 
         if len(clean_query) % 3 != 0:
             raise ValueError(
@@ -994,7 +1015,11 @@ class CDSStructuralStrategy(PredictionStrategy):
 
         # Case A: Explicit reference sequence provided
         if ref_seq_arg:
-            clean_ref_dna = "".join(c for c in ref_seq_arg.upper() if c in "ACGTN")
+            # Third instance of the silent-strip pattern. A reference sequence
+            # is user-supplied too, and a baseline built from a quietly
+            # mangled reference makes every distance reported against it wrong.
+            ref_result = clean_sequence(ref_seq_arg, label="Reference sequence")
+            clean_ref_dna = ref_result.sequence if ref_result.ok else ""
             if clean_ref_dna and len(clean_ref_dna) % 3 == 0:
                 try:
                     protein_ref = translate_dna_to_protein(clean_ref_dna)

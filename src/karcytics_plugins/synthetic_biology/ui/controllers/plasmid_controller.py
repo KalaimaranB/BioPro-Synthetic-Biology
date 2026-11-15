@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from PySide6.QtCore import QObject, Signal, Slot
 
-from ...analysis.assembly.vector_builder import VectorAssemblyEngine
-from ...analysis.citations import assembly_step, primer_step
-from ...analysis.models.domain import PlasmidVector, Primer
+from ...analysis.citations import (
+    amplification_step,
+    assembly_step,
+    digest_step,
+    gel_step,
+    primer_screen_step,
+    primer_step,
+)
+from ...analysis.models.domain import PlasmidVector
 from ...analysis.parts.base import BiologicalPart
 from ...analysis.state import SynBioState
 from ..workers import AssemblyWorker
@@ -18,39 +26,12 @@ class PlasmidAssemblyController(QObject):
     """
 
     assembly_ready = Signal(PlasmidVector)
-    primers_ready = Signal(Primer, Primer)
     error_raised = Signal(str)
 
     def __init__(self, state: SynBioState, parent=None):
         super().__init__(parent)
         self.state = state
         self._active_worker: AssemblyWorker | None = None
-
-    def handle_primer_design(
-        self,
-        sequence: str = "",
-        target_tm: float = 60.0,
-        fwd_overhang: str = "",
-        rev_overhang: str = "",
-        target_seq: str = "",
-    ) -> list[Primer]:
-        """Calculates PCR primers synchronously via VectorAssemblyEngine and updates state."""
-        seq = sequence or target_seq
-        if not seq:
-            return []
-        fwd, rev = VectorAssemblyEngine.design_primers(
-            target_sequence=seq,
-            target_tm=target_tm,
-            fwd_overhang=fwd_overhang,
-            rev_overhang=rev_overhang,
-        )
-        plasmid = self.state.get_active_plasmid()
-        if plasmid:
-            plasmid.primers.extend([fwd, rev])
-            self.state.set_active_plasmid(plasmid)
-        self._record_primers(fwd, rev)
-        self.primers_ready.emit(fwd, rev)
-        return [fwd, rev]
 
     @Slot(str, list)
     def handle_assemble_request(self, vector_name: str, parts: list[BiologicalPart]) -> None:
@@ -80,27 +61,6 @@ class PlasmidAssemblyController(QObject):
         self._active_worker.error_occurred.connect(self.error_raised.emit)
         self._active_worker.start()
 
-    @Slot(str, float, str, str)
-    def handle_primer_design_request(
-        self,
-        target_seq: str,
-        target_tm: float = 60.0,
-        fwd_overhang: str = "",
-        rev_overhang: str = "",
-    ) -> None:
-        """Launches background primer design worker."""
-        self._active_worker = AssemblyWorker(
-            task_type="primer",
-            target_seq=target_seq,
-            target_tm=target_tm,
-            fwd_overhang=fwd_overhang,
-            rev_overhang=rev_overhang,
-            parent=self,
-        )
-        self._active_worker.primer_finished.connect(self._on_primer_finished)
-        self._active_worker.error_occurred.connect(self.error_raised.emit)
-        self._active_worker.start()
-
     def _on_parse_finished(self, vector: PlasmidVector) -> None:
         """State update for a vector imported from a sequence file."""
         self.state.set_active_plasmid(vector)
@@ -116,17 +76,39 @@ class PlasmidAssemblyController(QObject):
         )
         self.assembly_ready.emit(vector)
 
-    def _on_primer_finished(self, fwd: Primer, rev: Primer) -> None:
-        """Updates active plasmid primers in state."""
-        plasmid = self.state.get_active_plasmid()
-        if plasmid:
-            plasmid.primers.extend([fwd, rev])
-            self.state.set_active_plasmid(plasmid)
-        self._record_primers(fwd, rev)
-        self.primers_ready.emit(fwd, rev)
+    # ── Methods & References ───────────────────────────────────────────
+    #
+    # These four step builders existed with zero callers: a student could run
+    # the entire primer workflow and the Methods dialog would show nothing
+    # about any of it, so every Crossref-verified citation behind the numbers
+    # was invisible in the exported write-up. Recording lives here rather than
+    # in the dialog so there is exactly one path, and so it is testable
+    # without a view.
 
-    def _record_primers(self, fwd: Primer, rev: Primer) -> None:
+    def record_primer_design(
+        self, candidate: dict[str, Any], rubric: Any, n_candidates: int
+    ) -> None:
+        """Record the design and the screening that chose this candidate."""
+        fwd, rev = candidate["forward"], candidate["reverse"]
         self.state.record_method(primer_step(fwd.target_tm, fwd.calculated_tm, rev.calculated_tm))
+        summary = candidate.get("summary") or {}
+        self.state.record_method(
+            primer_screen_step(
+                rubric=rubric,
+                n_candidates=n_candidates,
+                verdict=str(summary.get("verdict", "")),
+                checks_applied=[c["name"] for c in candidate.get("checks", [])],
+            )
+        )
+
+    def record_amplification(self, result: Any) -> None:
+        self.state.record_method(amplification_step(result))
+
+    def record_digest(self, digest: Any) -> None:
+        self.state.record_method(digest_step(digest))
+
+    def record_gel(self, gel: Any) -> None:
+        self.state.record_method(gel_step(gel))
 
     def teardown(self) -> None:
         """Stops active background worker thread if running."""

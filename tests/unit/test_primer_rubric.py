@@ -132,3 +132,81 @@ def test_thresholds_are_read_from_the_rubric_not_hardcoded(overrides, sequence, 
     assert verdict(PrimerRubric(**overrides)) is True, (
         f"{check_name} ignored the rubric override {overrides}"
     )
+
+
+# ── The third provenance category: a rule's published mechanism ────────
+
+
+@pytest.mark.unit
+def test_every_entry_is_a_provenance_record():
+    """The table is what the UI reads, so its shape is part of the contract."""
+    from karcytics_plugins.synthetic_biology.analysis.provenance import Provenance
+
+    for name, entry in THRESHOLD_PROVENANCE.items():
+        assert isinstance(entry, Provenance), name
+
+
+@pytest.mark.unit
+def test_provenance_still_reads_as_the_old_two_tuple():
+    """Existing readers unpack and index it; that must keep working."""
+    kind, explanation = THRESHOLD_PROVENANCE["gc_min_percent"]
+    assert kind == CONVENTION
+    assert explanation.strip()
+    assert THRESHOLD_PROVENANCE["gc_min_percent"][0] == CONVENTION
+
+
+@pytest.mark.unit
+def test_a_mechanism_citation_must_name_the_claim_it_supports():
+    """A citation attached to nothing in particular is how inflation happens."""
+    from karcytics_plugins.synthetic_biology.analysis.provenance import Provenance
+
+    with pytest.raises(ValueError, match="which claim it supports"):
+        Provenance(kind=CONVENTION, explanation="x", mechanism=("newton1989",))
+
+
+@pytest.mark.unit
+def test_an_unknown_provenance_kind_is_rejected():
+    from karcytics_plugins.synthetic_biology.analysis.provenance import Provenance
+
+    with pytest.raises(ValueError, match="kind must be one of"):
+        Provenance(kind="probably-fine", explanation="x")
+
+
+@pytest.mark.unit
+def test_every_mechanism_citation_is_registered_and_explained():
+    """A mechanism key that is not a real citation would fail only at render."""
+    from karcytics_plugins.synthetic_biology.analysis import citations
+
+    for name, entry in THRESHOLD_PROVENANCE.items():
+        if not entry.mechanism:
+            continue
+        assert entry.mechanism_claim.strip(), name
+        for key in entry.mechanism:
+            assert citations.get(key).doi, f"{name} cites unregistered {key}"
+
+
+@pytest.mark.unit
+def test_the_three_prime_rule_separates_its_value_from_its_mechanism():
+    """The window size is ours; the 3'-end dependence is a published finding."""
+    entry = THRESHOLD_PROVENANCE["three_prime_window"]
+    assert entry.kind == CONVENTION, "the count of 5 is not a measured value"
+    assert "newton1989" in entry.mechanism
+    assert "does not support a window of 5" in entry.mechanism_claim
+    assert entry.label() == "our threshold, published mechanism"
+
+
+@pytest.mark.unit
+def test_the_rubric_thresholds_that_are_ours_still_cite_nothing():
+    """GC window, clamp counts and run length are our practice, not results."""
+    for name in (
+        "gc_min_percent",
+        "gc_max_percent",
+        "clamp_min_gc",
+        "clamp_max_gc",
+        "max_poly_run",
+        "target_tm",
+    ):
+        entry = THRESHOLD_PROVENANCE[name]
+        assert entry.kind == CONVENTION, name
+        assert entry.mechanism == (), f"{name} must not claim a mechanism"
+        assert entry.label() == "our convention"

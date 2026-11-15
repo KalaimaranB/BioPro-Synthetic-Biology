@@ -29,11 +29,12 @@ REAL_SDK_PLUGIN_DIR = (
 )
 
 import pytest  # noqa: E402
-from PySide6.QtCore import QObject, Signal  # noqa: E402
+from PySide6.QtCore import QObject, Qt, Signal  # noqa: E402
 from PySide6.QtWidgets import (  # noqa: E402
     QApplication,
     QComboBox,
     QDoubleSpinBox,
+    QFrame,
     QGraphicsScene,
     QGraphicsView,
     QHBoxLayout,
@@ -46,6 +47,7 @@ from PySide6.QtWidgets import (  # noqa: E402
     QSpinBox,
     QSplitter,
     QTableWidget,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -302,6 +304,17 @@ class MockComponents:
     BioScrollArea = DummyScrollArea
     BioProgressDialog = DummyProgressDialog
 
+    # The real karcytics_sdk.plugin.components re-exports these Qt primitives,
+    # so views may legitimately import layouts and containers from the SDK
+    # rather than from PySide6. Without them here __getattr__ hands back a
+    # MagicMock and any widget built on one is itself a Mock.
+    QWidget = QWidget
+    QVBoxLayout = QVBoxLayout
+    QHBoxLayout = QHBoxLayout
+    QLabel = QLabel
+    QFrame = QFrame
+    Qt = Qt
+
     def __getattr__(self, name: str) -> Any:  # noqa: C901, PLR0911
         if "Button" in name:
             return DummyButton
@@ -468,9 +481,34 @@ mock_toast.show_toast = MagicMock()
 mock_karcytics_sdk_plugin.toast = mock_toast
 sys.modules["karcytics_sdk.plugin.toast"] = mock_toast
 
+
+class DummyFonts:
+    """Font tokens with the real SDK's TYPES, not colour strings.
+
+    Fonts was aliased to DummyColors, whose __getattr__ returns a colour
+    string for any attribute. A view doing the documented
+    `font.setPointSize(Fonts.SIZE_SMALL)` therefore received "#1e1e1e",
+    which raises inside PySide6 and takes the whole test process down with
+    SIGABRT rather than failing one test. The real SDK gives ints here
+    (SIZE_SMALL = 11) and QFont objects for BODY/CAPTION.
+    """
+
+    SIZE_SMALL = 11
+    SIZE_NORMAL = 13
+    SIZE_LARGE = 18
+    SIZE_XLARGE = 24
+    FAMILY_UI = "Inter"
+    FAMILY_HEADINGS = "Inter"
+
+    def __getattr__(self, name: str) -> Any:  # pragma: no cover - safety net
+        from PySide6.QtGui import QFont
+
+        return QFont()
+
+
 mock_theme_fallback = types.ModuleType("theme_fallback")
 mock_theme_fallback.Colors = DummyColors  # type: ignore
-mock_theme_fallback.Fonts = DummyColors  # type: ignore
+mock_theme_fallback.Fonts = DummyFonts()  # type: ignore
 mock_theme_fallback.theme_manager = dummy_theme_manager  # type: ignore
 mock_theme_fallback.get_contrast_text_color = lambda bg: "#ffffff"  # type: ignore
 sys.modules["karcytics_sdk.plugin.theme_fallback"] = mock_theme_fallback

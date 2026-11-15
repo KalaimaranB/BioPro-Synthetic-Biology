@@ -327,9 +327,15 @@ def test_amplification_does_not_cite_its_mismatch_rule():
     from karcytics_plugins.synthetic_biology.analysis.assembly import amplification as amp
 
     keys = cites.FEATURE_CITATIONS["amplification"]
-    assert keys == ("allawi1997", "cock2009")
+    # Phase 3 added the PCR method and the 3'-end mechanism. What must stay
+    # true is that no citation is offered for the chosen *numbers*: both
+    # parameters remain conventions, and only the rule's shape has a paper.
     for field_name in ("three_prime_exact", "max_mismatches"):
-        assert amp.THRESHOLD_PROVENANCE[field_name][0] == "convention"
+        assert amp.THRESHOLD_PROVENANCE[field_name].kind == "convention"
+    assert amp.THRESHOLD_PROVENANCE["max_mismatches"].mechanism == ()
+    assert "allawi1997" in keys and "cock2009" in keys
+    mechanism = amp.THRESHOLD_PROVENANCE["three_prime_exact"].mechanism
+    assert set(mechanism) <= set(keys), "a mechanism must be cited in the feature map"
 
 
 @pytest.mark.unit

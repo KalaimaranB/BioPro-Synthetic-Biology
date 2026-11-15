@@ -47,6 +47,8 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..provenance import CONVENTION, SOURCED, Provenance
+
 #: Resolving window of a typical 1% agarose gel, in bp. A convention: a
 #: different agarose percentage resolves a different window.
 DEFAULT_MIN_BP = 100
@@ -56,12 +58,39 @@ DEFAULT_MAX_BP = 10_000
 DEFAULT_LANE_LENGTH_MM = 80.0
 
 
+#: Resolving window per agarose percentage, in bp. A convention: these are the
+#: ranges agarose suppliers quote for routine work, not a measurement, and the
+#: real window also depends on voltage, buffer and run time — none of which
+#: this model takes. Exposed so a student can match the gel they actually
+#: poured instead of being locked to one window.
+AGAROSE_WINDOWS: dict[str, tuple[int, int]] = {
+    "0.7%": (800, 20_000),
+    "1.0%": (100, 10_000),
+    "1.5%": (80, 4_000),
+    "2.0%": (50, 2_000),
+    "3.0%": (20, 1_000),
+}
+
+#: The percentage used when none is chosen.
+DEFAULT_AGAROSE = "1.0%"
+
+
+def window_for_agarose(percentage: str) -> tuple[int, int]:
+    """Resolving window for an agarose percentage, falling back to the default."""
+    return AGAROSE_WINDOWS.get(percentage, AGAROSE_WINDOWS[DEFAULT_AGAROSE])
+
+
 @dataclass(frozen=True)
 class Ladder:
     """A size standard, as data. Sizes in bp, largest first when displayed."""
 
     name: str
     sizes: tuple[int, ...]
+    #: Where this band list came from, and how far it should be trusted.
+    #: Checked against supplier listings rather than assumed: formulations of
+    #: the same trade name differ, so a band list that looks authoritative but
+    #: is not would be worse than one that says what it is.
+    provenance: str = ""
     #: Relative mass of each band, where the supplier loads some bands heavier
     #: as orientation markers. Empty means equimolar.
     reference_bands: tuple[int, ...] = ()
@@ -107,7 +136,19 @@ LADDERS: dict[str, Ladder] = {
             100,
         ),
         reference_bands=(1650,),
-        note="Wide range; the 1650 bp band is loaded heavier as an orientation marker.",
+        note=(
+            "Wide range; the 1650 bp band is loaded heavier as an orientation "
+            "marker, forming a doublet with the 2000 bp band."
+        ),
+        provenance=(
+            "Representative 1 kb-plus-style band list, NOT verified against a "
+            "specific catalogue number. Supplier listings for products sold "
+            "under this name disagree: the range is quoted as 100-15,000 bp "
+            "with 18-19 fragments including bands above 10 kb, and the "
+            "orientation band is quoted as both 1,500 bp and 1,650 bp. Confirm "
+            "against the datasheet for the ladder you actually run before "
+            "reading a size off this gel."
+        ),
     ),
     "100bp": Ladder(
         name="100 bp DNA ladder",
@@ -137,6 +178,16 @@ class Band:
     #: True when the fragment lies outside the gel's resolving window, so its
     #: position is clamped and must not be read as a measurement.
     out_of_range: bool = False
+    #: Which edge it ran off: True above the largest resolvable fragment,
+    #: False below the smallest. Decided here so a renderer does not have to
+    #: infer it from the mobility value.
+    off_scale_high: bool = False
+    #: Sitting exactly on a window bound. Drawn as a band at the extreme and
+    #: labelled "*", rather than thrown off scale: the size IS known, it is
+    #: only the position that is at the limit of what the gel resolves.
+    at_edge: bool = False
+    #: True for a supplier's overloaded orientation band.
+    is_reference: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -146,6 +197,9 @@ class Band:
             "intensity": round(self.intensity, 4),
             "label": self.label,
             "out_of_range": self.out_of_range,
+            "off_scale_high": self.off_scale_high,
+            "at_edge": self.at_edge,
+            "is_reference": self.is_reference,
         }
 
 
@@ -160,6 +214,10 @@ class Lane:
     max_bp: int = DEFAULT_MAX_BP
     lane_length_mm: float = DEFAULT_LANE_LENGTH_MM
     notes: tuple[str, ...] = ()
+    #: Carried from the Ladder so a view can describe a clicked band without
+    #: reaching back into the ladder table.
+    reference_bands: tuple[int, ...] = ()
+    provenance: str = ""
 
     @property
     def sizes(self) -> tuple[int, ...]:
@@ -187,6 +245,16 @@ class Gel:
     lane_length_mm: float = DEFAULT_LANE_LENGTH_MM
     model: str = "log-linear"
     notes: tuple[str, ...] = field(default_factory=tuple)
+
+    @property
+    def lane_kinds(self) -> tuple[str, ...]:
+        """The kinds of lane on this gel, excluding the ladder."""
+        return tuple(lane.kind for lane in self.lanes if lane.kind != "ladder")
+
+    @property
+    def limitations(self) -> tuple[tuple[str, str], ...]:
+        """Caveats that apply to what this gel actually shows."""
+        return limitations_for(self.lane_kinds)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -231,11 +299,25 @@ def relative_mobility(
 def is_resolvable(
     size_bp: float, *, min_bp: int = DEFAULT_MIN_BP, max_bp: int = DEFAULT_MAX_BP
 ) -> bool:
-    """Whether the gel's window can place this fragment without clamping."""
-    return min_bp < size_bp < max_bp
+    """Whether this fragment lies within the gel's resolving window.
+
+    Inclusive of the bounds. It used to be strict, which made a fragment of
+    exactly 100 or exactly 10000 bp "unresolvable" -- so the 1 kb Plus
+    ladder's own top and bottom bands were flagged and, once off-scale
+    markers were introduced, vanished from the gel entirely. A fragment
+    sitting exactly on the window edge is at the edge, not beyond it.
+    """
+    return min_bp <= size_bp <= max_bp
 
 
-def _bands(
+def is_at_edge(
+    size_bp: float, *, min_bp: int = DEFAULT_MIN_BP, max_bp: int = DEFAULT_MAX_BP
+) -> bool:
+    """Whether the fragment sits exactly on a bound, where position is extreme."""
+    return size_bp in (min_bp, max_bp)
+
+
+def _bands(  # noqa: PLR0913 - each argument is an independent lane property
     sizes: list[int],
     *,
     min_bp: int,
@@ -243,6 +325,7 @@ def _bands(
     lane_length_mm: float,
     masses: dict[int, float] | None = None,
     labels: dict[int, str] | None = None,
+    reference_bands: tuple[int, ...] = (),
 ) -> tuple[Band, ...]:
     """Build bands, merging equal sizes because they co-migrate as one band."""
     labels = labels or {}
@@ -267,6 +350,9 @@ def _bands(
                 intensity=merged[size] / brightest if brightest else 0.0,
                 label=label,
                 out_of_range=not is_resolvable(size, min_bp=min_bp, max_bp=max_bp),
+                off_scale_high=size > max_bp,
+                at_edge=is_at_edge(size, min_bp=min_bp, max_bp=max_bp),
+                is_reference=size in reference_bands,
             )
         )
     return tuple(bands)
@@ -294,11 +380,14 @@ def ladder_lane(
             max_bp=max_bp,
             lane_length_mm=lane_length_mm,
             masses=masses,
+            reference_bands=definition.reference_bands,
         ),
         min_bp=min_bp,
         max_bp=max_bp,
         lane_length_mm=lane_length_mm,
         notes=(definition.note,) if definition.note else (),
+        reference_bands=definition.reference_bands,
+        provenance=definition.provenance,
     )
 
 
@@ -382,6 +471,9 @@ def _reposition(lane: Lane, min_bp: int, max_bp: int, lane_length_mm: float) -> 
                 intensity=band.intensity,
                 label=band.label,
                 out_of_range=not is_resolvable(band.size_bp, min_bp=min_bp, max_bp=max_bp),
+                off_scale_high=band.size_bp > max_bp,
+                at_edge=is_at_edge(band.size_bp, min_bp=min_bp, max_bp=max_bp),
+                is_reference=band.is_reference,
             )
         )
     return Lane(
@@ -392,6 +484,8 @@ def _reposition(lane: Lane, min_bp: int, max_bp: int, lane_length_mm: float) -> 
         max_bp=max_bp,
         lane_length_mm=lane_length_mm,
         notes=lane.notes,
+        reference_bands=lane.reference_bands,
+        provenance=lane.provenance,
     )
 
 
@@ -416,8 +510,9 @@ def build_gel(
     notes = []
     if any(b.out_of_range for lane in collected for b in lane.bands):
         notes.append(
-            f"Some fragments fall outside the {min_bp}-{max_bp} bp resolving window; "
-            "their positions are clamped and are not measurements."
+            f"Some fragments fall outside the {min_bp}-{max_bp} bp resolving "
+            "window. They are shown off scale rather than placed at the edge, "
+            "because this gel cannot resolve a size for them."
         )
     return Gel(
         lanes=tuple(collected),
@@ -428,40 +523,133 @@ def build_gel(
     )
 
 
-#: Provenance per field, as in ``primer_rubric.THRESHOLD_PROVENANCE``.
-THRESHOLD_PROVENANCE: dict[str, tuple[str, str]] = {
-    "mobility_model": (
-        "convention",
-        "Migration linear in log10(size) is a teaching approximation. Southern "
-        "(1979) showed mobility is not strictly log-linear and proposed a "
-        "reciprocal relationship; Elder & Southern (1983) compared the forms. "
-        "The size-dependence itself is the cited empirical result -- this "
-        "particular functional form is not.",
+#: What a gel of each kind does not model. Chosen by what the gel actually
+#: contains: a PCR-only gel was showing the restriction-digest caveats
+#: (methylation sensitivity, star activity, isoschizomers), which say nothing
+#: about a PCR and leave its real failure modes unmentioned.
+PCR_LIMITATIONS: tuple[tuple[str, str], ...] = (
+    (
+        "primer-dimers",
+        "Primers that prime each other give a small, often bright band near "
+        "the dye front. The screening engine reports dimer free energies, but "
+        "no dimer product is placed on this gel.",
     ),
-    "resolving_window": (
-        "convention",
-        "100-10000 bp stands in for a typical 1% agarose gel. The real window "
-        "depends on agarose percentage, voltage and run time, none of which "
-        "this model takes.",
+    (
+        "non-specific amplification",
+        "Partial matches elsewhere on the template can prime at low annealing "
+        "temperatures and give extra bands that this model does not predict.",
     ),
-    "lane_length_mm": (
-        "convention",
-        "A presentation scale for a renderer, not a physical quantity.",
+    (
+        "secondary structure",
+        "Hairpins in the template can stall the polymerase, weakening or "
+        "removing a band that is predicted here.",
     ),
-    "intensity": (
-        "convention",
-        "Intensity proportional to band mass follows from intercalating dye "
-        "binding along the duplex. The proportionality is conventional and "
-        "ignores saturation and the dye's own size preference.",
+    (
+        "polymerase errors",
+        "Misincorporation is not modelled; every predicted product is an exact "
+        "copy of the template between the primers.",
     ),
-    "ladder_sizes": (
-        "sourced",
-        "Fragment sizes are as published by the ladder's supplier; they state "
-        "a product's composition rather than an experimental measurement.",
+    (
+        "yield and band intensity",
+        "Intensity here follows fragment mass only. Real brightness depends on "
+        "amplification efficiency, cycle number and template amount.",
+    ),
+)
+
+
+def limitations_for(kinds: Any) -> tuple[tuple[str, str], ...]:
+    """The caveats that apply to a gel carrying lanes of these kinds.
+
+    A gel showing a PCR product and its digest gets both sets, in that order,
+    because both reactions stand between the prediction and the photograph.
+    """
+    from .restriction import DIGEST_LIMITATIONS
+
+    present = set(kinds or ())
+    chosen: list[tuple[str, str]] = []
+    if present & {"pcr_product", "sample"}:
+        chosen.extend(PCR_LIMITATIONS)
+    if "digest" in present:
+        chosen.extend(DIGEST_LIMITATIONS)
+    if not chosen:
+        chosen.extend(PCR_LIMITATIONS)
+    return tuple(chosen)
+
+
+#: Provenance per field. The mobility model is the one place this module could
+#: overclaim, so its entry records the paper that was weighed and declined.
+THRESHOLD_PROVENANCE: dict[str, Provenance] = {
+    "mobility_model": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "Migration linear in log10(size) is a teaching approximation. The "
+            "size-dependence itself is an empirical result and is cited; this "
+            "particular functional form is not. Southern (1979) showed "
+            "mobility is not strictly log-linear and proposed a reciprocal "
+            "relationship, and Elder & Southern (1983) compared the forms."
+        ),
+        rejected=(
+            (
+                "Aaij & Borst (1972), Biochim. Biophys. Acta 269:192-200, "
+                "doi:10.1016/0005-2787(72)90426-1",
+                "Considered as a source for the log-linear form itself, and "
+                "declined because its content could not be verified. The paper "
+                "is real and correctly identified (PMID 5063906), but no "
+                "abstract is indexed in PubMed, Crossref, OpenAlex or Europe "
+                "PMC, and the full text is paywalled. A secondary fragment "
+                "suggested it may in fact report mobility as NOT linear in log "
+                "MW for linear DNA above ~1e6 Da in 1% gels, which would "
+                "argue against the sourced label, but that is equally "
+                "unverified. Citing it unread would make the claim look "
+                "checked when it is not.",
+            ),
+        ),
+    ),
+    "resolving_window": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "The window is the range an agarose percentage resolves, as "
+            "suppliers quote it for routine work rather than as a measured "
+            "result. The real window also depends on voltage, buffer and run "
+            "time, none of which this model takes."
+        ),
+    ),
+    "lane_length_mm": Provenance(
+        kind=CONVENTION,
+        explanation="A presentation scale for a renderer, not a physical quantity.",
+    ),
+    "intensity": Provenance(
+        kind=CONVENTION,
+        explanation=(
+            "Intensity proportional to band mass follows from intercalating "
+            "dye binding along the duplex. The proportionality is conventional "
+            "and ignores saturation and the dye's own size preference."
+        ),
+        rejected=(
+            (
+                "Le Pecq & Paoletti (1967), J. Mol. Biol. 27:87-106, "
+                "doi:10.1016/0022-2836(67)90353-1",
+                "Considered as the source for ethidium fluorescence scaling "
+                "with bound DNA, and declined for the same reason as Aaij & "
+                "Borst: no abstract is indexed anywhere (PMID 6033613) and the "
+                "full text is paywalled, so the claim could not be checked "
+                "against the paper.",
+            ),
+        ),
+    ),
+    "ladder_sizes": Provenance(
+        kind=SOURCED,
+        explanation=(
+            "Fragment sizes are as published by the ladder's supplier; they "
+            "state a product's composition rather than an experimental "
+            "measurement."
+        ),
     ),
 }
 
 __all__ = [
+    "AGAROSE_WINDOWS",
+    "DEFAULT_AGAROSE",
     "DEFAULT_LANE_LENGTH_MM",
     "DEFAULT_MAX_BP",
     "DEFAULT_MIN_BP",
@@ -473,8 +661,10 @@ __all__ = [
     "Lane",
     "build_gel",
     "digest_lane",
+    "is_at_edge",
     "is_resolvable",
     "ladder_lane",
     "product_lane",
     "relative_mobility",
+    "window_for_agarose",
 ]

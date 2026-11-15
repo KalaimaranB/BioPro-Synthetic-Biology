@@ -335,3 +335,57 @@ def test_results_serialise_for_a_saved_workspace():
     assert data["outcome"] == amp.PRODUCT
     assert data["amplicons"][0]["length"] == len(SYNTHETIC_ORF)
     assert "three_prime_exact" in data["diagnostics"]
+
+
+# ── The published mechanism behind the priming rule ───────────────────
+
+
+@pytest.mark.unit
+def test_the_priming_rule_records_its_published_mechanism():
+    """The numbers are ours; the 3'-end dependence is an empirical result.
+
+    Before this, the claim that Taq cannot proofread a terminal mismatch
+    reached the student in the generated methods paragraph citing nothing,
+    because the field it belongs to is correctly labelled a convention.
+    """
+    entry = amp.THRESHOLD_PROVENANCE["three_prime_exact"]
+    assert entry.kind == "convention", "the window of 5 is not a measured value"
+    assert set(entry.mechanism) == {"newton1989", "tindall1988"}
+    assert "does not function" in entry.mechanism_claim
+    assert "Neither paper supports a window of 5" in entry.mechanism_claim
+
+
+@pytest.mark.unit
+def test_the_mismatch_count_claims_no_mechanism():
+    """Only the 3'-end rule has a published basis; the tolerance does not."""
+    entry = amp.THRESHOLD_PROVENANCE["max_mismatches"]
+    assert entry.kind == "convention"
+    assert entry.mechanism == ()
+
+
+@pytest.mark.unit
+def test_pcr_itself_is_now_cited():
+    """The engine simulates PCR, which used to be uncited entirely."""
+    from karcytics_plugins.synthetic_biology.analysis import citations
+
+    keys = citations.FEATURE_CITATIONS["amplification"]
+    assert "saiki1988" in keys, "PCR with a thermostable polymerase is what is modelled"
+    assert "newton1989" in keys
+    assert "tindall1988" in keys
+
+
+@pytest.mark.unit
+def test_the_mechanism_reaches_the_generated_methods_text():
+    """The distinction is worthless if it only exists in the source."""
+    from karcytics_plugins.synthetic_biology.analysis import citations
+
+    result = amp.amplify(SYNTHETIC_TEMPLATE, FWD, REV)
+    text = citations.methods_text([citations.amplification_step(result)])
+
+    assert "polymerase chain reaction" in text
+    assert "does not prime" in text
+    assert "proofreading" in text
+    # And the honesty clause survives alongside the citation.
+    assert "conventions of this module rather than published values" in text
+    for author in ("Saiki", "Newton", "Tindall"):
+        assert author in text

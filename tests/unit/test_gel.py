@@ -280,3 +280,40 @@ def test_lanes_and_gels_serialise_for_a_renderer():
     assert data["model"] == "log-linear"
     assert data["lanes"][0]["kind"] == "ladder"
     assert "relative_mobility" in data["lanes"][0]["bands"][0]
+
+
+# ── Rejected candidates are recorded, not forgotten ───────────────────
+
+
+@pytest.mark.unit
+def test_the_mobility_model_records_the_paper_that_was_declined():
+    """Aaij & Borst (1972) was weighed as a source for the log-linear form.
+
+    Recording the rejection matters as much as recording a citation: a later
+    reader should not have to redo the search to find out the candidate was
+    already considered, and why it was not used.
+    """
+    entry = gel.THRESHOLD_PROVENANCE["mobility_model"]
+    assert entry.kind == "convention"
+    assert entry.mechanism == (), "an unverified paper must not become a mechanism"
+
+    reasons = {name: reason for name, reason in entry.rejected}
+    aaij = next((r for n, r in reasons.items() if "Aaij" in n), None)
+    assert aaij is not None, "the declined candidate is not recorded"
+    assert "could not be verified" in aaij
+    assert "0005-2787(72)90426-1" in next(n for n in reasons if "Aaij" in n)
+
+
+@pytest.mark.unit
+def test_the_intensity_model_records_its_declined_candidate_too():
+    entry = gel.THRESHOLD_PROVENANCE["intensity"]
+    assert entry.kind == "convention"
+    assert entry.mechanism == ()
+    assert any("Le Pecq" in name for name, _ in entry.rejected)
+
+
+@pytest.mark.unit
+def test_no_gel_field_claims_a_mechanism_it_cannot_support():
+    for name, entry in gel.THRESHOLD_PROVENANCE.items():
+        if entry.mechanism:
+            assert entry.mechanism_claim.strip(), name
