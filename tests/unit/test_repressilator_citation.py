@@ -152,9 +152,16 @@ def test_the_model_provenance_separates_topology_from_dynamics():
 
 @pytest.mark.unit
 def test_the_provenance_claim_disowns_the_hopf_threshold():
-    """N = 2.15 is a property of the reduction, not of the published model."""
+    """The threshold and the preset's n are properties of the reduction.
+
+    The figure moved from 2.1484 to 2.4514 when production was scaled by the
+    degradation rate to fix the RPU x min unit error, so this asserts the
+    current one. What must not drift is the disowning itself.
+    """
     claim = MODEL_PROVENANCE["repressilator_topology"].mechanism_claim
-    assert "2.15" in claim
+    assert "2.4514" in claim, "the post-scaling threshold"
+    assert "2.15" not in claim, "the pre-scaling figure must not linger"
+    assert "3.5" in claim, "the preset's own n is not the paper's either"
     assert "does not support" in claim
 
 
