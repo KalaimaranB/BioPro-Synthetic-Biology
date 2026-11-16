@@ -203,9 +203,18 @@ class gRNACandidate:  # noqa: N801 — standard molecular-biology nomenclature (
     end: int
     gc_content: float
     efficiency_score: float  # Rule-based heuristic score (0-100%); not Doench 2016
-    off_target_score: float  # Heuristic off-target score (0-100%, 100 = fewest hits); not CFD
+    # Heuristic off-target score (0-100%, 100 = fewest hits); not CFD. Means
+    # "fewest hits *within the span that was searched*" -- see the two fields
+    # below, which record what that span was. A score with no search space
+    # attached is how this became a safety claim it could not support.
+    off_target_score: float
     off_target_hits: list[dict[str, Any]] = field(default_factory=list)
     has_poly_t_term: bool = False  # True if sequence contains >3 consecutive Ts
+    #: Bases actually searched for off-targets. 0 means not recorded.
+    off_target_search_bp: int = 0
+    #: What was searched, e.g. "submitted sequence". Never "genome" unless a
+    #: genome was really loaded and searched (audit finding C-2(b)).
+    off_target_search_space: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -221,6 +230,8 @@ class gRNACandidate:  # noqa: N801 — standard molecular-biology nomenclature (
             "off_target_score": self.off_target_score,
             "off_target_hits": self.off_target_hits,
             "has_poly_t_term": self.has_poly_t_term,
+            "off_target_search_bp": self.off_target_search_bp,
+            "off_target_search_space": self.off_target_search_space,
         }
 
     @classmethod
@@ -238,6 +249,8 @@ class gRNACandidate:  # noqa: N801 — standard molecular-biology nomenclature (
             off_target_score=data.get("off_target_score", 100.0),
             off_target_hits=data.get("off_target_hits", []),
             has_poly_t_term=data.get("has_poly_t_term", False),
+            off_target_search_bp=data.get("off_target_search_bp", 0),
+            off_target_search_space=data.get("off_target_search_space", ""),
         )
 
 

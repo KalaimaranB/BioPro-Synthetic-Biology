@@ -64,8 +64,10 @@ def test_cfd_off_target_scoring():
         off_target_score=100.0,
     )
 
-    genome_with_mismatch = "AAAAAAAAAAAAAAAAACTGGAGTTGTCCCAATTCTCGGAAAAAAAAAAAAAAAA"
-    score = CRISPRDesignEngine.score_off_targets(cand, reference_genome=genome_with_mismatch)
+    # Named for what it is: a short submitted sequence, not a genome. The
+    # scorer searches whatever it is given, and nothing here loads a genome.
+    searched_with_mismatch = "AAAAAAAAAAAAAAAAACTGGAGTTGTCCCAATTCTCGGAAAAAAAAAAAAAAAA"
+    score = CRISPRDesignEngine.score_off_targets(cand, searched_sequence=searched_with_mismatch)
     assert 0.0 <= score <= 100.0
 
 
@@ -86,14 +88,16 @@ def test_cfd_off_target_pam_filtering():
     )
 
     # 1 mismatch at pos 18 (C->A), followed by valid SpCas9 PAM "CGG" -> should detect off-target
-    genome_with_pam = "AAAAAAAAAAAAAAAAACTGGAGTTGTCCCAATTATCGGAAAAAAAAAAAAAAAA"
-    score_pam = CRISPRDesignEngine.score_off_targets(cand, reference_genome=genome_with_pam)
+    searched_with_pam = "AAAAAAAAAAAAAAAAACTGGAGTTGTCCCAATTATCGGAAAAAAAAAAAAAAAA"
+    score_pam = CRISPRDesignEngine.score_off_targets(cand, searched_sequence=searched_with_pam)
     assert score_pam < 100.0
     assert len(cand.off_target_hits) == 1
     assert cand.off_target_hits[0]["pam"] == "CGG"
 
     # 1 mismatch at pos 18, but followed by invalid PAM "CAA" -> should NOT detect off-target
-    genome_without_pam = "AAAAAAAAAAAAAAAAACTGGAGTTGTCCCAATTATCAAAAAAAAAAAAAAAAAA"
-    score_no_pam = CRISPRDesignEngine.score_off_targets(cand, reference_genome=genome_without_pam)
+    searched_without_pam = "AAAAAAAAAAAAAAAAACTGGAGTTGTCCCAATTATCAAAAAAAAAAAAAAAAAA"
+    score_no_pam = CRISPRDesignEngine.score_off_targets(
+        cand, searched_sequence=searched_without_pam
+    )
     assert score_no_pam == 100.0
     assert len(cand.off_target_hits) == 0
