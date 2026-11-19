@@ -814,9 +814,20 @@ def crispr_step(
         f"Candidate protospacers were identified by scanning both strands of a "
         f"{target_length:,} bp target for {pam_type} protospacer-adjacent motifs and "
         "ranked with a rule-based heuristic (GC content, poly-T runs, PAM-proximal "
-        "base) rather than a published on-target efficiency model",
+        "base) rather than a published on-target efficiency model. Off-target "
+        f"scoring searched only that same {target_length:,} bp submitted sequence: "
+        "no reference genome was loaded, so the off-target scores do not "
+        "establish genome-wide specificity and candidates were not screened "
+        "against a host chromosome",
         FEATURE_CITATIONS["crispr_scan"] if is_spcas9 else (),
-        {"spacer length": f"{spacer_length} nt", "candidates": n_candidates},
+        {
+            "spacer length": f"{spacer_length} nt",
+            "candidates": n_candidates,
+            # Named in the write-up because a methods section that reports an
+            # off-target score without its search space is the same unsupported
+            # claim the UI was making (audit finding C-2(a)).
+            "off-target search space": f"submitted sequence, {target_length:,} bp",
+        },
     )
 
 

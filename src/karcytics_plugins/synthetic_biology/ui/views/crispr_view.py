@@ -1,14 +1,20 @@
-"""PySide6 CRISPR/Cas9 Guide RNA Design & Off-Target Inspection View.
+"""PySide6 CRISPR/Cas9 Guide RNA Design & near-match inspection view.
 
-Provides target sequence editor, PAM selection, and scored results table with
-off-target details from the module's heuristic scorer. Decoupled from engines via CRISPRDesignController
-signals & slots.
+Provides target sequence editor, PAM selection, and a scored results table with
+near-match details from the module's heuristic scorer. Decoupled from engines
+via CRISPRDesignController signals & slots.
+
+The off-target search covers the submitted sequence only -- no genome is
+loaded -- so every surface here states its search space and none of them claim
+a genome-wide result. The wording and the "clear" cut-off both come from
+``analysis.crispr.off_target_scope``; see audit finding C-2(a).
 """
 
 from __future__ import annotations
 
 from karcytics_sdk.plugin.citation_widgets import CitationLabel
 from karcytics_sdk.plugin.components import (
+    BioCaptionLabel,
     BioComboBox,
     BioSplitter,
     BioTableWidget,
@@ -30,6 +36,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...analysis.citations import FEATURE_CITATIONS
+from ...analysis.crispr import off_target_scope
 from ...analysis.models.domain import gRNACandidate
 from ...analysis.state import SynBioState
 from ...ui.controllers.crispr_controller import CRISPRDesignController
@@ -149,7 +156,7 @@ class CRISPRDesignView(QWidget):
                 "Range",
                 "GC %",
                 "On-target (heuristic)",
-                "Off-target (heuristic)",
+                off_target_scope.column_heading(),
                 "Poly-T Risk",
             ]
         )
@@ -173,13 +180,15 @@ class CRISPRDesignView(QWidget):
                 parent=self,
             )
         )
+        table_column_layout.addWidget(self._build_scope_note())
         bottom_layout.addWidget(table_column, stretch=2)
 
         # Off-target detail inspector (position-weighted heuristic, not CFD)
         self.detail_display = QTextEdit()
         self.detail_display.setReadOnly(True)
         self.detail_display.setPlaceholderText(
-            "Select a guide RNA row to view its off-target mismatch breakdown..."
+            "Select a guide RNA row to view its near-match breakdown within "
+            "the submitted sequence..."
         )
         self.detail_display.setStyleSheet("font-family: Menlo, Consolas, 'Courier New', monospace;")
         bottom_layout.addWidget(self.detail_display, stretch=1)
@@ -188,6 +197,17 @@ class CRISPRDesignView(QWidget):
         splitter.setSizes([160, 400])
 
         layout.addWidget(splitter)
+
+    def _build_scope_note(self) -> BioCaptionLabel:
+        """The standing note that the off-target search covered one sequence.
+
+        Always on screen rather than a tooltip: the defect being corrected
+        here is a safety claim, and a caveat a student has to hover to find is
+        one they will not read. The wording is the analysis layer's.
+        """
+        self.search_scope_note = BioCaptionLabel(off_target_scope.caveat())
+        self.search_scope_note.setWordWrap(True)
+        return self.search_scope_note
 
     def _connect_signals(self):
         # Connect View -> Controller
@@ -234,9 +254,13 @@ class CRISPRDesignView(QWidget):
                 eff_item.setForeground(Qt.GlobalColor.green)
             self.grna_table.setItem(row, 5, eff_item)
 
-            # Off-target score item (heuristic)
-            cfd_item = QTableWidgetItem(f"{cand.off_target_score}%")
-            if cand.off_target_score >= 90.0:  # noqa: PLR2004
+            # Off-target cell. Both the text and the "is this clear" cut-off
+            # come from the analysis layer: a bare "100%" read as a clean bill
+            # of health, and the ninety-percent literal that used to sit here
+            # was a pass/fail judgement living in a view.
+            cfd_item = QTableWidgetItem(off_target_scope.cell_text(cand))
+            cfd_item.setToolTip(off_target_scope.caveat())
+            if off_target_scope.is_clear_within_search(cand.off_target_score):
                 cfd_item.setForeground(Qt.GlobalColor.green)
             else:
                 cfd_item.setForeground(Qt.GlobalColor.yellow)
@@ -271,8 +295,10 @@ class CRISPRDesignView(QWidget):
             f"Location:    {cand.start} .. {cand.end} ({strand_str})\n"
             f"GC Content:  {cand.gc_content}%\n"
             f"On-Target Efficiency:  {cand.efficiency_score}%\n"
-            f"Off-target score (heuristic):  {cand.off_target_score}%\n\n"
-            f"--- OFF-TARGET HITS ({len(cand.off_target_hits)}) ---\n"
+            f"Off-target score (heuristic):  {cand.off_target_score}%\n"
+            f"Searched:  {off_target_scope.space_label(cand)}\n\n"
+            f"--- NEAR-MATCHES IN THE SUBMITTED SEQUENCE "
+            f"({len(cand.off_target_hits)}) ---\n"
         )
 
         for idx, hit in enumerate(cand.off_target_hits, 1):
@@ -281,8 +307,14 @@ class CRISPRDesignView(QWidget):
                 f"Mismatches: {hit['mismatches']} | Hit Score: {hit['cfd_score']}%\n"
             )
 
+        # The headline and the caveat are the analysis layer's words. This
+        # used to declare that no significant off-target sites had been
+        # detected, full stop -- an absolute claim that a search of one short
+        # insert cannot support. off_target_scope.py records the exact
+        # retired sentence; a test fails if it reappears in any view.
         if not cand.off_target_hits:
-            detail_text += "No significant off-target mismatch sites detected."
+            detail_text += off_target_scope.headline(cand) + "\n"
+        detail_text += "\n" + off_target_scope.caveat()
 
         self.detail_display.setText(detail_text)
 

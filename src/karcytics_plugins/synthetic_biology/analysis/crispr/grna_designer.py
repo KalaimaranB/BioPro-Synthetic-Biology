@@ -5,6 +5,11 @@ extracts protospacer candidates, computes GC%, checks poly-T termination
 motifs, and scores off-targets with a position-weighted mismatch heuristic in
 the style of CFD — not the published Doench et al. (2016) CFD matrix. Includes
 a hook for an external scoring model.
+
+**The off-target search covers the submitted sequence only.** No genome is
+loaded, so a high score means "few near-matches in the sequence you pasted",
+never "specific in your strain". ``off_target_scope`` owns the wording every
+surface uses to say so; see audit finding C-2(a).
 """
 
 from __future__ import annotations
@@ -16,6 +21,7 @@ from typing import Any
 from Bio.Seq import Seq
 
 from ..models.domain import gRNACandidate
+from . import off_target_scope
 
 
 class CRISPRDesignEngine:
@@ -79,9 +85,15 @@ class CRISPRDesignEngine:
             original_len=len(seq_fwd),
         )
 
-        # Perform off-target scoring for candidates
+        # Off-target scoring searches the submitted sequence and nothing else.
+        # No genome is loaded (audit finding C-2(b) covers that), so each
+        # candidate records the span that was searched and the views state it.
+        # Passing seq_fwd to a parameter once named `reference_genome` is what
+        # turned a within-insert result into an apparent genome-wide one.
         for cand in candidates:
             cls.score_off_targets(cand, seq_fwd)
+            cand.off_target_search_bp = len(seq_fwd)
+            cand.off_target_search_space = off_target_scope.SUBMITTED_SEQUENCE_LABEL
 
         return candidates
 
@@ -176,6 +188,11 @@ class CRISPRDesignEngine:
                     end=gen_end,
                     gc_content=round(gc_pct, 1),
                     efficiency_score=round(eff_score, 1),
+                    # Placeholder until score_off_targets runs. Not a result:
+                    # a candidate that never reaches the scorer must not look
+                    # like one that was searched and came back clean, which is
+                    # why off_target_search_bp stays 0 and every surface reads
+                    # that as "search space unrecorded".
                     off_target_score=100.0,
                     has_poly_t_term=has_poly_t,
                 )
@@ -212,17 +229,29 @@ class CRISPRDesignEngine:
     def score_off_targets(  # noqa: C901
         cls,
         candidate: gRNACandidate,
-        reference_genome: str,
+        searched_sequence: str,
         ml_model_adapter: Any | None = None,
     ) -> float:
         """Calculates a CFD-style, position-weighted off-target score (not the CFD matrix).
+
+        Searches ``searched_sequence`` only. The parameter was called
+        ``reference_genome`` and was being handed the user's own pasted target,
+        which told every later reader that a genome had been searched when none
+        had (audit finding C-2(a)). The name now states what is passed; the
+        function is happy to search a real genome when one is available
+        (C-2(b)) and needs no change for that.
+
+        A high score therefore means "few near-matches in the span given", not
+        "specific". Callers must record the span -- see
+        ``gRNACandidate.off_target_search_bp`` -- so no surface can report the
+        number without saying where it looked.
 
         Includes a pluggable Machine Learning model interface (`ml_model_adapter`).
         """
         # If an external Machine Learning model adapter is provided,
         # defer to ML prediction
         if ml_model_adapter is not None and hasattr(ml_model_adapter, "predict_off_target"):
-            ml_score = ml_model_adapter.predict_off_target(candidate.protospacer, reference_genome)
+            ml_score = ml_model_adapter.predict_off_target(candidate.protospacer, searched_sequence)
             candidate.off_target_score = float(ml_score)
             return float(ml_score)
 
@@ -232,7 +261,7 @@ class CRISPRDesignEngine:
         total_cfd_mult = 1.0
         spacer_len = len(protospacer)
 
-        ref_fwd = reference_genome.upper()
+        ref_fwd = searched_sequence.upper()
         ref_rev = str(Seq(ref_fwd).reverse_complement())
         ref_len = len(ref_fwd)
 

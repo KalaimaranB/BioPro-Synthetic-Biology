@@ -582,7 +582,8 @@ class DemoShowcaseView(QWidget):
                 g.pam,
                 f"{g.start:,}-{g.end:,} ({'+' if g.strand >= 0 else '−'})",
                 f"{g.gc_content:.1f}",
-                f"on {g.efficiency_score:.0f} / off {g.off_target_score:.0f}",
+                f"on {g.efficiency_score:.0f} / off {g.off_target_score:.0f} "
+                f"(in {g.off_target_search_bp:,} bp)",
             )
             for g in self._demo_grnas
         ]
@@ -590,7 +591,10 @@ class DemoShowcaseView(QWidget):
 
         crispr_note = QLabel(
             "Scores are the module's own rule-based heuristic (GC window, poly-T, "
-            "PAM-proximal base), not the published Doench 2016 or CFD models."
+            "PAM-proximal base), not the published Doench 2016 or CFD models. "
+            "The off-target figure counts near-matches within the submitted "
+            "sequence only — no genome is searched, so it is not evidence that "
+            "a guide is specific in a strain."
         )
         crispr_note.setObjectName("DemoNote")
         crispr_note.setWordWrap(True)
