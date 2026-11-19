@@ -21,12 +21,30 @@ import sys
 
 faulthandler.enable(file=sys.stderr, all_threads=True)
 
+import logging  # noqa: E402
 import traceback  # noqa: E402
 
 
 def global_exception_handler(exctype, value, tb):
+    """Report a fatal unhandled exception to the log file as well as stderr.
+
+    stderr alone is not enough. The host keeps only a short tail of it and
+    surfaces that tail on a *startup* failure, so an exception that kills the
+    daemon mid-session left the plugin log ending mid-sentence with no
+    traceback anywhere a log reader would look. A crash from a tail box took
+    an hour to find for exactly that reason, so the traceback now also goes
+    through logging, which is already writing to
+    ``~/.karcytics/logs/plugin_workers/synthetic_biology.log``.
+    """
     print("CRITICAL ERROR CAUGHT BY QT HOOK:", file=sys.stderr)  # noqa: T201
     traceback.print_exception(exctype, value, tb)
+    try:
+        logging.getLogger(__name__).critical(
+            "Unhandled exception; the plugin UI daemon is exiting.",
+            exc_info=(exctype, value, tb),
+        )
+    except Exception:  # noqa: BLE001 - never let reporting mask the real fault
+        pass
     sys.exit(1)
 
 

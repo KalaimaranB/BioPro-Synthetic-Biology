@@ -59,7 +59,11 @@ from ...analysis.citations import FEATURE_CITATIONS
 from ...analysis.models.domain import PlasmidVector
 from ...analysis.parts.base import BiologicalPart
 from ...analysis.parts.components import CDS, RBS, Promoter, Terminator, part_from_dict
-from ...analysis.sequence_input import clean_sequence, validate_region
+from ...analysis.sequence_input import (
+    SequenceRejectedError,
+    clean_sequence,
+    validate_region,
+)
 from ...analysis.state import SynBioState
 from ...ui.controllers.plasmid_controller import PlasmidAssemblyController
 from ..widgets.amplification_track import AmplificationTrack
@@ -497,12 +501,43 @@ class PrimerDesignDialog(QDialog):
 
     # ── Tails and the internal-site warning ────────────────────────────
 
+    def _resolve_tail(self, text: str, label: str) -> tuple[tuple[str, ...], str]:
+        """Enzymes a tail resolves to, and why it cannot be used if it cannot.
+
+        Never raises, and that is the whole point. The digest engine validates
+        its input and raises ``SequenceRejectedError`` on anything that is not
+        ACGT, while this runs from a keystroke-debounce slot. An exception
+        escaping here unwinds into PySide6 with no Python frame left to catch
+        it, the daemon's excepthook calls ``sys.exit(1)``, and the entire
+        plugin process dies with its traceback on stderr where no log file
+        sees it. Typing a single ``q`` into a tail box killed the application
+        that way, about 250 ms after the keystroke.
+        """
+        if not text:
+            return (), ""
+        cleaned = clean_sequence(text, label=label)
+        if not cleaned.ok:
+            return (), cleaned.summary()
+        try:
+            return rst.enzymes_for_tail(cleaned.sequence), ""
+        except SequenceRejectedError as exc:
+            # Belt and braces: the engine owns the rules, so a tail it refuses
+            # for a reason ``clean_sequence`` does not model is still reported
+            # rather than raised.
+            logger.debug("Tail %r refused by the digest engine: %s", text, exc)
+            return (), str(exc)
+
     def _tail_enzymes(self) -> tuple[tuple[str, ...], tuple[str, ...]]:
         """Enzyme names for each tail, named by the digest engine."""
-        return (
-            rst.enzymes_for_tail(self.fwd_overhang_edit.text().strip()),
-            rst.enzymes_for_tail(self.rev_overhang_edit.text().strip()),
-        )
+        fwd, _ = self._resolve_tail(self.fwd_overhang_edit.text().strip(), "Forward 5' tail")
+        rev, _ = self._resolve_tail(self.rev_overhang_edit.text().strip(), "Reverse 5' tail")
+        return fwd, rev
+
+    def _tail_problems(self) -> tuple[str, str]:
+        """Why each tail cannot be used; an empty string when it can."""
+        _, fwd = self._resolve_tail(self.fwd_overhang_edit.text().strip(), "Forward 5' tail")
+        _, rev = self._resolve_tail(self.rev_overhang_edit.text().strip(), "Reverse 5' tail")
+        return fwd, rev
 
     def _on_tail_edited(self) -> None:
         """Coalesce keystrokes, and never leave results from an older tail up.
@@ -534,12 +569,17 @@ class PrimerDesignDialog(QDialog):
 
     def _refresh_tail_enzymes(self) -> None:
         fwd, rev = self._tail_enzymes()
-        self.fwd_enzyme_label.setText(f"\u2192 {fwd[0]}" if fwd else "")
-        self.rev_enzyme_label.setText(f"\u2192 {rev[0]}" if rev else "")
+        fwd_problem, rev_problem = self._tail_problems()
+
+        # The refusal takes the enzyme name's place: the student needs to see
+        # why the tail they typed resolved to nothing, next to the box they
+        # typed it in.
+        self._set_caption(self.fwd_enzyme_label, fwd_problem or (f"\u2192 {fwd[0]}" if fwd else ""))
+        self._set_caption(self.rev_enzyme_label, rev_problem or (f"\u2192 {rev[0]}" if rev else ""))
 
         chosen = tuple(dict.fromkeys([n for n in (fwd[:1] + rev[:1]) if n]))
         if not chosen or not self._selected_sequence():
-            self.internal_site_warning.setText("")
+            self._set_caption(self.internal_site_warning, "")
             return
 
         self._site_request += 1
@@ -674,6 +714,15 @@ class PrimerDesignDialog(QDialog):
         cleaned = clean_sequence(self._selected_sequence(), label="Target sequence")
         if not cleaned.ok:
             self._show_problem(cleaned.summary())
+            return
+
+        # A tail the engine cannot read stops the run. Designing without it
+        # would hand back primers that lack the tail the student typed, and a
+        # silently dropped restriction site is exactly the confidently-wrong
+        # answer this workflow exists to prevent.
+        tail_problems = [problem for problem in self._tail_problems() if problem]
+        if tail_problems:
+            self._show_problem(" ".join(tail_problems))
             return
         # Say what was changed rather than changing it behind their back, and
         # keep saying it: the status line is overwritten the moment the run
