@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 from karcytics_sdk.plugin.citation_widgets import CitationLabel
@@ -38,6 +39,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QDialog,
+    QDialogButtonBox,
     QFileDialog,
     QFormLayout,
     QHBoxLayout,
@@ -59,6 +61,12 @@ from ...analysis.citations import FEATURE_CITATIONS
 from ...analysis.models.domain import PlasmidVector
 from ...analysis.parts.base import BiologicalPart
 from ...analysis.parts.components import CDS, RBS, Promoter, Terminator, part_from_dict
+from ...analysis.sequence_format import (
+    FILE_DIALOG_FILTER,
+    GENBANK,
+    FormatVerdict,
+    sniff_format,
+)
 from ...analysis.sequence_input import (
     SequenceRejectedError,
     clean_sequence,
@@ -121,10 +129,32 @@ def part_dict_serialize(part_data: dict) -> dict:
     return part_data
 
 
+def dropped_file_paths(mime: QMimeData) -> list[str]:
+    """Local file paths carried by a drag, in order. Empty when there are none.
+
+    Remote URLs are skipped rather than refused: a drag from a browser carries
+    an http URL this plugin has no way to fetch, and treating that as "an
+    unsupported file" would name the wrong problem.
+    """
+    if not mime.hasUrls():
+        return []
+    return [url.toLocalFile() for url in mime.urls() if url.isLocalFile()]
+
+
 class AssemblyCanvasWidget(BioListWidget):
-    """Drop zone for assembly order placement."""
+    """Drop zone for assembly order placement, and for sequence files.
+
+    A file dragged from Finder or Explorer used to land here and vanish: the
+    old ``dragEnterEvent`` accepted only ``application/x-synbio-part``, so the
+    drag was refused with no message of any kind. Dropping a file on a
+    sequence editor is the first thing anyone tries, which made this the
+    quietest way to fail in the plugin. File drops are now forwarded to the
+    view through :attr:`files_dropped`, which routes them exactly where the
+    Import button goes.
+    """
 
     parts_changed = Signal()
+    files_dropped = Signal(list)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -134,15 +164,21 @@ class AssemblyCanvasWidget(BioListWidget):
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
 
     def dragEnterEvent(self, event):
-        if event.mimeData().hasFormat("application/x-synbio-part") or event.source() == self:
+        mime = event.mimeData()
+        if (
+            mime.hasFormat("application/x-synbio-part")
+            or event.source() == self
+            or dropped_file_paths(mime)
+        ):
             event.acceptProposedAction()
 
     def dragMoveEvent(self, event):
         event.acceptProposedAction()
 
     def dropEvent(self, event):
-        if event.mimeData().hasFormat("application/x-synbio-part"):
-            data_bytes = event.mimeData().data("application/x-synbio-part")
+        mime = event.mimeData()
+        if mime.hasFormat("application/x-synbio-part"):
+            data_bytes = mime.data("application/x-synbio-part")
             part_dict = json.loads(bytes(data_bytes).decode("utf-8"))
 
             item = QListWidgetItem(f"🧩 {part_dict['name']} [{part_dict['part_type'].upper()}]")
@@ -150,6 +186,9 @@ class AssemblyCanvasWidget(BioListWidget):
             self.addItem(item)
             event.acceptProposedAction()
             self.parts_changed.emit()
+        elif paths := dropped_file_paths(mime):
+            event.acceptProposedAction()
+            self.files_dropped.emit(paths)
         else:
             super().dropEvent(event)
             self.parts_changed.emit()
@@ -950,6 +989,119 @@ _VERDICT_COLOUR = {
 }
 
 
+class SequencePasteDialog(QDialog):
+    """Paste a sequence in, rather than having to save a file first.
+
+    Before this existed there was exactly one way to get a sequence into the
+    module: the Import File button, which took ``.gb``/``.fa`` and nothing
+    else. ``seq_display`` is read-only, so a student holding a construct in an
+    email, a lab manual PDF or a Word document had to save a file with the
+    right extension before the plugin would look at it.
+
+    What may be pasted is decided by :func:`sniff_format`, and bare residues
+    are validated by :func:`clean_sequence` — the module that already strips
+    FASTA headers, reads GenBank ORIGIN rows including their coordinate
+    digits, and names every change it makes. This dialog writes no parser of
+    its own; it shows what those two report, live, before anything is loaded.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Paste Sequence")
+        self.setMinimumSize(560, 420)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(
+            BioCaptionLabel(
+                "Paste raw sequence, a FASTA record, or a GenBank record. "
+                "The format is read from what you paste, not from any file name."
+            )
+        )
+
+        self.editor = QTextEdit()
+        self.editor.setAcceptRichText(False)
+        self.editor.setPlaceholderText(
+            ">pGFP-S12\nATGAGTAAAGGAGAAGAACTTTTCACT...\n\n"
+            "or LOCUS pGFP-S12  5243 bp  DNA  circular\n\n"
+            "or just the bases."
+        )
+        self.editor.setStyleSheet("font-family: Menlo, Consolas, 'Courier New', monospace;")
+        self.editor.textChanged.connect(self._revalidate)
+        layout.addWidget(self.editor)
+
+        self.status = BioStatusLabel("Nothing pasted yet.")
+        layout.addWidget(self.status)
+
+        self.buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+        layout.addWidget(self.buttons)
+
+        self._verdict: FormatVerdict | None = None
+        self._notes: tuple[str, ...] = ()
+        self._set_loadable(False)
+
+    # ── API ────────────────────────────────────────────────────────────
+
+    def sequence_text(self) -> str:
+        """Exactly what was pasted. The caller routes it; this does not parse."""
+        return self.editor.toPlainText()
+
+    @property
+    def verdict(self) -> FormatVerdict | None:
+        """The format verdict for the current text, or None when empty."""
+        return self._verdict
+
+    @property
+    def transformations(self) -> tuple[str, ...]:
+        """Everything ``clean_sequence`` reported changing, for the caller to show."""
+        return self._notes
+
+    # ── Live validation ────────────────────────────────────────────────
+
+    def _set_loadable(self, loadable: bool) -> None:
+        if (ok := self.buttons.button(QDialogButtonBox.StandardButton.Ok)) is not None:
+            ok.setEnabled(loadable)
+
+    def _revalidate(self) -> None:
+        """Report what the text is, and what loading it would change."""
+        text = self.editor.toPlainText()
+        self._notes = ()
+
+        if not text.strip():
+            self._verdict = None
+            self.status.setText("Nothing pasted yet.")
+            self._set_loadable(False)
+            return
+
+        verdict = sniff_format(text)
+        self._verdict = verdict
+
+        if not verdict.ok:
+            self.status.setText(verdict.reason)
+            self._set_loadable(False)
+            return
+
+        if verdict.fmt == GENBANK:
+            # A GenBank record is not a sequence; Biopython owns reading it,
+            # and clean_sequence would refuse its header lines as non-bases.
+            self.status.setText(verdict.reason)
+            self._set_loadable(True)
+            return
+
+        cleaned = clean_sequence(text, label="Pasted sequence")
+        if not cleaned.ok:
+            self.status.setText(f"{verdict.reason} {cleaned.summary()}")
+            self._set_loadable(False)
+            return
+
+        self._notes = cleaned.transformations
+        self.status.setText(f"{verdict.reason} {cleaned.summary()}")
+        self._set_loadable(True)
+
+
 class PlasmidAssemblyView(QWidget):
     """PySide6 View for plasmid assembly, Drag-and-Drop part ordering, and Sequence
     viewer.
@@ -967,6 +1119,9 @@ class PlasmidAssemblyView(QWidget):
     ):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        # A file dropped anywhere on this tab is an import, not only one
+        # dropped precisely on the assembly canvas.
+        self.setAcceptDrops(True)
         self.state = state
         self.controller = controller
         self.catalogue = catalogue
@@ -1057,6 +1212,10 @@ class PlasmidAssemblyView(QWidget):
         self.btn_import.clicked.connect(self._on_import_clicked)
         toolbar.addWidget(self.btn_import)
 
+        self.btn_paste = SecondaryButton("📋 Paste Sequence")
+        self.btn_paste.clicked.connect(self._on_paste_clicked)
+        toolbar.addWidget(self.btn_paste)
+
         self.btn_assemble = PrimaryButton("⚡ Assemble Construct")
         self.btn_assemble.clicked.connect(self._on_assemble_clicked)
         toolbar.addWidget(self.btn_assemble)
@@ -1066,6 +1225,14 @@ class PlasmidAssemblyView(QWidget):
         toolbar.addWidget(self.btn_primer)
 
         center_layout.addLayout(toolbar)
+
+        # Transformations persist here rather than in a toast. A student needs
+        # to know their sequence was altered on the way in *while* they design
+        # primers against it, not for three seconds beforehand.
+        self.import_notice = BioStatusLabel("")
+        self.import_notice.setVisible(False)
+        center_layout.addWidget(self.import_notice)
+
         center_layout.addWidget(
             CitationLabel(
                 "nearest-neighbour Tm with Mg2+ salt correction",
@@ -1080,6 +1247,7 @@ class PlasmidAssemblyView(QWidget):
         center_layout.addWidget(lbl_canvas)
 
         self.assembly_canvas = AssemblyCanvasWidget()
+        self.assembly_canvas.files_dropped.connect(self.load_dropped_files)
         center_layout.addWidget(self.assembly_canvas)
 
         splitter.addWidget(center_panel)
@@ -1252,24 +1420,150 @@ class PlasmidAssemblyView(QWidget):
         vector_name = self.name_edit.text().strip() or "pKarcytics_Vector"
         self.assembly_requested.emit(vector_name, parts)
 
+    # ── Sequence entry ─────────────────────────────────────────────────
+    #
+    # Three routes in — the Import button, a dropped file, and a paste — and
+    # one router below them. They converge on ``_load_sequence_text``, which
+    # emits ``file_parse_requested`` for all three, so a pasted construct
+    # reaches the controller's ``_on_parse_finished`` exactly as an imported
+    # file does. That matters: ``_on_parse_finished`` deliberately records no
+    # method step, because a construct that arrived from outside was not
+    # assembled here and must not be written up in the Methods log as an
+    # in-silico assembly.
+
     def _on_import_clicked(self):
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Import Sequence File",
             "",
-            "GenBank/FASTA Files (*.gb *.gbk *.genbank *.fa *.fasta)",
+            FILE_DIALOG_FILTER,
         )
         if not file_path:
             return
+        self._load_file(file_path)
 
+    def _on_paste_clicked(self):
+        dlg = SequencePasteDialog(parent=self)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        self._load_sequence_text(
+            dlg.sequence_text(),
+            source="pasted sequence",
+            extra_notes=dlg.transformations,
+        )
+
+    @Slot(list)
+    def load_dropped_files(self, paths: list[str]) -> None:
+        """Load the first dropped file, saying so when several were dropped.
+
+        One construct is active at a time, so loading all of them would mean
+        silently discarding every file but the last — the same quiet failure
+        this route exists to remove.
+        """
+        usable = [p for p in paths if p]
+        if not usable:
+            return
+        if len(usable) > 1:
+            show_warning(
+                self,
+                title="Several Files Dropped",
+                message=(
+                    f"{len(usable)} files were dropped. Only one construct can be "
+                    f"active at a time, so {Path(usable[0]).name} was loaded. "
+                    "Drop the others one at a time."
+                ),
+            )
+        self._load_file(usable[0])
+
+    def _load_file(self, file_path: str) -> None:
+        name = Path(file_path).name
         try:
-            with open(file_path, encoding="utf-8") as f:
-                content = f.read()
+            content = Path(file_path).read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            # Reported by name rather than as a traceback: this is what a
+            # dropped PDF, .docx or SnapGene .dna looks like from here.
+            self._show_error(
+                f"{name} is not a text file, so it cannot be read as a sequence. "
+                "Supported formats are GenBank, FASTA, and plain sequence text."
+            )
+            return
+        except OSError as ex:
+            self._show_error(f"Failed to read {name}: {ex}")
+            return
 
-            fmt = "fasta" if file_path.endswith((".fa", ".fasta")) else "genbank"
-            self.file_parse_requested.emit(content, fmt)
-        except Exception as ex:
-            self._show_error(f"Failed to read file: {str(ex)}")
+        self._load_sequence_text(content, source=name, filename=file_path)
+
+    def _load_sequence_text(
+        self,
+        text: str,
+        *,
+        source: str,
+        filename: str = "",
+        extra_notes: tuple[str, ...] = (),
+    ) -> None:
+        """Route one piece of sequence text to the parse worker.
+
+        The format comes from the content (:func:`sniff_format`); ``filename``
+        is only a hint, and a disagreement between the two is reported rather
+        than resolved in the file name's favour.
+        """
+        verdict = sniff_format(text, filename=filename)
+        if not verdict.ok:
+            self._show_error(f"{source}: {verdict.reason}")
+            return
+
+        notes = list(extra_notes)
+        payload, fmt = text, verdict.fmt
+
+        if verdict.needs_wrapping:
+            # Bare residues have no header for Biopython to read, so
+            # clean_sequence validates them and the result is wrapped as the
+            # minimal FASTA record the existing importer already understands.
+            cleaned = clean_sequence(text, label=source.capitalize())
+            if not cleaned.ok:
+                self._show_error(cleaned.summary())
+                return
+            notes = list(cleaned.transformations)
+            label = self.name_edit.text().strip() or "Pasted_Sequence"
+            payload, fmt = f">{label}\n{cleaned.sequence}\n", "fasta"
+
+        if verdict.disagrees_with_name:
+            notes.append(
+                f"{source} is named like {verdict.hint.upper()} but its contents are "
+                f"{verdict.fmt.upper()}; the contents were used."
+            )
+
+        self._announce_import(source, verdict, notes)
+        self.file_parse_requested.emit(payload, fmt)
+
+    def _announce_import(self, source: str, verdict: FormatVerdict, notes: list[str]) -> None:
+        """Show how the text was read, and everything that changed on the way in.
+
+        Nothing here is swallowed. A transformation the student does not know
+        about is one they will design primers against.
+        """
+        if not notes:
+            self.import_notice.setVisible(False)
+            self.import_notice.setText("")
+            return
+
+        self.import_notice.setText(f"Loaded {source} — {verdict.reason} " + " ".join(notes))
+        self.import_notice.setVisible(True)
+
+    # ── Window-level file drops ────────────────────────────────────────
+
+    def dragEnterEvent(self, event):  # noqa: N802 - Qt override
+        if dropped_file_paths(event.mimeData()):
+            event.acceptProposedAction()
+
+    def dragMoveEvent(self, event):  # noqa: N802 - Qt override
+        if dropped_file_paths(event.mimeData()):
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):  # noqa: N802 - Qt override
+        if paths := dropped_file_paths(event.mimeData()):
+            event.acceptProposedAction()
+            self.load_dropped_files(paths)
 
     def _on_primer_clicked(self):
         plasmid = self.state.get_active_plasmid()
