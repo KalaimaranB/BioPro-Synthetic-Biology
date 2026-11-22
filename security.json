@@ -89,7 +89,7 @@
         "src/karcytics_plugins/synthetic_biology/ui/views/demo_showcase_view.py": "8fad699c6f944393407edcb1578f87bfab858163b49c211d186811da28f78084",
         "src/karcytics_plugins/synthetic_biology/ui/views/empirical_analytics_view.py": "1ecb0eb3ac497cab53411de1af14d093555c0074e27f624a6d2c36aacf960e88",
         "src/karcytics_plugins/synthetic_biology/ui/views/laboratory_execution_view.py": "ac0d00a179d0021cebaaa37b4d56dde5b22b62f360c56c76993ae8345be49ee7",
-        "src/karcytics_plugins/synthetic_biology/ui/views/plasmid_assembly_view.py": "1df7b88dc5b92205f5d6d8b9df79166948d71ac5bde94c47df5dd9efbacd9083",
+        "src/karcytics_plugins/synthetic_biology/ui/views/plasmid_assembly_view.py": "32df64a2eebf637738b385e6edb0be00a6614918794d7c15bd4f85c81fd5284b",
         "src/karcytics_plugins/synthetic_biology/ui/views/properties_view.py": "6b75bf90bb95e596a61e3281b8678cef090e9f788ab908ffd151f3a407aaf4b8",
         "src/karcytics_plugins/synthetic_biology/ui/views/simulate_view.py": "1f49ae03f097176b81e634bb88935b4b157beb217b432a0b4fc474bca8de16f1",
         "src/karcytics_plugins/synthetic_biology/ui/widgets/amplification_track.py": "c92bdc1ffd97594ee3bc822cc17eee562d7809965f4cd3f3988e8b94debc10ff",

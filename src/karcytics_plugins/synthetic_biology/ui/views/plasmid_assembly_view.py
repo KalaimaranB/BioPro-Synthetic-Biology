@@ -452,17 +452,25 @@ class PrimerDesignDialog(QDialog):
         layout.addWidget(name)
         return edit, name, row
 
-    def _annotated_features(self) -> list:
-        """Features offered for selection, read off the construct's vector."""
-        vector = getattr(getattr(self.controller, "state", None), "active_vector", None)
-        features = []
-        for feature in getattr(vector, "features", ()) or ():
-            name = getattr(feature, "name", "") or getattr(feature, "label", "")
-            begin = getattr(feature, "start", None)
-            finish = getattr(feature, "end", None)
-            if name and isinstance(begin, int) and isinstance(finish, int):
-                features.append((name, begin, finish))
-        return features
+    def _annotated_features(self) -> list[tuple[str, int, int]]:
+        """Features offered for selection, read off the construct's vector.
+
+        Audit finding H-3. This read ``state.active_vector``, which has never
+        existed — ``SynBioState`` exposes the construct as ``plasmid``. Every
+        call returned an empty list, so the "Amplify:" combo held exactly one
+        option for a vector with ten annotated features, and feature-based
+        primer design was dead for the whole life of the control.
+
+        What made it silent for that long was the defensive default:
+        ``getattr(..., "active_vector", None)`` turns a wrong key into an empty
+        result that looks deliberate. The attributes are read directly now, so
+        a rename raises instead of degrading. ``plasmid`` being ``None`` is a
+        real state — no construct loaded yet — and is the one empty case left.
+        """
+        vector = self.controller.state.plasmid
+        if vector is None:
+            return []
+        return [(f.name, f.start, f.end) for f in vector.features if f.name]
 
     def _region(self) -> tuple[int, int]:
         """The selected span, or (0, len) when nothing narrower is valid.
