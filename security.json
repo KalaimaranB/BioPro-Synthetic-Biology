@@ -1,7 +1,7 @@
 {
     "security_version": 1,
     "plugin_id": "synthetic_biology",
-    "manifest_hash": "7c6f4aef6d3009940141d0f44fba295ba4e82a93d6b171630b8c3c182b29e5f4",
+    "manifest_hash": "4c190c206315c165322a6734a574b53d443d3fc5eeb4b1e2cbeb2352f064455f",
     "exclusions": [
         "tests"
     ],
@@ -15,7 +15,7 @@
         "scripts/run_demo_showcase.py": "e0cc3524af5a8a8880f742d6daee50ac7d859aaa4ab058abd81cfa9a80596ef0",
         "scripts/verify_security_ledger.py": "69405385893e17e4a0700a425eba981c9cf893b7f61c2bf8c93678264fc8ef96",
         "src/karcytics_plugins/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "src/karcytics_plugins/synthetic_biology/__init__.py": "c3e5e4af65e8d64ad0b03bd671302024bdcb6b5d45c43822dfb4de1419276f42",
+        "src/karcytics_plugins/synthetic_biology/__init__.py": "693b32e6b4a38db1377fc8aa089331d317c2bac1e0fcc02c49127e798b035662",
         "src/karcytics_plugins/synthetic_biology/analysis/__init__.py": "e5f7a4db1fca31752fdaf90c617e6e4ee81d3db75f1e4266aedc62ed0c113f43",
         "src/karcytics_plugins/synthetic_biology/analysis/api/__init__.py": "d2cf7ae9e531600b2463ad65d4ee2776b447eeed2fecf96e24b5245aae386295",
         "src/karcytics_plugins/synthetic_biology/analysis/api/cello_ucf.json": "55700031d764a7741251ea63ca5773fbe29bdaca25715968c87847c27837acf5",
