@@ -362,6 +362,28 @@ def find_binding_sites(  # noqa: PLR0913 - each keyword is an independent search
 # ── Amplicon resolution ────────────────────────────────────────────────
 
 
+def _product_extent(length: int, fwd: BindingSite, rev: BindingSite) -> tuple[int, int]:
+    """The product's whole template extent, in unwrapped top-strand coordinates.
+
+    From the 5' end of the forward footprint to the 5' end of the reverse
+    primer as written on the top strand — i.e. everything the product covers
+    on the template, both footprints included, not just the interior between
+    them. The end may exceed ``length``; that overshoot is the origin crossing.
+
+    5' tails add no template coordinates. A tail does not anneal, so it has no
+    position on the molecule, and the product's template extent is footprint to
+    footprint whatever the tails carry. Including them here would mean nothing
+    to add.
+    """
+    start = fwd.start % length
+    rev_start = rev.start % length
+    if rev_start < start:
+        # The reverse primer sits behind the forward one in linear
+        # coordinates, so the product runs through the origin to reach it.
+        rev_start += length
+    return start, rev_start + (rev.end - rev.start)
+
+
 def _build_amplicon(
     template: str,
     fwd: BindingSite,
@@ -384,16 +406,22 @@ def _build_amplicon(
     interior = "".join(template[i % length] for i in range(interior_start, interior_end))
     sequence = _clean(pair.forward) + interior + reverse_complement(_clean(pair.reverse))
 
+    # Audit finding E-8: the crossing was read off the interior alone, so a
+    # product whose origin crossing fell inside the reverse primer's own
+    # footprint was reported as not wrapping and the track drew no origin
+    # annotation. Judge it over the full extent instead.
+    extent_start, extent_end = _product_extent(length, fwd, rev)
+
     return Amplicon(
         sequence=sequence,
-        template_start=fwd.start % length,
+        template_start=extent_start,
         template_end=interior_end,
         forward_site=fwd,
         reverse_site=rev,
         gc_percent=gc_percent(sequence),
         forward_tail_bp=len(_clean(pair.forward_tail)),
         reverse_tail_bp=len(_clean(pair.reverse_tail)),
-        wraps_origin=circular and (interior_end > length or fwd.wraps_origin),
+        wraps_origin=circular and extent_end > length,
     )
 
 
