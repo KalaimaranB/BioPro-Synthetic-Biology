@@ -342,8 +342,7 @@ class PrimerDesignDialog(QDialog):
 
         self.feature_combo = BioComboBox()
         self.feature_combo.addItem("Whole target sequence", userData=None)
-        for name, begin, finish in self._annotated_features():
-            self.feature_combo.addItem(f"{name} ({begin}-{finish})", userData=(begin, finish))
+        self._add_feature_items()
         self.feature_combo.currentIndexChanged.connect(self._on_region_changed)
         form.addRow("Amplify:", self.feature_combo)
 
@@ -451,6 +450,49 @@ class PrimerDesignDialog(QDialog):
         layout.addWidget(edit)
         layout.addWidget(name)
         return edit, name, row
+
+    def _add_feature_items(self) -> None:
+        """Put the construct's features in the Amplify combo.
+
+        A feature that crosses the origin is listed with its true length and
+        then disabled (audit finding H-2). It cannot be expressed as a single
+        half-open span, so selecting it would set a region the amplifier reads
+        backwards and silently return the wrong product. Listing it disabled,
+        with the reason on the item, is the honest middle: the student sees
+        that the feature exists and why it needs the circular-template path,
+        rather than finding it mysteriously absent -- which is the defect H-3
+        was.
+        """
+        for feature in self._selectable_features():
+            if feature.wraps_origin:
+                self.feature_combo.addItem(
+                    f"{feature.name} ({feature.span_label(note_wrap=False)}) "
+                    "\u2014 wraps origin, needs circular PCR",
+                    userData=None,
+                )
+                index = self.feature_combo.count() - 1
+                model = self.feature_combo.model()
+                item = model.item(index) if hasattr(model, "item") else None
+                if item is not None:
+                    item.setEnabled(False)
+                self.feature_combo.setItemData(
+                    index,
+                    "This feature crosses the origin, so it is not a single span. "
+                    "Amplify the whole target with a circular template instead.",
+                    Qt.ItemDataRole.ToolTipRole,
+                )
+                continue
+            self.feature_combo.addItem(
+                f"{feature.name} ({feature.start}-{feature.end})",
+                userData=(feature.start, feature.end),
+            )
+
+    def _selectable_features(self) -> list:
+        """Named features of the active construct, in record order."""
+        vector = self.controller.state.plasmid
+        if vector is None:
+            return []
+        return [f for f in vector.features if f.name]
 
     def _annotated_features(self) -> list[tuple[str, int, int]]:
         """Features offered for selection, read off the construct's vector.
@@ -1055,7 +1097,9 @@ class PlasmidAssemblyView(QWidget):
         self.feature_table = BioTableWidget()
         self.feature_table.setColumnCount(5)
         self.feature_table.setRowCount(0)
-        self.feature_table.setHorizontalHeaderLabels(["Name", "Type", "Start", "End", "Strand"])
+        self.feature_table.setHorizontalHeaderLabels(
+            ["Name", "Type", "Coordinates", "Length (bp)", "Strand"]
+        )
         if (hv := self.feature_table.horizontalHeader()) is not None:
             hv.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         right_layout.addWidget(self.feature_table)
@@ -1260,8 +1304,12 @@ class PlasmidAssemblyView(QWidget):
 
             self.feature_table.setItem(row, 0, QTableWidgetItem(feat.name))
             self.feature_table.setItem(row, 1, QTableWidgetItem(feat.feature_type.upper()))
-            self.feature_table.setItem(row, 2, QTableWidgetItem(str(feat.start)))
-            self.feature_table.setItem(row, 3, QTableWidgetItem(str(feat.end)))
+            # The engine writes the coordinates, wrap included: an
+            # origin-spanning feature cannot be read off a Start/End pair
+            # (audit finding H-2). Length is the summed segments, so it is no
+            # longer inferable-but-wrong by subtracting the two.
+            self.feature_table.setItem(row, 2, QTableWidgetItem(feat.span_label()))
+            self.feature_table.setItem(row, 3, QTableWidgetItem(f"{feat.length:,}"))
             self.feature_table.setItem(row, 4, QTableWidgetItem("+" if feat.strand >= 0 else "-"))
 
         # Update sequence text display

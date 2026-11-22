@@ -21,12 +21,61 @@ class GeneticFeature:
     id: str
     name: str
     feature_type: str  # e.g., 'promoter', 'cds', 'terminator', 'rbs', 'origin', 'resistance'
-    start: int  # 0-indexed start position
-    end: int  # 0-indexed end position (exclusive)
+    #: 0-indexed start of the FIRST segment — where the feature begins on the
+    #: molecule. For a feature that wraps the origin this is greater than
+    #: ``end``, which is how the wrap is visible without consulting a flag.
+    start: int
+    #: 0-indexed, exclusive end of the LAST segment.
+    end: int
     strand: int = 1  # 1 for forward strand, -1 for reverse strand
     sequence: str = ""
     color: str = "#3B82F6"  # Visual accent hex code
     qualifiers: dict[str, list[str]] = field(default_factory=dict)
+    #: The location's parts, in biological order, as half-open spans. Empty
+    #: for an ordinary single-segment feature, where ``(start, end)`` says it
+    #: all. A GenBank ``join()`` — a spliced CDS, or a feature crossing the
+    #: origin — carries one entry per segment (audit finding H-2).
+    segments: tuple[tuple[int, int], ...] = ()
+    #: True when the segments run past the end of the molecule and back to
+    #: position 0. Distinct from merely having several segments: a spliced CDS
+    #: has parts in ascending order and does not wrap.
+    wraps_origin: bool = False
+
+    @property
+    def parts(self) -> tuple[tuple[int, int], ...]:
+        """The segments, uniformly — a single-segment feature included.
+
+        Callers that need every span should read this rather than
+        ``(start, end)``, which cannot describe a wrap.
+        """
+        return self.segments or ((self.start, self.end),)
+
+    @property
+    def length(self) -> int:
+        """Length in bases, summed over the segments.
+
+        This is the authoritative length. ``end - start`` is correct only for
+        a single-segment feature and is negative for one that wraps the
+        origin, which is deliberate: a wrong answer that is obviously wrong
+        beats one that is confidently wrong. Before H-2 was fixed, a 323 bp
+        origin-spanning ORF reported 5,243 bp — the whole plasmid.
+        """
+        return sum(max(end - start, 0) for start, end in self.parts)
+
+    def span_label(self, *, note_wrap: bool = True) -> str:
+        """The coordinates as a reader needs them.
+
+        One definition, so the feature table and the demo card cannot disagree
+        about how an origin-spanning feature is written. ``5,100-5,243 +
+        0-180`` for a wrap, ``350-1,100`` for anything else.
+
+        Args:
+            note_wrap: Append "(wraps origin)". Set False where the caller
+                already says so in its own words, to avoid nesting the note
+                inside another parenthesis.
+        """
+        spans = " + ".join(f"{start:,}-{end:,}" for start, end in self.parts)
+        return f"{spans} (wraps origin)" if self.wraps_origin and note_wrap else spans
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -39,6 +88,8 @@ class GeneticFeature:
             "sequence": self.sequence,
             "color": self.color,
             "qualifiers": self.qualifiers,
+            "segments": [list(seg) for seg in self.segments],
+            "wraps_origin": self.wraps_origin,
         }
 
     @classmethod
@@ -53,6 +104,8 @@ class GeneticFeature:
             sequence=data.get("sequence", ""),
             color=data.get("color", "#3B82F6"),
             qualifiers=data.get("qualifiers", {}),
+            segments=tuple(tuple(seg) for seg in data.get("segments", ()) or ()),
+            wraps_origin=data.get("wraps_origin", False),
         )
 
 
