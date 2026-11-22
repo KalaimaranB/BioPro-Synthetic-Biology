@@ -3,6 +3,16 @@
 Feeds empirical .fcs fluorescence profiles and NGS variant frequencies back into the
 `CircuitSimulationEngine`, fitting Hill parameters (n, Kd, y_max, y_min, degradation)
 to match empirical observations.
+
+**There is a demonstration path, and it is labelled as one.** When no usable
+flow-cytometry series is supplied, this engine can still show what a fit looks
+like by fitting synthetic targets derived from the circuit's own output. That
+path previously reported "Hill parameters optimized against empirical dataset"
+with ``success=True`` against data it had invented, and the noise was unseeded
+so no two runs agreed (audit finding C-4). It now sets ``is_mock=True``, names
+itself in ``status_message``, and draws from a seeded generator so a
+demonstration is reproducible. ``analysis/result_integrity.py`` is what stops
+a view presenting it as a measurement.
 """
 
 from __future__ import annotations
@@ -22,6 +32,19 @@ from ..simulation.circuit_engine import CircuitSimulationEngine
 from .fcs_ingestion import FCSEventData
 from .ngs_alignment import NGSAlignmentResult
 
+#: Seed for the demonstration path's synthetic targets. Fixed so that the same
+#: circuit demonstrates the same fit every time: an unseeded generator gave
+#: MSE 0.2319 / 0.1890 / 0.2435 across three identical runs, and a figure a
+#: student cannot reproduce should not be shown as a fit at all.
+DEMO_TARGET_SEED = 20261121
+
+#: Scale and offset applied to the simulated trace to make a synthetic target
+#: that differs from the model it came from. A presentation convention for the
+#: demonstration path; it cites nothing because it is not a measurement.
+DEMO_TARGET_SCALE = 0.85
+DEMO_TARGET_OFFSET = 0.1
+DEMO_TARGET_NOISE_SD = 0.05
+
 
 @dataclass
 class HillOptimizationResult:
@@ -36,6 +59,10 @@ class HillOptimizationResult:
     empirical_time_series: dict[str, list[float]] = field(default_factory=dict)
     status_message: str = "Optimization complete"
     success: bool = True
+    #: True when the targets were synthesised rather than measured. Read by
+    #: ``analysis/result_integrity.assess``; a view must not present a result
+    #: carrying this flag as a measurement.
+    is_mock: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -44,6 +71,7 @@ class HillOptimizationResult:
             "final_mse": self.final_mse,
             "status_message": self.status_message,
             "success": self.success,
+            "is_mock": self.is_mock,
         }
 
 
@@ -53,6 +81,49 @@ class CircuitMLOptimizationEngine:
     Adjusts binding cooperativity (n), dissociation constants (K_d), leakiness (y_min),
     max expression (y_max), and protein degradation rates based on empirical data.
     """
+
+    @staticmethod
+    def _build_target_curves(
+        components: list[CircuitComponent],
+        orig_sim: Any,
+        fcs_data: FCSEventData | None,
+    ) -> tuple[dict[str, list[float]], bool]:
+        """The curves to fit against, and whether they are real measurements.
+
+        Where the targets come from decides what the result may claim. Real
+        observations give a measurement; targets synthesised from the model's
+        own output give a demonstration, and the two must not be reported the
+        same way (audit finding C-4).
+
+        Returns:
+            ``(target_curves, usable_fcs)``. ``usable_fcs`` is False whenever
+            the supplied dataset is absent, did not load, carried no events or
+            carried no time series — each of which previously fell through to
+            the synthetic path while still being reported as empirical.
+        """
+        usable_fcs = bool(
+            fcs_data is not None
+            and getattr(fcs_data, "is_valid", True)
+            and getattr(fcs_data, "total_events", 0)
+            and fcs_data.time_series_expression
+        )
+        if usable_fcs:
+            return dict(fcs_data.time_series_expression), True  # type: ignore[union-attr]
+
+        # Demonstration path, seeded so the same circuit demonstrates the same
+        # fit every time. A falling error here measures nothing about any
+        # cells; the caller flags the result is_mock and says so.
+        rng = np.random.default_rng(DEMO_TARGET_SEED)
+        curves: dict[str, list[float]] = {}
+        for comp in components:
+            orig_conc = orig_sim.species_concentrations.get(comp.name, [])
+            if orig_conc:
+                # Parameter shift (higher leakiness, lower max expression)
+                noise = rng.normal(0, DEMO_TARGET_NOISE_SD, len(orig_conc))
+                curves[comp.name] = (
+                    np.array(orig_conc) * DEMO_TARGET_SCALE + DEMO_TARGET_OFFSET + noise
+                ).tolist()
+        return curves, False
 
     @classmethod
     def fit_kinetic_parameters(  # noqa: C901
@@ -75,18 +146,17 @@ class CircuitMLOptimizationEngine:
         # Baseline original simulation
         orig_sim = CircuitSimulationEngine.simulate_circuit(components, edges, sim_params)
 
-        # Extract empirical observations (or generate target curves if FCS is raw stats)
-        target_curves: dict[str, list[float]] = {}
-        if fcs_data and fcs_data.time_series_expression:
-            target_curves = fcs_data.time_series_expression
-        else:
-            # Synthetic target curves with empirical noise for demonstration
-            for comp in components:
-                orig_conc = orig_sim.species_concentrations.get(comp.name, [])
-                if orig_conc:
-                    # Parameter shift (higher leakiness, lower max expression)
-                    noise = np.random.normal(0, 0.05, len(orig_conc))
-                    target_curves[comp.name] = (np.array(orig_conc) * 0.85 + 0.1 + noise).tolist()
+        target_curves, usable_fcs = cls._build_target_curves(components, orig_sim, fcs_data)
+
+        if not target_curves:
+            reason = "no circuit output to fit against"
+            if fcs_data is not None and not getattr(fcs_data, "is_valid", True):
+                reason = getattr(fcs_data, "error_message", "") or "the dataset did not load"
+            return HillOptimizationResult(
+                original_components=components,
+                status_message=f"Nothing to fit: {reason}.",
+                success=False,
+            )
 
         # Build initial vector of optimization parameters per component
         initial_params = []
@@ -204,6 +274,16 @@ class CircuitMLOptimizationEngine:
             final_mse=final_mse,
             fitted_time_series=opt_sim.species_concentrations,
             empirical_time_series=target_curves,
-            status_message="Hill parameters optimized against empirical dataset",
+            status_message=(
+                "Hill parameters optimized against the supplied flow-cytometry dataset"
+                if usable_fcs
+                else (
+                    "Demonstration fit: no usable flow-cytometry data was supplied, so the "
+                    "targets were synthesised from this circuit's own simulated output. "
+                    "The error values describe the fit to that synthetic target and say "
+                    "nothing about any measurement."
+                )
+            ),
             success=True,
+            is_mock=not usable_fcs,
         )

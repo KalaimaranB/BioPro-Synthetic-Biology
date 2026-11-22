@@ -1,0 +1,52 @@
+name: Back-merge main into develop
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  back-merge:
+    name: Open back-merge PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if develop is behind main
+        id: check
+        run: |
+          git fetch origin
+          BEHIND=$(git rev-list origin/develop..origin/main --count)
+          echo "behind=$BEHIND" >> "$GITHUB_OUTPUT"
+          echo "develop is $BEHIND commit(s) behind main"
+
+      - name: Create back-merge branch and open PR
+        if: steps.check.outputs.behind != '0'
+        env:
+          GH_TOKEN: ${{ secrets.BOT_TOKEN || github.token }}
+        run: |
+          SHA=$(git rev-parse --short origin/main)
+          BRANCH="chore/back-merge-main-${SHA}"
+
+          git checkout -b "$BRANCH" origin/main
+          git push origin "$BRANCH"
+
+          BODY="Automated back-merge triggered by a push to main. Keeps develop in sync after a hotfix/* branch (or a promotion) merged into main. Review for conflicts before merging."
+
+          if PR_URL=$(gh pr create \
+            --base develop \
+            --head "$BRANCH" \
+            --title "chore: back-merge main into develop (${SHA})" \
+            --body "$BODY"); then
+            echo "PR created: $PR_URL"
+            gh pr merge "$PR_URL" --auto --merge || echo "Auto-merge could not be enabled. Please enable 'Allow auto-merge' in Repo Settings."
+          else
+            echo "PR already exists or no changes needed, skipping."
+          fi

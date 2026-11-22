@@ -38,9 +38,11 @@ from PySide6.QtWidgets import (
 from ...analysis.empirical.fcs_ingestion import FCSEventData
 from ...analysis.empirical.ml_optimizer import HillOptimizationResult
 from ...analysis.empirical.ngs_alignment import NGSAlignmentResult
+from ...analysis.result_integrity import assess
 from ...analysis.state import SynBioState
 from ...ui.controllers.empirical_controller import EmpiricalAnalyticsController
 from ..widgets.bio_tab_widget import BioTabWidget
+from ..widgets.integrity_banner import IntegrityBanner
 
 
 class EmpiricalAnalyticsView(QWidget):
@@ -132,6 +134,12 @@ class EmpiricalAnalyticsView(QWidget):
 
         layout.addWidget(group)
 
+        # The rule: a payload whose own flags say it is mock, invalid or failed
+        # must not be shown as a result, and if anything is shown its status
+        # must lead. See analysis/result_integrity.py.
+        self.fcs_banner = IntegrityBanner(container)
+        layout.addWidget(self.fcs_banner)
+
         # Channel Statistics Table
         self.fcs_table = BioTableWidget(container)
         self.fcs_table.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -182,6 +190,9 @@ class EmpiricalAnalyticsView(QWidget):
 
         layout.addWidget(group)
 
+        self.ngs_banner = IntegrityBanner(container)
+        layout.addWidget(self.ngs_banner)
+
         # Variant Flags Table
         self.ngs_table = BioTableWidget(container)
         self.ngs_table.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -225,6 +236,9 @@ class EmpiricalAnalyticsView(QWidget):
         h_layout.addWidget(self.ml_fit_btn)
         h_layout.addWidget(self.ml_status_lbl)
         layout.addWidget(group)
+
+        self.ml_banner = IntegrityBanner(container)
+        layout.addWidget(self.ml_banner)
 
         # Splitter: Left Table Comparison, Right PyQtGraph Plot
         splitter = BioSplitter(Qt.Orientation.Horizontal, container)
@@ -314,6 +328,14 @@ class EmpiricalAnalyticsView(QWidget):
         self._active_fcs_data = data
         self.fcs_table.setRowCount(0)
 
+        # An ingestion that did not load has no channel statistics to show, and
+        # an empty table with no explanation reads as "no events found" rather
+        # than "the file was never read".
+        verdict = assess(data)
+        self.fcs_banner.show_verdict(verdict)
+        if not verdict.presentable:
+            return
+
         for row, (ch_name, stats) in enumerate(data.channel_stats.items()):
             self.fcs_table.insertRow(row)
             self.fcs_table.setItem(row, 0, QTableWidgetItem(ch_name))
@@ -327,6 +349,18 @@ class EmpiricalAnalyticsView(QWidget):
     def _on_ngs_aligned(self, result: NGSAlignmentResult) -> None:
         self._active_ngs_result = result
         self.ngs_table.setRowCount(0)
+
+        # Audit finding C-3. The service returns three fabricated variant
+        # calls for any file — one of them labelled Critical, at a hardcoded
+        # position with a hardcoded score — and flags them is_mock=True. This
+        # handler used to iterate result.variants straight into the table, so
+        # a student saw invented findings attributed to their own sequencing
+        # run. Demonstration data is not tabulated at all: a table of variants
+        # is indistinguishable from a result no matter what sits above it.
+        verdict = assess(result)
+        self.ngs_banner.show_verdict(verdict)
+        if not verdict.presentable:
+            return
 
         for row, flag in enumerate(result.variants):
             self.ngs_table.insertRow(row)
@@ -344,9 +378,23 @@ class EmpiricalAnalyticsView(QWidget):
     @Slot(object)
     def _on_optimization_finished(self, result: HillOptimizationResult) -> None:
         self._active_opt_result = result
-        msg = f"Optimization Complete | MSE: {result.initial_mse:.3f} -> {result.final_mse:.3f}"
-        self.ml_status_lbl.setText(msg)
         self.ml_table.setRowCount(0)
+
+        # Audit finding C-4. The engine may fit synthetic targets derived from
+        # the circuit's own output when no usable flow-cytometry data was
+        # supplied; it now says so, and the error values in that case describe
+        # the fit to that synthetic target. The status line is the engine's
+        # own words rather than a hardcoded "Optimization Complete", which is
+        # what this handler used to print over them.
+        verdict = assess(result)
+        self.ml_banner.show_verdict(verdict)
+        if not verdict.presentable:
+            self.ml_status_lbl.setText(result.status_message)
+            return
+
+        self.ml_status_lbl.setText(
+            f"{result.status_message} | MSE: {result.initial_mse:.3f} -> {result.final_mse:.3f}"
+        )
 
         row = 0
         for comp_name, deltas in result.parameter_deltas.items():

@@ -1,6 +1,6 @@
 [project]
 name = "synthetic-biology-module"
-version = "0.1.1"
+version = "0.2.0"
 description = "Biological logic gate construction, orthogonality checking, and kinetic simulation for synthetic genetic circuits."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -60,6 +60,39 @@ process_model = "isolated"
 environment = ".venv"
 requirements = "requirements.txt"
 is_beta = true
+release_notes = """
+First release carrying the primer and amplification workflow, and the first in \
+which every Critical and High finding of the internal audit is closed.
+
+New
+- Primer design: rubric screening, nearest-neighbour thermodynamics, candidate \
+ranking, and export.
+- In-silico PCR: binding-site search on linear and circular templates, with no \
+product, multiple products and primer-dimer returned as results rather than errors.
+- Restriction digest over Bio.Restriction, and a gel migration model.
+- Methods text now cites REBASE and the gel mobility model.
+
+Corrected
+- Circuit simulation plotted promoter output integrated over time while \
+labelling the axis RPU. Production is now scaled by the degradation rate, the \
+unit travels with the result, and the demo preset was retuned with margin over \
+the re-measured Hopf threshold.
+- The CRISPR off-target panel implied a genome-wide search it had not performed; \
+it now states the scope it actually covered.
+- Flow-cytometry, NGS and parameter-fitting panels presented demonstration and \
+unvalidated data as real results. A single integrity rule now gates every view.
+- A non-DNA character in a 5' primer tail terminated the application.
+- A GenBank feature crossing the origin imported with the length of the whole \
+plasmid; compound locations now keep their segments and true extent.
+- A PCR product whose origin crossing fell inside the reverse primer's \
+footprint was reported as not wrapping.
+- The amplify selector read a state key that does not exist, so it never \
+offered more than one feature.
+
+Known limitations
+- Off-target search covers loaded sequences only; no genome FASTA loading yet.
+- Codon-usage and promoter-motif findings of the audit remain open at Medium.
+"""
 custom_exclusions = ["tests"]
 requires = ["task_scheduler", "logger", "event_bus"]
 tags = ["synthetic biology", "logic gates", "genetic circuits", "CRISPR", "kinetic simulation", "SBOL", "bioinformatics"]

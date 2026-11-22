@@ -193,11 +193,12 @@ def test_empty_sequence_handling():
     assert "Empty sequence" in res["error"]
 
 
-def test_catalogue_service_integration():
+def test_catalogue_service_integration(tmp_path):
     """Test PartsCatalogueService.predict_part_parameters integration."""
-    test_file = "temp_test_cat.json"
-    if os.path.exists(test_file):
-        os.remove(test_file)
+    # An absolute tmp_path, not a bare filename: a relative path is resolved
+    # against the plugin's writable directory, so this used to drop
+    # temp_test_cat.json into whatever directory the repository anchored to.
+    test_file = str(tmp_path / "temp_test_cat.json")
 
     try:
         repo = JsonPartRepository(test_file)

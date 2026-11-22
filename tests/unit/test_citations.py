@@ -21,8 +21,37 @@ class _Comp:
 
 
 class _Edge:
-    def __init__(self, interaction_type: str = "repression") -> None:
+    def __init__(
+        self,
+        interaction_type: str = "repression",
+        source_id: str = "",
+        target_id: str = "",
+    ) -> None:
         self.interaction_type = interaction_type
+        self.source_id = source_id
+        self.target_id = target_id
+
+
+def _ring(n: float = 2.5, size: int = 3):
+    """A cyclic repressor ring: the topology Elowitz & Leibler establish."""
+    ids = [chr(ord("A") + i) for i in range(size)]
+    comps = []
+    for node in ids:
+        comp = _Comp(n)
+        comp.id = node
+        comps.append(comp)
+    edges = [_Edge("repression", ids[i], ids[(i + 1) % size]) for i in range(size)]
+    return comps, edges
+
+
+def _toggle():
+    """Two genes repressing each other - a toggle switch, not a ring."""
+    comps = []
+    for node in ("A", "B"):
+        comp = _Comp(2.0)
+        comp.id = node
+        comps.append(comp)
+    return comps, [_Edge("repression", "A", "B"), _Edge("repression", "B", "A")]
 
 
 # ── Registry integrity ─────────────────────────────────────────────────────
@@ -102,7 +131,9 @@ def test_simulate_tab_cites_the_integrator_tellurium_actually_uses():
 
 @pytest.mark.unit
 def test_circuit_step_cites_the_solver_that_ran():
-    rk45 = cites.circuit_ode_step([_Comp()] * 3, [_Edge()] * 3, "RK45", 400, 1600)
+    # A real cyclic repressor ring, because elowitz2000 is now attached to that
+    # topology rather than to any repressing edge.
+    rk45 = cites.circuit_ode_step(*_ring(n=2.5), "RK45", 400, 1600)
     assert rk45["citations"] == ["elowitz2000", "virtanen2020", "dormand1980"]
     assert rk45["parameters"]["Hill coefficient n"] == "2.5"
 
@@ -202,3 +233,232 @@ def test_methods_log_is_saved_with_the_workspace():
     restored = SynBioState()
     restored.load_from_dict(state.to_dict())
     assert restored.methods_log == state.methods_log
+
+
+# ── Primer screening ───────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+def test_primer_screen_cites_the_free_energy_model_only():
+    """The ΔG model is published; the thresholds on top of it are convention.
+
+    Citing a paper for "40-60% GC" would misrepresent a rule of thumb as a
+    finding, which is the same error the CRISPR scores made before.
+    """
+    keys = cites.FEATURE_CITATIONS["primer_screen"]
+    assert "santalucia2004" in keys
+    assert "cock2009" in keys
+
+
+@pytest.mark.unit
+def test_santalucia2004_matches_its_crossref_record():
+    from karcytics_sdk.plugin.citations import get
+
+    work = get("santalucia2004")
+    assert work.authors == ("SantaLucia, J.", "Hicks, D.")
+    assert work.year == 2004
+    assert work.venue == "Annual Review of Biophysics and Biomolecular Structure"
+    assert work.volume == "33(1)"
+    assert work.pages == "415–440"
+    assert work.doi == "10.1146/annurev.biophys.32.110601.141800"
+
+
+@pytest.mark.unit
+def test_the_nn_parameters_in_use_come_from_the_cited_work():
+    """The citation must describe the table the code actually loads.
+
+    Biopython labels DNA_NN4 as SantaLucia & Hicks (2004); the thermodynamics
+    module reads that table, and primer_screen cites that paper. This pins the
+    three together so they cannot drift apart silently.
+    """
+    import inspect
+
+    from Bio.SeqUtils import MeltingTemp
+
+    from karcytics_plugins.synthetic_biology.analysis.assembly import thermodynamics
+
+    comment = inspect.getsource(MeltingTemp).split("DNA_NN4 =")[0].splitlines()[-1]
+    assert "SantaLucia" in comment and "2004" in comment
+    assert thermodynamics.NN_PARAMS["AA/TT"] == (
+        MeltingTemp.DNA_NN4["AA/TT"][0],
+        MeltingTemp.DNA_NN4["AA/TT"][1],
+    )
+
+
+@pytest.mark.unit
+def test_primer_screen_step_reports_the_rubric_it_applied():
+    from karcytics_plugins.synthetic_biology.analysis.assembly.primer_rubric import PrimerRubric
+
+    rubric = PrimerRubric(name="BIOL341 Lab 3", gc_min_percent=45.0)
+    entry = cites.primer_screen_step(rubric, n_candidates=12, verdict="pass")
+
+    assert entry["kind"] == "primer_screen"
+    assert entry["citations"] == list(cites.FEATURE_CITATIONS["primer_screen"])
+    assert entry["parameters"]["rubric"] == "BIOL341 Lab 3"
+    assert entry["parameters"]["GC window"].startswith("45")
+    assert entry["parameters"]["candidates ranked"] == 12
+    # The write-up must say the thresholds are conventions, not findings.
+    assert "conventional primer-design practice" in entry["description"]
+    assert "stem stacking only" in entry["description"]
+
+
+@pytest.mark.unit
+def test_primer_screen_is_written_up_after_the_design_it_judges():
+    order = list(cites.STEP_ORDER)
+    assert order.index("primer_screen") > order.index("primer_design")
+
+
+@pytest.mark.unit
+def test_a_screening_run_flows_into_methods_text_and_bibtex():
+    from karcytics_plugins.synthetic_biology.analysis.assembly.primer_rubric import PrimerRubric
+    from karcytics_plugins.synthetic_biology.analysis.state import SynBioState
+
+    state = SynBioState()
+    state.record_method(cites.primer_step(60.0, 60.1, 59.6))
+    state.record_method(cites.primer_screen_step(PrimerRubric(), 8, "pass"))
+
+    text = cites.methods_text(state.methods_log)
+    assert "screened against a configurable rubric" in text
+    assert "SantaLucia" in text
+    assert "santalucia2004," in cites.bibtex(state.methods_log)
+
+
+# ── Phase 2: digest, amplification and gel ────────────────────────────
+
+
+@pytest.mark.unit
+def test_phase2_citations_are_registered():
+    for key in ("roberts2022", "southern1979", "elder1983"):
+        entry = cites.get(key)
+        assert entry.doi, key
+        assert entry.authors, key
+
+
+@pytest.mark.unit
+def test_rebase_is_cited_for_enzyme_geometry():
+    """Recognition sites and cut offsets are REBASE's, via Biopython."""
+    keys = cites.FEATURE_CITATIONS["restriction_digest"]
+    assert "roberts2022" in keys
+    assert "cock2009" in keys
+
+
+@pytest.mark.unit
+def test_the_gel_cites_the_size_dependence_not_the_equation():
+    """Southern (1979) established the relationship; the log-linear form is ours."""
+    from karcytics_plugins.synthetic_biology.analysis.assembly import gel
+
+    assert cites.FEATURE_CITATIONS["gel_migration"] == ("southern1979", "elder1983")
+    kind, _ = gel.THRESHOLD_PROVENANCE["mobility_model"]
+    assert kind == "convention", "the equation must not claim to be a published result"
+
+
+@pytest.mark.unit
+def test_amplification_does_not_cite_its_mismatch_rule():
+    """The priming rule is a convention and must carry no citation."""
+    from karcytics_plugins.synthetic_biology.analysis.assembly import amplification as amp
+
+    keys = cites.FEATURE_CITATIONS["amplification"]
+    # Phase 3 added the PCR method and the 3'-end mechanism. What must stay
+    # true is that no citation is offered for the chosen *numbers*: both
+    # parameters remain conventions, and only the rule's shape has a paper.
+    for field_name in ("three_prime_exact", "max_mismatches"):
+        assert amp.THRESHOLD_PROVENANCE[field_name].kind == "convention"
+    assert amp.THRESHOLD_PROVENANCE["max_mismatches"].mechanism == ()
+    assert "allawi1997" in keys and "cock2009" in keys
+    mechanism = amp.THRESHOLD_PROVENANCE["three_prime_exact"].mechanism
+    assert set(mechanism) <= set(keys), "a mechanism must be cited in the feature map"
+
+
+@pytest.mark.unit
+def test_phase2_steps_are_in_step_order():
+    for kind in ("amplification", "restriction_digest", "gel_migration"):
+        assert kind in cites.STEP_ORDER
+
+
+@pytest.mark.unit
+def test_phase2_steps_appear_in_workflow_order():
+    """Methods read in the order the bench work happens."""
+    order = list(cites.STEP_ORDER)
+    assert order.index("primer_screen") < order.index("amplification")
+    assert order.index("amplification") < order.index("restriction_digest")
+    assert order.index("restriction_digest") < order.index("gel_migration")
+
+
+def _phase2_log():
+    from karcytics_plugins.synthetic_biology.analysis.assembly import amplification as amp
+    from karcytics_plugins.synthetic_biology.analysis.assembly import gel
+    from karcytics_plugins.synthetic_biology.analysis.assembly import restriction as rst
+
+    from .sequence_fixtures import (
+        ECORI_TAIL,
+        HINDIII_TAIL,
+        SYNTHETIC_ORF,
+        SYNTHETIC_TEMPLATE,
+        primers_for,
+    )
+
+    fwd, rev = primers_for(SYNTHETIC_ORF)
+    result = amp.amplify(
+        SYNTHETIC_TEMPLATE,
+        ECORI_TAIL + fwd,
+        HINDIII_TAIL + rev,
+        forward_tail=ECORI_TAIL,
+        reverse_tail=HINDIII_TAIL,
+        enzymes=["EcoRI", "HindIII"],
+    )
+    digest = rst.double_digest(result.product.sequence, "EcoRI", "HindIII")
+    built = gel.build_gel([gel.product_lane(result.product.length), gel.digest_lane(digest)])
+    return (
+        [
+            cites.amplification_step(result),
+            cites.digest_step(digest),
+            cites.gel_step(built),
+        ],
+        result,
+        digest,
+        built,
+    )
+
+
+@pytest.mark.unit
+def test_each_phase2_step_records_the_parameters_it_ran_with():
+    log, result, digest, built = _phase2_log()
+    by_kind = {entry["kind"]: entry for entry in log}
+
+    amp_params = by_kind["amplification"]["parameters"]
+    assert amp_params["outcome"] == result.outcome
+    assert amp_params["3' bases required to match"] == result.diagnostics["three_prime_exact"]
+
+    dig_params = by_kind["restriction_digest"]["parameters"]
+    assert dig_params["sites found"] == len(digest.sites)
+    assert dig_params["enzymes"] == "EcoRI, HindIII"
+
+    gel_params = by_kind["gel_migration"]["parameters"]
+    assert gel_params["lanes"] == len(built.lanes)
+
+
+@pytest.mark.unit
+def test_phase2_steps_flow_into_methods_text_and_bibtex():
+    log, _, _, _ = _phase2_log()
+    text = cites.methods_text(log)
+
+    assert "REBASE" in text
+    assert "log-linear" in text
+    # The disclaimers must survive into the paragraph a student submits.
+    assert "convention" in text
+    assert "does not account for" in text
+
+    keys = cites.cited_keys(log)
+    for key in ("roberts2022", "southern1979", "elder1983", "cock2009"):
+        assert key in keys
+    bib = cites.bibtex(log)
+    for key in ("roberts2022", "southern1979", "elder1983"):
+        assert f"{{{key}," in bib
+
+
+@pytest.mark.unit
+def test_the_digest_step_names_what_it_cannot_model():
+    log, _, _, _ = _phase2_log()
+    digest_entry = next(e for e in log if e["kind"] == "restriction_digest")
+    for limitation in ("methylation sensitivity", "star activity", "isoschizomers"):
+        assert limitation in digest_entry["description"]

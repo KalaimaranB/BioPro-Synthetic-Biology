@@ -41,6 +41,7 @@ from ...analysis.models.domain import (
 from ...analysis.simulation.circuit_engine import CircuitSimulationEngine
 from ...analysis.simulation.topology import circuit_from_parts
 from ...analysis.state import SynBioState
+from ...analysis.units import PROTEIN_AXIS_LABEL
 from ...ui.controllers.circuit_controller import CircuitSimulationController
 
 # Shown first in the circuit selector: simulate what the user actually drew.
@@ -194,7 +195,7 @@ class CircuitSimulationView(QWidget):
             color=title_color,
             size="12pt",
         )
-        self.plot_widget.setLabel("left", "Protein concentration (RPU)", color=fg_color)
+        self.plot_widget.setLabel("left", PROTEIN_AXIS_LABEL, color=fg_color)
         self.plot_widget.setLabel("bottom", "Time (minutes)", color=fg_color)
 
         view_qss = f"""

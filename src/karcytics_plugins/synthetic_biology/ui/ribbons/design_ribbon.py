@@ -8,6 +8,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QLabel
 
 from ...analysis.parts.components import BiologicalPart
+from ..workers import RegistryFetchWorker
 
 
 class DesignRibbon(BioRibbon):
@@ -43,6 +44,7 @@ class DesignRibbon(BioRibbon):
     def __init__(self, service_factory, parent=None):
         super().__init__(parent)
         self._factory = service_factory
+        self._active_worker: RegistryFetchWorker | None = None
         self.run_button.hide()
         self.cancel_button.hide()
         self._setup_ui()
@@ -65,6 +67,10 @@ class DesignRibbon(BioRibbon):
         # Dynamic Part Selector BioComboBox
         self.add_widget(QLabel("Part:"))
         self.part_selector_combo = BioComboBox()
+        # Editable so a student can type a registry ID that is not in the
+        # dropdown; _on_fetch's free-text branch is unreachable otherwise.
+        self.part_selector_combo.setEditable(True)
+        self.part_selector_combo.setInsertPolicy(BioComboBox.InsertPolicy.NoInsert)
         self.part_selector_combo.setMinimumWidth(280)
         self.part_selector_combo.setSizeAdjustPolicy(BioComboBox.SizeAdjustPolicy.AdjustToContents)
         self.add_widget(self.part_selector_combo)
@@ -170,49 +176,80 @@ class DesignRibbon(BioRibbon):
         self.update_part_selector(selected_role)
 
     def _on_fetch(self):
-        """Fetch the selected part using self.part_selector_combo.currentData()."""
+        """Resolve the selected or typed part, locally then via the registry."""
         selected_data = self.part_selector_combo.currentData()
         current_text = self.part_selector_combo.currentText().strip()
 
         if selected_data is None and not current_text:
             return
 
-        self.fetch_btn.setEnabled(False)
-        self.fetch_btn.setText("Fetching...")
+        # Case 1: userData is already a BiologicalPart object — nothing to fetch.
+        if isinstance(selected_data, BiologicalPart):
+            self.part_fetched.emit(selected_data)
+            return
 
-        try:
-            # Case 1: userData is already a BiologicalPart object
-            if isinstance(selected_data, BiologicalPart):
-                self.part_fetched.emit(selected_data)
-                return
+        # Case 2: userData is a part_id string, or the user typed one. An
+        # editable combo keeps currentData() from the previously selected row,
+        # so typed text has to win when it no longer matches that row.
+        part_id = self._resolve_part_id(selected_data, current_text)
+        if not part_id:
+            return
 
-            # Case 2: userData is part_id string
-            part_id = (
-                selected_data
-                if isinstance(selected_data, str)
-                else current_text.split(" - ")[0].strip()
-            )
-
-            # Attempt database lookup first
-            catalogue_service = self._factory.get("parts_catalogue") if self._factory else None
-            part = None
-            if catalogue_service and hasattr(catalogue_service, "get_part"):
-                part = catalogue_service.get_part(part_id)
-
-            # Attempt iGEM Client lookup if not in local database
-            if not part and self._factory:
-                client = self._factory.get("igem_client")
-                if client:
-                    part = client.fetch_part(part_id)
-
+        # A local hit is a dict lookup; only the registry call needs a thread.
+        catalogue_service = self._factory.get("parts_catalogue") if self._factory else None
+        if catalogue_service and hasattr(catalogue_service, "get_part"):
+            part = catalogue_service.get_part(part_id)
             if part:
                 self.part_fetched.emit(part)
-            else:
-                show_warning(
-                    self,
-                    title="Fetch Failed",
-                    message=f"Could not find or instantiate part '{part_id}'.",
-                )
-        finally:
-            self.fetch_btn.setEnabled(True)
-            self.fetch_btn.setText("Fetch Part")
+                return
+
+        client = self._factory.get("igem_client") if self._factory else None
+        if not client:
+            self._warn_not_found(part_id)
+            return
+
+        self._set_fetching(True)
+        self._active_worker = RegistryFetchWorker(
+            client=client,
+            part_id=part_id,
+            parent=self,
+        )
+        self._active_worker.part_fetched.connect(
+            lambda part, pid=part_id: self._on_registry_result(part, pid)
+        )
+        self._active_worker.error_occurred.connect(self._on_registry_error)
+        self._active_worker.start()
+
+    def _resolve_part_id(self, selected_data, current_text: str) -> str:
+        """Prefer what the user typed over a stale selection in an editable combo."""
+        typed = current_text.split(" - ")[0].strip()
+        if isinstance(selected_data, str):
+            display = self.part_selector_combo.currentText().strip()
+            # currentText still matching the selected row means no free typing.
+            if typed == selected_data or display.startswith(f"{selected_data} "):
+                return selected_data
+        return typed
+
+    def _set_fetching(self, busy: bool) -> None:
+        self.fetch_btn.setEnabled(not busy)
+        self.fetch_btn.setText("Fetching..." if busy else "Fetch Part")
+
+    def _on_registry_result(self, part, part_id: str) -> None:
+        self._set_fetching(False)
+        self._active_worker = None
+        if part:
+            self.part_fetched.emit(part)
+        else:
+            self._warn_not_found(part_id)
+
+    def _on_registry_error(self, message: str) -> None:
+        self._set_fetching(False)
+        self._active_worker = None
+        show_warning(self, title="Fetch Failed", message=message)
+
+    def _warn_not_found(self, part_id: str) -> None:
+        show_warning(
+            self,
+            title="Fetch Failed",
+            message=f"Could not find or instantiate part '{part_id}'.",
+        )

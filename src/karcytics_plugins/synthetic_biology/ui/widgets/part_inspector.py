@@ -1,5 +1,3 @@
-import os
-
 from karcytics_sdk.plugin.components import (
     BioComboBox,
     BioLineEdit,
@@ -26,6 +24,7 @@ from PySide6.QtWidgets import (
 
 from ...analysis.parts.base import BiologicalPart
 from ...analysis.parts.components import CDS, RBS, Promoter, Terminator
+from ...analysis.user_paths import resolve_part_image
 from ..views.simulate_view import SafeFigureCanvasQTAgg
 from .bio_tab_widget import BioTabWidget
 
@@ -511,19 +510,13 @@ class PartInspector(QWidget):
         image_rel_path = part.properties.get("image_path")
 
         if image_rel_path:
-            # Resolve relative path to absolute
-            import karcytics_plugins.synthetic_biology.analysis.catalogue.service as svc
+            # Runtime downloads live in the user directory, a few ship inside
+            # the payload, and the stored path does not say which; the
+            # analysis layer owns that lookup.
+            resolved = resolve_part_image(image_rel_path)
 
-            base_dir = os.path.dirname(os.path.abspath(svc.__file__))
-            abs_path = os.path.join(
-                base_dir,
-                os.path.basename(image_rel_path)
-                if not image_rel_path.startswith("images")
-                else image_rel_path,
-            )
-
-            if os.path.exists(abs_path):
-                pixmap = QPixmap(abs_path)
+            if resolved is not None:
+                pixmap = QPixmap(str(resolved))
                 self.struct_lbl.setStyleSheet("")
                 self.struct_lbl.setPixmap(
                     pixmap.scaled(

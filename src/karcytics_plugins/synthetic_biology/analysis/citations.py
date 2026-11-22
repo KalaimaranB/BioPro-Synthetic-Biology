@@ -45,6 +45,98 @@ CITATIONS: tuple[Citation, ...] = (
         doi="10.1021/bi962590c",
     ),
     Citation(
+        key="newton1989",
+        authors=(
+            "Newton, C. R.",
+            "Graham, A.",
+            "Heptinstall, L. E.",
+            "Powell, S. J.",
+            "Summers, C.",
+            "Kalsheker, N.",
+            "Smith, J. C.",
+            "Markham, A. F.",
+        ),
+        title="Analysis of any point mutation in DNA. The amplification refractory mutation system (ARMS)",
+        year=1989,
+        venue="Nucleic Acids Research",
+        volume="17(7)",
+        pages="2503\u20132516",
+        doi="10.1093/nar/17.7.2503",
+    ),
+    Citation(
+        key="saiki1988",
+        authors=(
+            "Saiki, Randall K.",
+            "Gelfand, David H.",
+            "Stoffel, Susanne",
+            "Scharf, Stephen J.",
+            "Higuchi, Russell",
+            "Horn, Glenn T.",
+            "Mullis, Kary B.",
+            "Erlich, Henry A.",
+        ),
+        title="Primer-Directed Enzymatic Amplification of DNA with a Thermostable DNA Polymerase",
+        year=1988,
+        venue="Science",
+        volume="239(4839)",
+        pages="487\u2013491",
+        doi="10.1126/science.2448875",
+    ),
+    Citation(
+        key="tindall1988",
+        authors=(
+            "Tindall, Kenneth R.",
+            "Kunkel, Thomas A.",
+        ),
+        title="Fidelity of DNA synthesis by the Thermus aquaticus DNA polymerase",
+        year=1988,
+        venue="Biochemistry",
+        volume="27(16)",
+        pages="6008\u20136013",
+        doi="10.1021/bi00416a027",
+    ),
+    Citation(
+        key="roberts2022",
+        authors=(
+            "Roberts, Richard J",
+            "Vincze, Tamas",
+            "Posfai, Janos",
+            "Macelis, Dana",
+        ),
+        title="REBASE: a database for DNA restriction and modification: enzymes, genes and genomes",
+        year=2022,
+        venue="Nucleic Acids Research",
+        volume="51(D1)",
+        pages="D629\u2013D630",
+        doi="10.1093/nar/gkac975",
+    ),
+    Citation(
+        key="southern1979",
+        authors=("Southern, E.M.",),
+        title="Measurement of DNA length by gel electrophoresis",
+        year=1979,
+        venue="Analytical Biochemistry",
+        volume="100(2)",
+        pages="319\u2013323",
+        doi="10.1016/0003-2697(79)90235-5",
+    ),
+    Citation(
+        key="elder1983",
+        authors=(
+            "Elder, J.K.",
+            "Southern, E.M.",
+        ),
+        title=(
+            "Measurement of DNA length by gel electrophoresis II: Comparison of methods "
+            "for relating mobility to fragment length"
+        ),
+        year=1983,
+        venue="Analytical Biochemistry",
+        volume="128(1)",
+        pages="227\u2013231",
+        doi="10.1016/0003-2697(83)90369-x",
+    ),
+    Citation(
         key="choi2018",
         authors=(
             "Choi, K.",
@@ -239,6 +331,19 @@ CITATIONS: tuple[Citation, ...] = (
         doi="10.1137/0904010",
     ),
     Citation(
+        key="santalucia2004",
+        authors=(
+            "SantaLucia, J.",
+            "Hicks, D.",
+        ),
+        title="The Thermodynamics of DNA Structural Motifs",
+        year=2004,
+        venue="Annual Review of Biophysics and Biomolecular Structure",
+        volume="33(1)",
+        pages="415\u2013440",
+        doi="10.1146/annurev.biophys.32.110601.141800",
+    ),
+    Citation(
         key="sharp1987",
         authors=(
             "Sharp, P. M.",
@@ -397,7 +502,14 @@ register(*CITATIONS)
 # ── Which work each feature is built on ───────────────────────────────────
 
 FEATURE_CITATIONS: dict[str, tuple[str, ...]] = {
-    # Hill-repression ODE model, integrated with SciPy's solve_ivp.
+    # Hill-repression ODE model, integrated with SciPy's solve_ivp. Elowitz &
+    # Leibler (2000) is cited for the cyclic repressor-ring TOPOLOGY only. The
+    # dynamics here are a reduced, protein-only form of their model: they
+    # integrate three mRNA species alongside the three proteins, and the
+    # transcription-translation delay that supplies is absent here. See
+    # simulation.circuit_engine.MODEL_PROVENANCE, which records the split the
+    # same way gel.THRESHOLD_PROVENANCE records Southern (1979) supporting the
+    # size dependence but not the log-linear equation.
     "circuit_simulation": ("elowitz2000", "virtanen2020"),
     "repressilator": ("elowitz2000",),
     # Simulate tab: an Antimony model run in Tellurium. libRoadRunner's default
@@ -406,6 +518,34 @@ FEATURE_CITATIONS: dict[str, tuple[str, ...]] = {
     "simulate_ssa": ("gillespie1977", "choi2018", "smith2009"),
     # Biopython Tm_NN with the DNA_NN3 table and saltcorr=7.
     "primer_design": ("allawi1997", "owczarzy2008", "cock2009"),
+    # Secondary-structure screening. The nearest-neighbour parameters are the
+    # SantaLucia & Hicks (2004) unified set, read from Biopython's DNA_NN4
+    # table. The rubric *thresholds* applied on top of those energies are
+    # conventions and cite nothing — see primer_rubric.THRESHOLD_PROVENANCE.
+    "primer_screen": ("santalucia2004", "cock2009"),
+    # Enzyme recognition sites, cut offsets and overhang polarity come from
+    # REBASE as distributed with Biopython. Nothing in the digest engine is a
+    # threshold, so there is no convention to disclaim.
+    "restriction_digest": ("roberts2022", "cock2009"),
+    # What is modelled is PCR with a thermostable polymerase, which is Saiki
+    # et al. (1988) -- not Mullis & Faloona (1987), whose method used Klenow at
+    # 37 C and is not what this engine simulates.
+    #
+    # The priming rule's *numbers* (5-base exact 3' window, 2 mismatches
+    # upstream) remain conventions and cite nothing. Its *shape* does not:
+    # Newton et al. (1989) demonstrated that an oligonucleotide with a
+    # mismatched 3' residue will not function as a primer, and Tindall &
+    # Kunkel (1988) showed, on a substrate carrying a 3'-OH terminal mismatch,
+    # that Taq lacks detectable proofreading -- which is why such a mismatch is
+    # not corrected. Each is attached to its own claim in
+    # amplification.THRESHOLD_PROVENANCE; neither supports the chosen window.
+    "amplification": ("saiki1988", "newton1989", "tindall1988", "allawi1997", "cock2009"),
+    # Size-dependent mobility, calibrated against a ladder, is Southern (1979);
+    # Elder & Southern (1983) compared the functional forms and found the
+    # log-linear one wanting. The log-linear model this module uses is
+    # therefore labelled a convention in gel.THRESHOLD_PROVENANCE: the
+    # citations support the size dependence, not this particular equation.
+    "gel_migration": ("southern1979", "elder1983"),
     # The scanner searches for the SpCas9 NGG PAM. Candidate *ranking* is the
     # module's own heuristic and deliberately cites nothing.
     "crispr_scan": ("jinek2012",),
@@ -433,6 +573,10 @@ STEP_ORDER: tuple[str, ...] = (
     "design",
     "assembly",
     "primer_design",
+    "primer_screen",
+    "amplification",
+    "restriction_digest",
+    "gel_migration",
     "crispr_scan",
     "circuit_ode",
     "tellurium_ode",
@@ -502,6 +646,165 @@ def primer_step(target_tm: float, forward_tm: float, reverse_tm: float) -> dict[
     )
 
 
+def primer_screen_step(
+    rubric: Any,
+    n_candidates: int,
+    verdict: str,
+    checks_applied: Sequence[str] = (),
+) -> dict[str, Any]:
+    """Primer screening. Reads its parameters off the rubric that was applied,
+    so the write-up cannot claim thresholds the run did not use.
+
+    Only the free-energy model is cited. The thresholds are conventions, and
+    the description says so rather than letting a citation imply otherwise.
+    """
+    return _entry(
+        "primer_screen",
+        "Candidate primers were screened against a configurable rubric covering GC "
+        "content, 3' clamp, single-base runs, pair melting-temperature match, product "
+        "size and template uniqueness, with hairpin, self-dimer and heterodimer free "
+        "energies computed from nearest-neighbour parameters; the rubric thresholds "
+        "themselves are conventional primer-design practice rather than published "
+        "values, and hairpins are scored on stem stacking only",
+        FEATURE_CITATIONS["primer_screen"],
+        {
+            "rubric": getattr(rubric, "name", "unnamed"),
+            "GC window": f"{rubric.gc_min_percent:g}\u2013{rubric.gc_max_percent:g}%",
+            "3' clamp": (
+                f"{rubric.clamp_min_gc}\u2013{rubric.clamp_max_gc} G/C "
+                f"in last {rubric.clamp_window}"
+            ),
+            "max single-base run": rubric.max_poly_run,
+            "pair Tm tolerance": f"{rubric.pair_tm_tolerance:g} \u00b0C",
+            "product size": f"{rubric.product_min_bp}\u2013{rubric.product_max_bp} bp",
+            "hairpin \u0394G cutoff": f"{rubric.hairpin_min_dg:g} kcal/mol",
+            "dimer \u0394G cutoff": f"{rubric.self_dimer_min_dg:g} kcal/mol",
+            "candidates ranked": n_candidates,
+            "best verdict": verdict,
+            **({"checks": ", ".join(checks_applied)} if checks_applied else {}),
+        },
+    )
+
+
+def amplification_step(
+    result: Any,
+    *,
+    template_bp: int | None = None,
+    circular: bool | None = None,
+) -> dict[str, Any]:
+    """In-silico PCR. Parameters are read off the result's own diagnostics, so
+    the write-up cannot report a rule the run did not apply.
+
+    Only the Tm model and Biopython are cited. The mismatch-tolerance rule is
+    this module's convention and the description says so rather than letting a
+    citation imply it was measured.
+    """
+    diag = dict(getattr(result, "diagnostics", {}) or {})
+    outcome = getattr(result, "outcome", "unknown")
+    amplicons = tuple(getattr(result, "amplicons", ()) or ())
+
+    parameters: dict[str, Any] = {
+        "template": f"{diag.get('template_bp', template_bp)} bp "
+        f"{'circular' if diag.get('circular', circular) else 'linear'}",
+        "outcome": outcome,
+        "products": len(amplicons),
+        "3' bases required to match": diag.get("three_prime_exact"),
+        "mismatches allowed elsewhere": diag.get("max_mismatches"),
+        "max product searched": f"{diag.get('max_product_bp')} bp",
+    }
+    if amplicons:
+        parameters["product sizes"] = ", ".join(f"{a.length} bp" for a in amplicons)
+        parameters["product GC"] = ", ".join(f"{a.gc_percent:.1f}%" for a in amplicons)
+    if getattr(result, "dimer_risk", False):
+        parameters["heterodimer \u0394G"] = f"{result.dimer_delta_g:.2f} kcal/mol"
+
+    return _entry(
+        "amplification",
+        "Amplification by the polymerase chain reaction with a thermostable "
+        "polymerase was simulated in silico. Primer binding sites were located "
+        "on both strands of the template, requiring an exact match over the "
+        "3'-terminal bases -- an oligonucleotide mismatched at its 3' residue "
+        "does not prime, and Taq lacks the proofreading activity that would "
+        "excise such a mismatch -- and tolerating a bounded number of "
+        "mismatches further upstream; amplicons were resolved from correctly "
+        "oriented pairs within the maximum product length. Annealing "
+        "temperatures were computed on the binding region alone, excluding any "
+        "5' tail, while product lengths include it. The size of the 3' window "
+        "and the number of mismatches tolerated are conventions of this module "
+        "rather than published values, although the dependence on the 3' "
+        "terminus itself is a published result",
+        FEATURE_CITATIONS["amplification"],
+        parameters,
+    )
+
+
+def digest_step(result: Any) -> dict[str, Any]:
+    """A restriction digest. Enzyme geometry is REBASE's, via Biopython.
+
+    There are no thresholds here, so nothing needs disclaiming as convention;
+    what does need stating is what the model leaves out, which it does.
+    """
+    from .assembly.restriction import DIGEST_LIMITATIONS
+
+    sites = tuple(getattr(result, "sites", ()) or ())
+    fragments = tuple(getattr(result, "fragments", ()) or ())
+    enzymes = tuple(getattr(result, "enzymes", ()) or ())
+
+    return _entry(
+        "restriction_digest",
+        "Restriction sites were located using recognition sequences and "
+        "strand-specific cut offsets from REBASE, and fragments were predicted "
+        "with the overhang left at each end read from the template, so that "
+        "enzymes cutting outside their recognition sequence yield "
+        "sequence-dependent overhangs; the digest is modelled as complete and "
+        "does not account for " + ", ".join(name for name, _ in DIGEST_LIMITATIONS),
+        FEATURE_CITATIONS["restriction_digest"],
+        {
+            "enzymes": ", ".join(enzymes) or "none",
+            "topology": "circular" if getattr(result, "circular", False) else "linear",
+            "template": f"{getattr(result, 'template_length', 0)} bp",
+            "sites found": len(sites),
+            "fragments": len(fragments),
+            **(
+                {"fragment sizes": ", ".join(f"{f.length} bp" for f in fragments)}
+                if fragments
+                else {}
+            ),
+        },
+    )
+
+
+def gel_step(gel: Any) -> dict[str, Any]:
+    """A predicted gel. The size dependence is cited; the equation is not.
+
+    Southern (1979) established that mobility tracks fragment length against a
+    ladder, and also that the relationship is *not* strictly linear in
+    log(size). The log-linear form used here is a teaching approximation, and
+    the description says so in place of implying the citation endorses it.
+    """
+    lanes = tuple(getattr(gel, "lanes", ()) or ())
+    clamped = sum(1 for lane in lanes for b in getattr(lane, "bands", ()) if b.out_of_range)
+
+    return _entry(
+        "gel_migration",
+        "Fragment positions were predicted from length by a log-linear "
+        "mobility model calibrated to the gel's resolving window, with band "
+        "intensity taken as proportional to the mass of DNA in the band and "
+        "fragments of equal length merged into a single band; the log-linear "
+        "form is a conventional approximation rather than a published "
+        "relationship, and agarose percentage, voltage, run conditions and DNA "
+        "conformation are not modelled",
+        FEATURE_CITATIONS["gel_migration"],
+        {
+            "model": getattr(gel, "model", "log-linear"),
+            "resolving window": f"{getattr(gel, 'min_bp', 0)}\u2013{getattr(gel, 'max_bp', 0)} bp",
+            "lanes": len(lanes),
+            "lane length": f"{getattr(gel, 'lane_length_mm', 0):g} mm",
+            **({"bands outside the window": clamped} if clamped else {}),
+        },
+    )
+
+
 def crispr_step(
     pam_type: str, spacer_length: int, target_length: int, n_candidates: int
 ) -> dict[str, Any]:
@@ -511,9 +814,20 @@ def crispr_step(
         f"Candidate protospacers were identified by scanning both strands of a "
         f"{target_length:,} bp target for {pam_type} protospacer-adjacent motifs and "
         "ranked with a rule-based heuristic (GC content, poly-T runs, PAM-proximal "
-        "base) rather than a published on-target efficiency model",
+        "base) rather than a published on-target efficiency model. Off-target "
+        f"scoring searched only that same {target_length:,} bp submitted sequence: "
+        "no reference genome was loaded, so the off-target scores do not "
+        "establish genome-wide specificity and candidates were not screened "
+        "against a host chromosome",
         FEATURE_CITATIONS["crispr_scan"] if is_spcas9 else (),
-        {"spacer length": f"{spacer_length} nt", "candidates": n_candidates},
+        {
+            "spacer length": f"{spacer_length} nt",
+            "candidates": n_candidates,
+            # Named in the write-up because a methods section that reports an
+            # off-target score without its search space is the same unsupported
+            # claim the UI was making (audit finding C-2(a)).
+            "off-target search space": f"submitted sequence, {target_length:,} bp",
+        },
     )
 
 
@@ -525,11 +839,17 @@ def circuit_ode_step(
     num_points: int,
 ) -> dict[str, Any]:
     """The SciPy simulation on the Circuit Simulation tab (and the demo)."""
+    from .simulation.topology import is_repressor_ring
+
     hill = sorted({float(c.n) for c in components if getattr(c, "n", None) is not None})
-    has_repression = any(str(e.interaction_type).lower() == "repression" for e in edges)
+    # Attached only to the topology the paper establishes. This used to fire on
+    # ANY repressing edge, so a two-gene toggle switch or a single repressed
+    # gene collected the citation too, and the over-claim reached every methods
+    # paragraph a student generated from a repressive circuit.
+    ring = is_repressor_ring(components, edges)
 
     keys: list[str] = []
-    if has_repression:
+    if ring:
         keys.append("elowitz2000")
     keys.append("virtanen2020")
     keys.extend(SOLVER_CITATIONS.get(solver, ()))
@@ -544,15 +864,26 @@ def circuit_ode_step(
     elif hill:
         parameters["Hill coefficient n"] = f"{hill[0]:g}–{hill[-1]:g}"
 
-    return _entry(
-        "circuit_ode",
+    # The write-up has to name the model that ran. A student pasting this into
+    # a report must not end up asserting they integrated the published
+    # six-equation system when they integrated a reduced one.
+    description = (
         f"Protein dynamics of the {len(components)}-gene circuit were simulated as "
-        "ordinary differential equations in which each gene's production is a Hill "
-        "function of its repressors and activators and its protein decays at a "
-        "first-order rate, integrated with SciPy's solve_ivp",
-        keys,
-        parameters,
+        "ordinary differential equations in which each gene is represented by a "
+        "single protein species whose production is a Hill function of its "
+        "repressors and activators and which decays at a first-order rate, "
+        "integrated with SciPy's solve_ivp"
     )
+    if ring:
+        description += (
+            "; the circuit is a cyclic repressor ring of the kind introduced by "
+            "Elowitz & Leibler (2000), but this is a reduced, protein-only form "
+            "of their model, which additionally carries an mRNA species per gene "
+            "and the transcription-translation delay that comes with it"
+        )
+        parameters["model"] = "reduced protein-only ring (no mRNA species)"
+
+    return _entry("circuit_ode", description, keys, parameters)
 
 
 def tellurium_step(method: str, duration_min: float) -> dict[str, Any]:
@@ -674,6 +1005,9 @@ def all_keys() -> list[str]:
 __all__ = [
     "CITATIONS",
     "FEATURE_CITATIONS",
+    "amplification_step",
+    "digest_step",
+    "gel_step",
     "SOLVER_CITATIONS",
     "STEP_ORDER",
     "all_keys",
@@ -685,6 +1019,7 @@ __all__ = [
     "design_step",
     "method_steps",
     "methods_text",
+    "primer_screen_step",
     "primer_step",
     "resolve",
     "tellurium_step",

@@ -33,17 +33,12 @@ class ServiceFactory:
         self._services["igem_client"] = IGemClient()
         self._services["synbiohub_client"] = SynBioHubClient()
 
-        # Setup the Parts Catalogue anchored to plugin directory
-        if not catalogue_path:
-            plugin_dir = Path(__file__).resolve().parents[1]
-            catalogue_path = plugin_dir / "catalogue.json"
-        else:
-            catalogue_path = Path(catalogue_path)
-            if not catalogue_path.is_absolute():
-                plugin_dir = Path(__file__).resolve().parents[1]
-                catalogue_path = plugin_dir / catalogue_path
-
-        repo = JsonPartRepository(catalogue_path)
+        # The shipped catalogue stays read-only inside the signed payload and
+        # runtime writes go to the per-user directory; JsonPartRepository()
+        # with no arguments resolves both layers. An explicit path means one
+        # exact file and no shipped layer (tests, and anyone pointing the
+        # plugin at a prepared catalogue).
+        repo = JsonPartRepository(catalogue_path) if catalogue_path else JsonPartRepository()
         catalogue_service = PartsCatalogueService(repo)
         catalogue_service.initialize_cello_parts()
         self._services["parts_catalogue"] = catalogue_service

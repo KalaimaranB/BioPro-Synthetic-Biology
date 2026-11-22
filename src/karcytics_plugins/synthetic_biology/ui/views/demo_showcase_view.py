@@ -56,15 +56,17 @@ from ...analysis.state import SynBioState
 
 # Kinetics shared by all three transcription units of the demo oscillator.
 #
-# n = 2.5 is deliberate and load-bearing. A three-gene repressor ring only
-# oscillates above a Hopf threshold in the Hill coefficient — about n = 2.15 for
-# these kinetics, where a small limit cycle first appears and then grows; at the n = 2.1 this
-# demo used to request, the shipped engine returns a visibly damping trace
-# (amplitude 15.3 -> 1.4 RPU over 400 min), which is why the old hand-written
-# "sustained limit cycle" caption did not match the engine. At n = 2.5 the same
-# engine sustains the cycle (amplitude 24.3 -> 23.1 RPU over the same window),
-# so the caption and the plot now agree.
-DEMO_HILL_N = 2.5
+# n = 3.5 is deliberate and load-bearing. A three-gene repressor ring only
+# oscillates above a Hopf threshold in the Hill coefficient — n = 2.4514 for
+# these kinetics now that production is scaled by the degradation rate (it was
+# 2.1484 before, which is the figure this comment used to quote). At n = 3.5 the
+# engine holds the cycle (LacI amplitude 7.208 -> 6.439 RPU over 400 min, 89%
+# retained, period 27.8 min), so the "sustained limit cycle" caption and the
+# plot agree. 3.5 is above the cooperativity LacI, TetR and cI actually
+# provide: for a three-node ring the loop gain cannot exceed n, so n > 2 is
+# required and no physiological value oscillates in this reduction. See
+# CircuitSimulationEngine.create_preset_repressilator for the derivation.
+DEMO_HILL_N = 3.5
 DEMO_K_D = 1.0
 DEMO_Y_MAX = 10.0
 DEMO_Y_MIN = 0.001
@@ -133,7 +135,10 @@ _CI_CDS = (
     "GAAGAGACGTTTGGCTGA"
 )
 
-# Elowitz & Leibler (2000) repressilator, as a strand. The ring is
+# The cyclic repressor-ring topology of Elowitz & Leibler (2000), as a strand.
+# The simulator integrates a reduced, protein-only form of their model - see
+# simulation.circuit_engine.MODEL_PROVENANCE - so this is their wiring, not
+# their dynamics. The ring is
 # TetR -| LacI -| cI -| TetR: each promoter is repressed by the product of the
 # transcription unit before it, so ``circuit_from_parts`` recovers a three-node
 # negative-feedback cycle with no hand-written topology.
@@ -464,7 +469,9 @@ class DemoShowcaseView(QWidget):
             (
                 feat.name,
                 str(feat.feature_type).upper(),
-                f"{feat.start:,} - {feat.end:,} bp ({feat.end - feat.start:,} bp)",
+                # feat.length sums the segments; subtracting start from end is
+                # wrong for an origin-spanning feature (audit finding H-2).
+                f"{feat.span_label()} ({feat.length:,} bp)",
                 "+1 (Forward)" if feat.strand >= 0 else "-1 (Reverse)",
             )
             for feat in self._demo_plasmid.features
@@ -577,7 +584,8 @@ class DemoShowcaseView(QWidget):
                 g.pam,
                 f"{g.start:,}-{g.end:,} ({'+' if g.strand >= 0 else '−'})",
                 f"{g.gc_content:.1f}",
-                f"on {g.efficiency_score:.0f} / off {g.off_target_score:.0f}",
+                f"on {g.efficiency_score:.0f} / off {g.off_target_score:.0f} "
+                f"(in {g.off_target_search_bp:,} bp)",
             )
             for g in self._demo_grnas
         ]
@@ -585,7 +593,10 @@ class DemoShowcaseView(QWidget):
 
         crispr_note = QLabel(
             "Scores are the module's own rule-based heuristic (GC window, poly-T, "
-            "PAM-proximal base), not the published Doench 2016 or CFD models."
+            "PAM-proximal base), not the published Doench 2016 or CFD models. "
+            "The off-target figure counts near-matches within the submitted "
+            "sequence only — no genome is searched, so it is not evidence that "
+            "a guide is specific in a strain."
         )
         crispr_note.setObjectName("DemoNote")
         crispr_note.setWordWrap(True)

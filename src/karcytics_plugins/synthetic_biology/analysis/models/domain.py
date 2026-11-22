@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..units import OUTPUT_UNIT
+
 
 @dataclass
 class GeneticFeature:
@@ -19,12 +21,61 @@ class GeneticFeature:
     id: str
     name: str
     feature_type: str  # e.g., 'promoter', 'cds', 'terminator', 'rbs', 'origin', 'resistance'
-    start: int  # 0-indexed start position
-    end: int  # 0-indexed end position (exclusive)
+    #: 0-indexed start of the FIRST segment — where the feature begins on the
+    #: molecule. For a feature that wraps the origin this is greater than
+    #: ``end``, which is how the wrap is visible without consulting a flag.
+    start: int
+    #: 0-indexed, exclusive end of the LAST segment.
+    end: int
     strand: int = 1  # 1 for forward strand, -1 for reverse strand
     sequence: str = ""
     color: str = "#3B82F6"  # Visual accent hex code
     qualifiers: dict[str, list[str]] = field(default_factory=dict)
+    #: The location's parts, in biological order, as half-open spans. Empty
+    #: for an ordinary single-segment feature, where ``(start, end)`` says it
+    #: all. A GenBank ``join()`` — a spliced CDS, or a feature crossing the
+    #: origin — carries one entry per segment (audit finding H-2).
+    segments: tuple[tuple[int, int], ...] = ()
+    #: True when the segments run past the end of the molecule and back to
+    #: position 0. Distinct from merely having several segments: a spliced CDS
+    #: has parts in ascending order and does not wrap.
+    wraps_origin: bool = False
+
+    @property
+    def parts(self) -> tuple[tuple[int, int], ...]:
+        """The segments, uniformly — a single-segment feature included.
+
+        Callers that need every span should read this rather than
+        ``(start, end)``, which cannot describe a wrap.
+        """
+        return self.segments or ((self.start, self.end),)
+
+    @property
+    def length(self) -> int:
+        """Length in bases, summed over the segments.
+
+        This is the authoritative length. ``end - start`` is correct only for
+        a single-segment feature and is negative for one that wraps the
+        origin, which is deliberate: a wrong answer that is obviously wrong
+        beats one that is confidently wrong. Before H-2 was fixed, a 323 bp
+        origin-spanning ORF reported 5,243 bp — the whole plasmid.
+        """
+        return sum(max(end - start, 0) for start, end in self.parts)
+
+    def span_label(self, *, note_wrap: bool = True) -> str:
+        """The coordinates as a reader needs them.
+
+        One definition, so the feature table and the demo card cannot disagree
+        about how an origin-spanning feature is written. ``5,100-5,243 +
+        0-180`` for a wrap, ``350-1,100`` for anything else.
+
+        Args:
+            note_wrap: Append "(wraps origin)". Set False where the caller
+                already says so in its own words, to avoid nesting the note
+                inside another parenthesis.
+        """
+        spans = " + ".join(f"{start:,}-{end:,}" for start, end in self.parts)
+        return f"{spans} (wraps origin)" if self.wraps_origin and note_wrap else spans
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -37,6 +88,8 @@ class GeneticFeature:
             "sequence": self.sequence,
             "color": self.color,
             "qualifiers": self.qualifiers,
+            "segments": [list(seg) for seg in self.segments],
+            "wraps_origin": self.wraps_origin,
         }
 
     @classmethod
@@ -51,6 +104,8 @@ class GeneticFeature:
             sequence=data.get("sequence", ""),
             color=data.get("color", "#3B82F6"),
             qualifiers=data.get("qualifiers", {}),
+            segments=tuple(tuple(seg) for seg in data.get("segments", ()) or ()),
+            wraps_origin=data.get("wraps_origin", False),
         )
 
 
@@ -66,10 +121,30 @@ class Primer:
     direction: str  # 'FWD' or 'REV'
     target_tm: float
     calculated_tm: float
+    #: GC % of the **annealing region** only. A 5' restriction tail is excluded,
+    #: because it does not anneal on the first cycle and including it skews the
+    #: figure the rubric judges. Tail composition is `overhang_gc_content`.
     gc_content: float
     length: int
     overhang: str = ""
     target_region: tuple[int, int] | None = None
+
+    # ── Screening results (populated by analysis.assembly.primer_screen) ──
+    #: GC % of the 5' tail alone, or None when there is no tail. Reported
+    #: beside `gc_content`, never folded into it.
+    overhang_gc_content: float | None = None
+    #: Length of the annealing region, i.e. `length` minus the tail.
+    annealing_length: int = 0
+    #: Most stable hairpin / self-dimer ΔG°37, kcal/mol. None when not screened.
+    hairpin_dg: float | None = None
+    self_dimer_dg: float | None = None
+    #: Serialised `RubricCheck`s. Stored as plain dicts so persistence stays
+    #: JSON-safe and does not import the screening layer.
+    rubric_checks: list[dict[str, Any]] = field(default_factory=list)
+    #: "pass" / "fail" / "incomplete", or "" when the primer was never screened.
+    rubric_verdict: str = ""
+    #: Which rubric judged it, so a saved workspace records the standard applied.
+    rubric_name: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -83,6 +158,13 @@ class Primer:
             "length": self.length,
             "overhang": self.overhang,
             "target_region": self.target_region,
+            "overhang_gc_content": self.overhang_gc_content,
+            "annealing_length": self.annealing_length,
+            "hairpin_dg": self.hairpin_dg,
+            "self_dimer_dg": self.self_dimer_dg,
+            "rubric_checks": [dict(c) for c in self.rubric_checks],
+            "rubric_verdict": self.rubric_verdict,
+            "rubric_name": self.rubric_name,
         }
 
     @property
@@ -103,6 +185,18 @@ class Primer:
             length=data.get("length", len(data.get("sequence", ""))),
             overhang=data.get("overhang", ""),
             target_region=tuple(data["target_region"]) if data.get("target_region") else None,
+            # Screening fields default to "not screened" so a workspace saved
+            # before they existed still loads, rather than reading as a pass.
+            overhang_gc_content=data.get("overhang_gc_content"),
+            annealing_length=data.get(
+                "annealing_length",
+                len(data.get("sequence", "")) - len(data.get("overhang", "")),
+            ),
+            hairpin_dg=data.get("hairpin_dg"),
+            self_dimer_dg=data.get("self_dimer_dg"),
+            rubric_checks=list(data.get("rubric_checks") or []),
+            rubric_verdict=data.get("rubric_verdict", ""),
+            rubric_name=data.get("rubric_name", ""),
         )
 
 
@@ -162,9 +256,18 @@ class gRNACandidate:  # noqa: N801 — standard molecular-biology nomenclature (
     end: int
     gc_content: float
     efficiency_score: float  # Rule-based heuristic score (0-100%); not Doench 2016
-    off_target_score: float  # Heuristic off-target score (0-100%, 100 = fewest hits); not CFD
+    # Heuristic off-target score (0-100%, 100 = fewest hits); not CFD. Means
+    # "fewest hits *within the span that was searched*" -- see the two fields
+    # below, which record what that span was. A score with no search space
+    # attached is how this became a safety claim it could not support.
+    off_target_score: float
     off_target_hits: list[dict[str, Any]] = field(default_factory=list)
     has_poly_t_term: bool = False  # True if sequence contains >3 consecutive Ts
+    #: Bases actually searched for off-targets. 0 means not recorded.
+    off_target_search_bp: int = 0
+    #: What was searched, e.g. "submitted sequence". Never "genome" unless a
+    #: genome was really loaded and searched (audit finding C-2(b)).
+    off_target_search_space: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -180,6 +283,8 @@ class gRNACandidate:  # noqa: N801 — standard molecular-biology nomenclature (
             "off_target_score": self.off_target_score,
             "off_target_hits": self.off_target_hits,
             "has_poly_t_term": self.has_poly_t_term,
+            "off_target_search_bp": self.off_target_search_bp,
+            "off_target_search_space": self.off_target_search_space,
         }
 
     @classmethod
@@ -197,6 +302,8 @@ class gRNACandidate:  # noqa: N801 — standard molecular-biology nomenclature (
             off_target_score=data.get("off_target_score", 100.0),
             off_target_hits=data.get("off_target_hits", []),
             has_poly_t_term=data.get("has_poly_t_term", False),
+            off_target_search_bp=data.get("off_target_search_bp", 0),
+            off_target_search_space=data.get("off_target_search_space", ""),
         )
 
 
@@ -335,6 +442,11 @@ class SimulationResult:
     species_concentrations: dict[str, list[float]] = field(default_factory=dict)
     status_message: str = "Success"
     success: bool = True
+    #: The unit the concentrations are in. Travels with the result so a view
+    #: labels its axis from what it was handed rather than from a constant it
+    #: hopes still applies -- which is how four axes came to read RPU while
+    #: the engine was returning RPU x min.
+    unit: str = OUTPUT_UNIT
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -342,6 +454,7 @@ class SimulationResult:
             "species_concentrations": self.species_concentrations,
             "status_message": self.status_message,
             "success": self.success,
+            "unit": self.unit,
         }
 
     @classmethod
@@ -351,4 +464,7 @@ class SimulationResult:
             species_concentrations=data.get("species_concentrations", {}),
             status_message=data.get("status_message", "Success"),
             success=data.get("success", True),
+            # Default rather than "" so a payload from an older build is read
+            # as RPU instead of as a trace with no unit at all.
+            unit=data.get("unit", OUTPUT_UNIT),
         )
