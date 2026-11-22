@@ -328,7 +328,9 @@ def test_the_canvas_accepts_a_file_drag_it_used_to_refuse(view, tmp_path):
         dropped_file_paths,
     )
 
-    assert dropped_file_paths(mime) == [str(path)]
+    # Compared as paths, not strings: QUrl.toLocalFile() returns forward
+    # slashes on Windows, where the same file is also spelt with backslashes.
+    assert [Path(p) for p in dropped_file_paths(mime)] == [path]
     assert dropped_file_paths(QMimeData()) == [], "a drag with no urls carries no files"
 
 
