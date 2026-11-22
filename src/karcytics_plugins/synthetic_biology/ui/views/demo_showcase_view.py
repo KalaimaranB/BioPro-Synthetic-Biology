@@ -469,7 +469,9 @@ class DemoShowcaseView(QWidget):
             (
                 feat.name,
                 str(feat.feature_type).upper(),
-                f"{feat.start:,} - {feat.end:,} bp ({feat.end - feat.start:,} bp)",
+                # feat.length sums the segments; subtracting start from end is
+                # wrong for an origin-spanning feature (audit finding H-2).
+                f"{feat.span_label()} ({feat.length:,} bp)",
                 "+1 (Forward)" if feat.strand >= 0 else "-1 (Reverse)",
             )
             for feat in self._demo_plasmid.features

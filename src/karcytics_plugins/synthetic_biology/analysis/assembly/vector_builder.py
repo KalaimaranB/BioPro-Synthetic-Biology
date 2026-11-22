@@ -14,7 +14,7 @@ from typing import Any
 
 from Bio import SeqIO
 from Bio.Seq import Seq
-from Bio.SeqFeature import FeatureLocation, SeqFeature
+from Bio.SeqFeature import CompoundLocation, FeatureLocation, SeqFeature
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqUtils import MeltingTemp
 
@@ -67,6 +67,35 @@ class MissingPartSequenceError(ValueError):
         )
 
 
+def _location_segments(location: Any) -> tuple[tuple[tuple[int, int], ...], bool]:
+    """Split a Biopython location into ordered half-open segments.
+
+    Audit finding H-2. Biopython reports ``CompoundLocation.start`` as the
+    minimum part start and ``.end`` as the maximum part end. For a feature
+    that crosses the origin — GenBank ``join(5101..5243,1..180)``, a 323 bp
+    ORF on a 5,243 bp plasmid — those are 0 and 5243, so reading them flattens
+    a short feature into the entire molecule. Nine ordinary features on the
+    same record import exactly; this one became a 5,243 bp CDS in the feature
+    table, which is the confidently-wrong category.
+
+    The wrap is detected from the ORDER of the parts, not their number. A
+    spliced CDS, ``join(100..200,300..400)``, has parts in ascending order and
+    does not wrap. A feature crossing the origin returns to a lower
+    coordinate, so some part starts before its predecessor.
+
+    Args:
+        location: A Biopython ``FeatureLocation`` or ``CompoundLocation``.
+
+    Returns:
+        ``(segments, wraps_origin)`` with segments in biological order and at
+        least one entry.
+    """
+    parts = list(getattr(location, "parts", None) or [location])
+    segments = tuple((int(part.start), int(part.end)) for part in parts)
+    wraps = any(segments[i][0] < segments[i - 1][0] for i in range(1, len(segments)))
+    return segments, wraps
+
+
 class VectorAssemblyEngine:
     """Core domain service for sequence file parsing, vector construction,
     and primer design.
@@ -116,17 +145,30 @@ class VectorAssemblyEngine:
                     strand_val = feat.location.strand
                 color = type_color_map.get(ftype, "#3B82F6")
 
+                segments, wraps = _location_segments(feat.location)
+                # start/end describe where the feature begins and ends on the
+                # molecule. For a wrap that means end < start; the segments and
+                # the length property carry the truth.
+                first_start = segments[0][0]
+                last_end = segments[-1][1]
+
                 features.append(
                     GeneticFeature(
                         id=str(uuid.uuid4())[:8],
                         name=fname,
                         feature_type=ftype,
-                        start=int(feat.location.start),
-                        end=int(feat.location.end),
+                        start=first_start,
+                        end=last_end,
                         strand=strand_val,
-                        sequence=sequence_str[int(feat.location.start) : int(feat.location.end)],
+                        sequence="".join(
+                            sequence_str[seg_start:seg_end] for seg_start, seg_end in segments
+                        ),
                         color=color,
                         qualifiers={k: list(v) for k, v in feat.qualifiers.items()},
+                        # A single-segment feature carries no segment list:
+                        # (start, end) already says everything about it.
+                        segments=() if len(segments) == 1 else segments,
+                        wraps_origin=wraps,
                     )
                 )
 
@@ -163,8 +205,15 @@ class VectorAssemblyEngine:
         bio_features = []
         for feat in vector.features:
             strand_val = 1 if feat.strand >= 0 else -1
+            spans = [
+                FeatureLocation(seg_start, seg_end, strand=strand_val)
+                for seg_start, seg_end in feat.parts
+            ]
+            # A multi-segment feature must round-trip as a join(), or the wrap
+            # that import now preserves is flattened again on the way out.
+            location = spans[0] if len(spans) == 1 else CompoundLocation(spans)
             bio_feat = SeqFeature(
-                FeatureLocation(feat.start, feat.end, strand=strand_val),
+                location,
                 type=feat.feature_type,
                 qualifiers={"label": [feat.name], "note": [f"Color: {feat.color}"]},
             )

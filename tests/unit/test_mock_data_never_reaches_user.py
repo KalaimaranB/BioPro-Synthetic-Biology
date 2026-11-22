@@ -37,7 +37,11 @@ from karcytics_plugins.synthetic_biology.analysis.empirical.ml_optimizer import 
 from karcytics_plugins.synthetic_biology.analysis.empirical.ngs_alignment import (
     NGSAlignmentService,
 )
-from karcytics_plugins.synthetic_biology.analysis.models.domain import PlasmidVector
+from karcytics_plugins.synthetic_biology.analysis.models.domain import (
+    CircuitComponent,
+    PlasmidVector,
+    SimulationParameters,
+)
 from karcytics_plugins.synthetic_biology.analysis.result_integrity import (
     DEMO,
     FAILED,
@@ -253,18 +257,60 @@ def test_the_optimiser_panel_does_not_show_a_synthetic_fit_as_a_result(app, dest
 
 
 @pytest.mark.unit
-def test_the_demonstration_fit_is_reproducible():
-    """Three identical runs gave MSE 0.2319 / 0.1890 / 0.2435 before the seed."""
-    fcs = FCSDataIngestionService().ingest_fcs_file("/tmp/does_not_exist.fcs")
-    finals = []
-    for _ in range(3):
-        components, edges = CircuitSimulationEngine.create_preset_repressilator()
-        finals.append(
-            CircuitMLOptimizationEngine.fit_kinetic_parameters(components, edges, fcs).final_mse
-        )
+def test_the_demonstration_targets_are_reproducible():
+    """Three identical runs gave MSE 0.2319 / 0.1890 / 0.2435 before the seed.
 
-    assert len(set(finals)) == 1, f"demonstration fit is not reproducible: {finals}"
+    Asserts the seeded step — the synthetic targets — rather than the fitted
+    error. The targets are the only stochastic input, so identical targets
+    mean an identical fit, and testing them directly avoids running three
+    L-BFGS-B optimisations that each integrate the repressilator ODE per
+    objective evaluation. The original form of this test took over two minutes
+    and timed out on the Windows runner.
+    """
+    components, edges = CircuitSimulationEngine.create_preset_repressilator()
+    simulated = CircuitSimulationEngine.simulate_circuit(
+        components, edges, SimulationParameters(t_start=0.0, t_end=100.0, num_points=50)
+    )
+
+    runs = [
+        CircuitMLOptimizationEngine._build_target_curves(components, simulated, None)[0]
+        for _ in range(3)
+    ]
+
+    assert runs[0] == runs[1] == runs[2], "the demonstration targets are not reproducible"
+    assert runs[0], "fixture guard: targets were actually built"
     assert DEMO_TARGET_SEED
+
+
+@pytest.mark.unit
+def test_the_demonstration_fit_is_reproducible_end_to_end():
+    """The same property through the public entry point, on a one-gene circuit.
+
+    Kept small deliberately: the point is that the fit is deterministic, not
+    that a three-gene ring optimises quickly.
+    """
+    fcs = FCSDataIngestionService().ingest_fcs_file("/tmp/does_not_exist.fcs")
+    gene = CircuitComponent(
+        id="P",
+        name="P",
+        component_type="cds",
+        y_min=0.001,
+        y_max=10.0,
+        K_d=1.0,
+        n=2.0,
+        degradation_rate=0.2,
+        initial_concentration=0.0,
+    )
+    params = SimulationParameters(t_start=0.0, t_end=20.0, num_points=10)
+
+    finals = [
+        CircuitMLOptimizationEngine.fit_kinetic_parameters(
+            [gene], [], fcs, sim_params=params
+        ).final_mse
+        for _ in range(2)
+    ]
+
+    assert finals[0] == finals[1], f"not reproducible: {finals}"
 
 
 @pytest.mark.unit
