@@ -17,6 +17,7 @@ from karcytics_plugins.synthetic_biology.analysis.assembly import restriction as
 from karcytics_plugins.synthetic_biology.analysis.assembly.vector_builder import (
     VectorAssemblyEngine,
 )
+from karcytics_plugins.synthetic_biology.analysis.state import SynBioState
 from karcytics_plugins.synthetic_biology.ui.widgets.amplification_track import AmplificationTrack
 from karcytics_plugins.synthetic_biology.ui.widgets.gel_view import GelView
 from karcytics_plugins.synthetic_biology.ui.widgets.provenance_badge import ProvenanceBadge
@@ -346,7 +347,12 @@ def test_the_dialog_names_the_enzyme_for_a_tail_via_the_engine(app, destroy_afte
     )
 
     class _Controller:
-        state = None
+        # A real state, because PlasmidAssemblyController annotates it
+        # SynBioState rather than SynBioState | None and production always
+        # passes one. The stub used to carry None, which the feature
+        # selector's getattr default tolerated — the same default that hid
+        # audit finding H-3.
+        state = SynBioState()
 
         def handle_primer_design(self, **_kwargs):
             return []
@@ -366,7 +372,12 @@ def test_the_dialog_ranks_candidates_rather_than_showing_one_pair(app, destroy_a
     )
 
     class _Controller:
-        state = None
+        # A real state, because PlasmidAssemblyController annotates it
+        # SynBioState rather than SynBioState | None and production always
+        # passes one. The stub used to carry None, which the feature
+        # selector's getattr default tolerated — the same default that hid
+        # audit finding H-3.
+        state = SynBioState()
 
     dialog = destroy_after(PrimerDesignDialog(SYNTHETIC_ORF, _Controller()))
     candidates = VectorAssemblyEngine.generate_primer_candidates(SYNTHETIC_ORF, limit=4)
