@@ -256,23 +256,76 @@ jobs:
           KARCYTICS_PROJECT_PRIVATE_KEY: ${{ secrets.KARCYTICS_PROJECT_PRIVATE_KEY }}
           QT_QPA_PLATFORM: offscreen
 
+      # What ships to an end user is decided HERE, by EXCLUDE_PATTERNS, and
+      # nowhere else. `custom_exclusions` in pyproject.toml is a different knob:
+      # it tells the SDK signer which files to leave OUT of security.json, so it
+      # governs what is *verified*, not what is *packaged*. The two must agree in
+      # one direction -- the host's integrity check fails with "Missing File"
+      # for anything security.json lists that the zip does not carry -- which
+      # tests/unit/test_release_manifest.py pins. Note that .md and .pdf are not
+      # in the SDK's MANDATORY_EXTENSIONS at all, so no document dropped below
+      # was ever in the ledger and excluding it needs no signing change.
       - name: Build Release ZIP
+        shell: bash
         run: |
           PLUGIN_ID="${{ needs.check_version.outputs.plugin_id }}"
           NEW_VERSION="${{ needs.check_version.outputs.version }}"
           ZIP_NAME="${PLUGIN_ID}_v${NEW_VERSION}.zip"
 
-          zip -r "$ZIP_NAME" . \
-            --exclude "*.git*" \
-            --exclude "*tests/*" \
-            --exclude "*__pycache__/*" \
-            --exclude "*.venv/*" \
-            --exclude "*.plugin_venv/*" \
-            --exclude "*.DS_Store" \
-            --exclude "*.pem" \
-            --exclude "*.key" \
-            --exclude "*.pytest_cache/*" \
-            --exclude "*.github/*"
+          EXCLUDE_PATTERNS=(
+            # Repository and build machinery. Never part of a payload.
+            "*.git*"
+            "*tests/*"
+            "*__pycache__/*"
+            "*.venv/*"
+            "*.plugin_venv/*"
+            "*.DS_Store"
+            "*.pem"
+            "*.key"
+            "*.pytest_cache/*"
+            "*.github/*"
+
+            # Tool caches and build output. `zip -r .` packages whatever is on
+            # disk, and these are absent from a release only because the runner
+            # does a clean checkout -- one added `uv build`, `mypy` or `ruff`
+            # step before this one and they would ship. Excluded deliberately
+            # rather than left to the checkout staying clean.
+            "*.mypy_cache/*"
+            "*.ruff_cache/*"
+            "dist/*"
+            "build/*"
+            "*.egg-info/*"
+            ".coverage"
+            "reqs.txt"
+
+            # Contributor documents: about building this plugin, not about using
+            # it. All six shipped through v0.2.0 to people who installed it.
+            "CLAUDE.md"
+            "CONTRIBUTING.md"
+            "DEMO_PRESENTATION.md"
+            "note.md"
+            "feature_literature_importer.md"
+            "feature_theoretical_predictor.md"
+            "SynBio Gate Construction Plan.md"
+
+            # Developer tool configuration. Both .yaml files below ARE in
+            # security.json, so they are listed in custom_exclusions too;
+            # dropping one here without the other breaks installation.
+            ".coderabbit.yaml"
+            ".pre-commit-config.yaml"
+            "ruff.toml"
+            "*.vscode/*"
+
+            # An empty R console history, committed by accident.
+            "docs/.Rhistory"
+          )
+
+          ZIP_ARGS=()
+          for pattern in "${EXCLUDE_PATTERNS[@]}"; do
+            ZIP_ARGS+=( --exclude "$pattern" )
+          done
+
+          zip -r "$ZIP_NAME" . "${ZIP_ARGS[@]}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
