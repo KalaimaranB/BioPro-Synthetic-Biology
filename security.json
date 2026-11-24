@@ -1,14 +1,14 @@
 {
     "security_version": 1,
     "plugin_id": "synthetic_biology",
-    "manifest_hash": "4c190c206315c165322a6734a574b53d443d3fc5eeb4b1e2cbeb2352f064455f",
+    "manifest_hash": "b86c297dd68e40b212ae8e25d988f891a2cf1f94067765fcdb76f6ec3865228f",
     "exclusions": [
-        "tests"
+        "tests",
+        ".coderabbit.yaml",
+        ".pre-commit-config.yaml"
     ],
     "hashes": {
         ".ci_keys/runner_delegation.json": "37bbec306d060d2c3c2034764718adfddc9d36195dd694a44d38fdec470ac445",
-        ".coderabbit.yaml": "d7a42d7a5be5df694b1cf2309aff880769145145f7b5f37351b5eef54951ff61",
-        ".pre-commit-config.yaml": "33172c894a3dfcf164ffac319e9d26acfceb203812affe53f5c5738c94146d04",
         "catalogue.json": "654b0702cbe3b4c9b6bf7b8e8c06354c7057f46851b9d7e676a65fa88858f4e6",
         "mkdocs.yml": "78a1fecf655616d169a8016603caed391d63b3ae0d44a7978e54282e2cc8bf0f",
         "scripts/check_commit_msg.py": "c9a81d8e4c67fed88bc0dda286051a490e42a2d590c1dea191cac567bce65021",

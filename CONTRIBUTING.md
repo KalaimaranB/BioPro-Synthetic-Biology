@@ -103,6 +103,42 @@ Urgent fixes bypass `develop` and go straight to `main`.
 `chore/back-merge-main-<SHA>` against `develop`, and auto-merges it with a
 standard merge. This keeps `develop` in sync after a hotfix or a promotion.
 
+### A fallback branch must not report a refusal as a no-op
+
+When a command can fail for both an expected reason and an unexpected one, the
+fallback has to tell them apart. **"Nothing to do" stays green and says what it
+established. "I could not do it" fails the job and prints what the thing that
+refused actually said.** A fallback may only go green on positive evidence of
+the no-op, obtained by its own check — never inferred from the failure.
+
+This is a correctness rule, not a style preference, because the same mistake has
+now been found three times in one audit cycle, each time as code overwriting
+accurate information about its own failure with a plausible success:
+
+| Where | Accurate signal received | Plausible success written over it |
+| --- | --- | --- |
+| C-3, C-4 | A payload's own `is_mock` flag | Views discarded it and drew the data as real |
+| H-3 | A wrong attribute name | A `getattr` default returned `[]`, which looked like "no items" |
+| back-merge.yml | `GitHub Actions is not permitted to create or approve pull requests` | `PR already exists or no changes needed, skipping`, exit 0 |
+
+The back-merge instance is the one to keep in mind when writing a new workflow
+step. At the v0.2.0 promotion the run went green in 18 seconds having opened no
+PR at all; the missing back-merge was caught only because a human went looking
+for it. A green check that means nothing is worse than a red one, because it
+stops anybody looking.
+
+In practice, for a shell step:
+
+- Put the expected no-op behind its **own** query (`gh pr list` to confirm a PR
+  really is open; `git rev-list` to confirm there really is nothing to carry).
+- Let the step exit non-zero otherwise, and `echo "::error::"` the remedy.
+- Never write `|| echo "...skipping"` as the last word on a command whose
+  failure you have not classified.
+
+A warning is the right call only when the step's actual goal was reached and
+something secondary failed — e.g. the PR is open but auto-merge could not be
+enabled. Use `::warning::` there so it still shows up in the run summary.
+
 ---
 
 ## 6. Visualizing the Graph

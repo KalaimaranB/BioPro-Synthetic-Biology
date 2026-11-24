@@ -32,6 +32,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.BOT_TOKEN || github.token }}
         run: |
+          set -euo pipefail
+
           SHA=$(git rev-parse --short origin/main)
           BRANCH="chore/back-merge-main-${SHA}"
 
@@ -40,13 +42,61 @@ jobs:
 
           BODY="Automated back-merge triggered by a push to main. Keeps develop in sync after a hotfix/* branch (or a promotion) merged into main. Review for conflicts before merging."
 
+          # `gh pr create` fails for two unrelated reasons, and this step used to
+          # log both as a PR that already existed or nothing needing doing, then
+          # exit 0. At the v0.2.0 promotion the actual failure was the Actions
+          # token being refused permission to create pull requests: the run went
+          # green having opened nothing, and the missing back-merge was caught
+          # only because a human went looking for the PR.
+          #
+          # So nothing below infers success from a failure. A green skip now
+          # requires positive evidence that there was genuinely nothing to do --
+          # a back-merge PR that is actually open, or a develop that already
+          # contains every commit on main -- each established by its own query.
+          # Anything else fails the job and prints what the API said.
+          ERR_FILE="${RUNNER_TEMP:-/tmp}/gh-pr-create.err"
+
           if PR_URL=$(gh pr create \
             --base develop \
             --head "$BRANCH" \
             --title "chore: back-merge main into develop (${SHA})" \
-            --body "$BODY"); then
+            --body "$BODY" 2>"$ERR_FILE"); then
             echo "PR created: $PR_URL"
-            gh pr merge "$PR_URL" --auto --merge || echo "Auto-merge could not be enabled. Please enable 'Allow auto-merge' in Repo Settings."
-          else
-            echo "PR already exists or no changes needed, skipping."
+            # A failure here leaves the PR open for a human to merge, so the
+            # back-merge itself has still happened -- but it is surfaced as a
+            # warning rather than swallowed, because the repo setting it needs
+            # is otherwise invisible until someone notices PRs piling up.
+            gh pr merge "$PR_URL" --auto --merge \
+              || echo "::warning::Auto-merge could not be enabled on $PR_URL. The PR is open and needs a manual merge. Enable 'Allow auto-merge' in Settings -> General."
+            exit 0
           fi
+
+          echo "gh pr create did not succeed. Its own output was:"
+          cat "$ERR_FILE"
+
+          # Real no-op #1: the PR for this exact head is already open. Asked of
+          # the API directly rather than guessed from the create failure, so a
+          # refusal cannot be mistaken for it.
+          EXISTING=$(gh pr list --head "$BRANCH" --base develop --state open \
+            --json url --jq '.[0].url // empty' 2>/dev/null || true)
+          if [ -n "$EXISTING" ]; then
+            echo "Nothing to do: the back-merge PR for ${SHA} is already open at ${EXISTING}"
+            exit 0
+          fi
+
+          # Real no-op #2: develop already contains everything on main. Expected
+          # and common -- develop is usually ahead, and a promotion merge leaves
+          # nothing to carry back. The `behind` gate above catches the ordinary
+          # case; this catches develop advancing while this job was running.
+          git fetch origin develop --quiet
+          REMAINING=$(git rev-list "origin/develop..${BRANCH}" --count)
+          if [ "$REMAINING" = "0" ]; then
+            echo "Nothing to do: develop already contains every commit on main (${SHA})."
+            exit 0
+          fi
+
+          # Neither no-op holds, so the API refused us and develop is genuinely
+          # $REMAINING commit(s) behind. Fail loudly: a silent pass here is how
+          # the v0.2.0 back-merge went missing.
+          echo "::error::Could not open the back-merge PR for ${SHA}. No PR is open for ${BRANCH} and develop is still ${REMAINING} commit(s) behind main, so this is a refusal, not a no-op. See the gh output above. If it names the Actions token, this needs ONE of: (a) Settings -> Actions -> General -> Workflow permissions -> 'Allow GitHub Actions to create and approve pull requests', or (b) a BOT_TOKEN secret with a PAT, which this step already prefers when present."
+          exit 1

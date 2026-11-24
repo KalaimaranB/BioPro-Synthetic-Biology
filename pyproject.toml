@@ -93,7 +93,16 @@ Known limitations
 - Off-target search covers loaded sequences only; no genome FASTA loading yet.
 - Codon-usage and promoter-motif findings of the audit remain open at Medium.
 """
-custom_exclusions = ["tests"]
+# Files the SDK signer leaves out of security.json. This is NOT the packaging
+# list: what reaches an end user is decided by EXCLUDE_PATTERNS in
+# .github/workflows/release.yml. The only entries that belong here are files
+# excluded from the release zip that the signer would otherwise hash, because
+# the host fails installation with "Missing File" for any ledger entry the zip
+# does not carry. .md and .pdf are outside the SDK's MANDATORY_EXTENSIONS and
+# are never hashed, so contributor documents are dropped by the zip alone and
+# must not be added here -- an entry that changes nothing reads like protection
+# it is not providing.
+custom_exclusions = ["tests", ".coderabbit.yaml", ".pre-commit-config.yaml"]
 requires = ["task_scheduler", "logger", "event_bus"]
 tags = ["synthetic biology", "logic gates", "genetic circuits", "CRISPR", "kinetic simulation", "SBOL", "bioinformatics"]
 homepage = "https://github.com/KalaimaranB/Karcytics-SyntheticBiology"
