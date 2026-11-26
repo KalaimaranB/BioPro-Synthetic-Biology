@@ -1,7 +1,7 @@
 {
     "security_version": 1,
     "plugin_id": "synthetic_biology",
-    "manifest_hash": "4c190c206315c165322a6734a574b53d443d3fc5eeb4b1e2cbeb2352f064455f",
+    "manifest_hash": "26cbf8cb2f8da1daf0e2c9d2d7e391f0beab41ab3dc840feab1caab8c65bc6fa",
     "exclusions": [
         "tests"
     ],
@@ -10,7 +10,7 @@
         ".coderabbit.yaml": "d7a42d7a5be5df694b1cf2309aff880769145145f7b5f37351b5eef54951ff61",
         ".pre-commit-config.yaml": "33172c894a3dfcf164ffac319e9d26acfceb203812affe53f5c5738c94146d04",
         "catalogue.json": "654b0702cbe3b4c9b6bf7b8e8c06354c7057f46851b9d7e676a65fa88858f4e6",
-        "mkdocs.yml": "78a1fecf655616d169a8016603caed391d63b3ae0d44a7978e54282e2cc8bf0f",
+        "mkdocs.yml": "77588a2bceebf7d0f6dd71ecf92dcc1215d0f99b2006bd96852218bd073d6eae",
         "scripts/check_commit_msg.py": "c9a81d8e4c67fed88bc0dda286051a490e42a2d590c1dea191cac567bce65021",
         "scripts/run_demo_showcase.py": "e0cc3524af5a8a8880f742d6daee50ac7d859aaa4ab058abd81cfa9a80596ef0",
         "scripts/verify_security_ledger.py": "69405385893e17e4a0700a425eba981c9cf893b7f61c2bf8c93678264fc8ef96",

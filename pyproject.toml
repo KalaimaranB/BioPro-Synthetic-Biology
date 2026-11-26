@@ -51,6 +51,7 @@ where = ["src"]
 synthetic_biology = "karcytics_plugins.synthetic_biology:initialize"
 
 [tool.karcytics.plugin]
+released_at = "2026-11-25"
 id = "synthetic_biology"
 display_name = "Synthetic Biology"
 name = "Synthetic Biology Module"
