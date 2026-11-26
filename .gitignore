@@ -82,3 +82,6 @@ temp_test_cat.json
 /src/catalogue.json
 docs_shots/
 Karcytics_SynBio_Audit.pdf
+
+# Built docs (wrangler.toml)
+site/
