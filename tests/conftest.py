@@ -539,6 +539,13 @@ def _load_real_sdk_module(name: str) -> types.ModuleType:
 
 real_citations = _load_real_sdk_module("citations")
 real_citation_widgets = _load_real_sdk_module("citation_widgets")
+# ``tutorial_models`` is in the same category: pure abc/dataclasses/typing, no
+# Hub and no Qt. The Academy course tests need the real one, because the thing
+# worth testing about a course is the validation ``QuestionStep.__post_init__``
+# applies — that a check question has exactly one correct answer and that every
+# wrong choice carries feedback. Against a mock those assertions would pass for
+# any object at all.
+real_tutorial_models = _load_real_sdk_module("tutorial_models")
 mock_karcytics_sdk_plugin.Citation = real_citations.Citation
 mock_karcytics_sdk_plugin.MethodStep = real_citations.MethodStep
 mock_karcytics_sdk_plugin.CitationLabel = real_citation_widgets.CitationLabel

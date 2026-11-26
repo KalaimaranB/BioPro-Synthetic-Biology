@@ -10,9 +10,11 @@ own modules under ``ui/widgets/``, ``ui/canvas/``, and ``ui/ribbons/``.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from karcytics_sdk.plugin import PluginBase, get_logger
+from karcytics_sdk.plugin.components import AcademyButton
 from karcytics_sdk.plugin.theme_fallback import Colors, Fonts, theme_manager
 from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import (
@@ -24,6 +26,8 @@ from PySide6.QtWidgets import (
 
 # Relative imports — all within this plugin
 from ..analysis.state import SynBioState
+from ..tutorials import ALL_COURSES
+from ..tutorials.context import PrimerDialogSnapshot, SynBioAcademyContext
 
 logger = get_logger(__name__, "synthetic_biology")
 
@@ -105,6 +109,7 @@ class SynBioPanel(PluginBase):
         self._methods_dialog: Any = None
         self._setup_ui()
         self._setup_workspace_persistence()
+        self._register_academy_courses()
 
     def _setup_services(self) -> None:
         """Initialize and wire all core analysis and UI services."""
@@ -255,7 +260,19 @@ class SynBioPanel(PluginBase):
         self._save_button.save_requested.connect(self.save_workspace_as)
         self._save_button.update_requested.connect(self.save_workspace)
 
-        for control in (self._btn_open_workspace, self._btn_methods, self._save_button):
+        # Courses are useless if nobody can find them. The SDK's button opens
+        # the same catalogue (cards, progress, badges) that the isolated
+        # window's Help > Academy action does, so this is an extra door to one
+        # place rather than a second entry point to maintain.
+        self._btn_academy = AcademyButton(self, tab_row)
+        self._btn_academy.setToolTip("Guided courses for this module")
+
+        for control in (
+            self._btn_open_workspace,
+            self._btn_methods,
+            self._btn_academy,
+            self._save_button,
+        ):
             tab_row_layout.addWidget(control)
         layout.addWidget(tab_row)
 
@@ -499,6 +516,81 @@ class SynBioPanel(PluginBase):
             elif hasattr(child, "refresh_styles"):
                 child.refresh_styles()
             child.update()
+
+    # ── Academy ────────────────────────────────────────────────────────
+
+    def academy_context(self) -> SynBioAcademyContext:
+        """The read-only snapshot this module's Academy validators inspect.
+
+        Rebuilt on every poll, from public reads only. ``PluginBase`` returns
+        ``None`` here by default, which would leave every context-dependent
+        validator permanently unsatisfied, so a course that teaches inside the
+        primer dialog does not work until this exists.
+
+        Every access is guarded. The driver polls this while a step is on
+        screen, and a view part-way through a rebuild must not take the
+        overlay down — an empty field only leaves a step unsatisfied, which
+        the learner can recover from.
+        """
+        plasmid = None
+        try:
+            plasmid = self.state.get_active_plasmid()
+        except Exception:
+            logger.debug("Academy context: active plasmid unavailable", exc_info=True)
+
+        primer_dialog = PrimerDialogSnapshot()
+        reader = getattr(self.plasmid_view, "academy_primer_dialog", None)
+        if callable(reader):
+            try:
+                primer_dialog = reader()
+            except Exception:
+                logger.debug("Academy context: primer dialog unavailable", exc_info=True)
+
+        notice = ""
+        label = getattr(self.plasmid_view, "import_notice", None)
+        if label is not None and not label.isHidden():
+            notice = label.text()
+
+        viewer = getattr(self.plasmid_view, "seq_display", None)
+
+        return SynBioAcademyContext(
+            active_tab_index=self._tab_bar.currentIndex(),
+            plasmid_name=getattr(plasmid, "name", "") if plasmid else "",
+            plasmid_length_bp=len(getattr(plasmid, "sequence", "")) if plasmid else 0,
+            plasmid_feature_count=len(getattr(plasmid, "features", ())) if plasmid else 0,
+            plasmid_is_circular=bool(getattr(plasmid, "is_circular", False)),
+            sequence_viewer_has_text=bool(viewer is not None and viewer.toPlainText().strip()),
+            import_notice_text=notice,
+            method_kinds=tuple(entry.get("kind", "") for entry in self.state.methods_log),
+            primer_dialog=primer_dialog,
+        )
+
+    def _register_academy_courses(self) -> None:
+        """Hand this module's courses to the plugin-process Academy manager.
+
+        Registration is per plugin id, and `AcademyCatalogWindow` reads the
+        same manager, so a course becomes visible in 🎓 Cyto Academy the
+        moment it is registered. Failures are logged and swallowed: a plugin
+        whose Academy cannot start must still open as an analysis tool.
+        """
+        try:
+            from karcytics_sdk.plugin.runtime_services import tutorial_manager
+        except Exception:
+            logger.debug("Academy unavailable in this process; courses not registered")
+            return
+
+        plugin_id = os.environ.get("KARCYTICS_PLUGIN_ID", "synthetic_biology")
+        registered = {c.id for c in tutorial_manager.get_courses_for_module(plugin_id)}
+        for course in ALL_COURSES:
+            # The panel can be rebuilt within one process (a workspace
+            # reopened), and `register_storyboard` appends without checking,
+            # so without this the catalogue grows a duplicate card per rebuild.
+            if course.id in registered:
+                continue
+            try:
+                tutorial_manager.register_storyboard(plugin_id, course)
+            except Exception:
+                logger.warning("Could not register Academy course %s", course.id, exc_info=True)
 
     # ── State Management (Karcytics interface) ─────────────────────────
 
