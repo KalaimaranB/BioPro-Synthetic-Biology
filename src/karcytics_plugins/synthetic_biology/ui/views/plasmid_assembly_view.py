@@ -241,6 +241,11 @@ class PrimerDesignDialog(QDialog):
         # one here fails a test rather than silently producing a lesson that
         # highlights nothing.
         self.tabs.setObjectName("primer_result_tabs")
+        # The strip of clickable tabs, named separately from the widget. A step
+        # that says "open the Gel tab" must highlight the tabs themselves; the
+        # QTabWidget's rect is the whole page below them, so spotlighting that
+        # lit up the content and left the thing to click in the dark.
+        self.tabs.tabBar().setObjectName("primer_result_tabbar")
         self.tabs.addTab(self._build_candidates_tab(), "Candidates")
         self.tabs.addTab(self._build_amplification_tab(), "Amplification")
         self.tabs.addTab(self._build_gel_tab(), "Gel")

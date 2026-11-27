@@ -207,3 +207,83 @@ def test_tab_bar_does_not_dictate_the_window_width(destroy_after):
     # default widget hints).
     assert panel.sizeHint().width() < panel._tab_bar.sizeHint().width()
     assert panel.sizeHint().width() <= MAX_PANEL_MIN_WIDTH + 400
+
+
+# ── The tab row's own controls ─────────────────────────────────────────────
+#
+# Eleven tabs already compete for this row's width (see
+# test_tab_bar_does_not_dictate_the_window_width), so what else sits in it is a
+# width decision as much as a layout one. "📂 Open" was removed because opening
+# a saved workflow belongs to the Hub, which lists them under Recent Sessions —
+# the plugin's own button was a second door to one place.
+
+
+def test_the_tab_row_does_not_duplicate_the_hub_workflow_opener(destroy_after):
+    panel = destroy_after(SynBioPanel())
+
+    assert not hasattr(panel, "_btn_open_workspace"), (
+        "opening a saved workflow is the Hub's job; this button was a duplicate"
+    )
+    assert callable(panel.open_workspace), (
+        "the button went, the capability did not — open_workspace stays callable"
+    )
+
+
+def test_the_tab_row_keeps_save_methods_and_academy(destroy_after):
+    """Three controls, each of which the Hub cannot provide for this plugin.
+
+    The save button is the SDK's own plugin-hosted split button and carries
+    this workspace's unsaved-changes state, so it is not redundant with the
+    Hub's project save; Methods is generated from what this workspace ran; the
+    Academy catalogue is per-module.
+    """
+    panel = destroy_after(SynBioPanel())
+
+    assert panel._save_button.isVisibleTo(panel)
+    assert panel._btn_methods.isVisibleTo(panel)
+    assert panel._btn_academy.isVisibleTo(panel)
+
+
+def test_the_methods_button_label_stays_short(destroy_after):
+    """It read "📚 Methods && References" and was the widest control in the row."""
+    panel = destroy_after(SynBioPanel())
+
+    assert panel._btn_methods.text() == "📚 Methods"
+    assert panel._btn_methods.toolTip(), "the short label needs the tooltip to explain it"
+
+
+# ── Tab navigation, which the Academy drives ──────────────────────────────
+
+
+def test_show_tab_switches_both_the_bar_and_the_central_stack(destroy_after):
+    """A course navigates with this, so the two must not be able to disagree.
+
+    `setCurrentIndex` only emits when the index changes, and the central stack
+    follows that signal — so asking for the tab already showing used to leave
+    the stack pointing at whatever was there before.
+    """
+    panel = destroy_after(SynBioPanel())
+
+    assert panel.show_tab(2)
+    assert panel._tab_bar.currentIndex() == 2
+    assert panel._central_stack.currentWidget() is panel.plasmid_view
+
+    assert panel.show_tab(2), "asking twice must still be true"
+    assert panel._central_stack.currentWidget() is panel.plasmid_view
+
+
+def test_show_plasmid_tab_lands_on_the_plasmid_view(destroy_after):
+    panel = destroy_after(SynBioPanel())
+
+    assert panel.show_plasmid_tab()
+    assert panel._central_stack.currentWidget() is panel.plasmid_view
+
+
+def test_show_tab_refuses_an_index_that_does_not_exist(destroy_after):
+    """A course asking for a tab that was removed must not crash the lesson."""
+    panel = destroy_after(SynBioPanel())
+    before = panel._tab_bar.currentIndex()
+
+    assert not panel.show_tab(99)
+    assert not panel.show_tab(-1)
+    assert panel._tab_bar.currentIndex() == before

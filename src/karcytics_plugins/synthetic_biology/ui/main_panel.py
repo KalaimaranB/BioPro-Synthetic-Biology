@@ -246,11 +246,18 @@ class SynBioPanel(PluginBase):
         tab_row_layout.setSpacing(6)
         tab_row_layout.addWidget(self._tab_bar, 1)
 
-        self._btn_open_workspace = SecondaryButton("📂 Open", tab_row)
-        self._btn_open_workspace.setToolTip("Open a saved Synthetic Biology workflow")
-        self._btn_open_workspace.clicked.connect(self.open_workspace)
-
-        self._btn_methods = SecondaryButton("📚 Methods && References", tab_row)
+        # "📂 Open" used to sit here and has been removed: opening a saved
+        # workflow is the Hub's job, which lists them under Recent Sessions on
+        # the workspace home screen, so this was a second door to one place
+        # competing for width with eleven tabs. `open_workspace()` is untouched
+        # and still reachable programmatically.
+        #
+        # The save button stays. It is not a duplicate of anything the Hub
+        # shows: it is the SDK's own plugin-hosted split button, it carries
+        # this workspace's unsaved-changes state (`set_dirty`, wired below in
+        # `_setup_workspace_persistence`), and its menu already folds "Save As
+        # New Workflow" into the same control.
+        self._btn_methods = SecondaryButton("📚 Methods", tab_row)
         self._btn_methods.setToolTip(
             "Materials & Methods paragraph and references for what this workspace ran"
         )
@@ -267,12 +274,7 @@ class SynBioPanel(PluginBase):
         self._btn_academy = AcademyButton(self, tab_row)
         self._btn_academy.setToolTip("Guided courses for this module")
 
-        for control in (
-            self._btn_open_workspace,
-            self._btn_methods,
-            self._btn_academy,
-            self._save_button,
-        ):
+        for control in (self._btn_methods, self._btn_academy, self._save_button):
             tab_row_layout.addWidget(control)
         layout.addWidget(tab_row)
 
@@ -518,6 +520,33 @@ class SynBioPanel(PluginBase):
             child.update()
 
     # ── Academy ────────────────────────────────────────────────────────
+
+    def show_tab(self, index: int) -> bool:
+        """Switch the workspace to a tab by index. Returns whether it worked.
+
+        Public because an Academy ``ActionStep`` needs it and must not reach
+        into ``_tab_bar``. It exists at all because of a real failure: the
+        plasmid course opened on whatever tab the learner happened to be on —
+        tab 0, Design, by default — where every widget it wanted to spotlight
+        belongs to a view that is not the one on screen. The driver resolves a
+        target with ``findChildren(QWidget, name)`` and then drops anything
+        whose ``isVisible()`` is False, and a widget on a tab that is not
+        current is not visible. So the course dimmed the screen and
+        highlighted nothing, every step, with no error anywhere.
+        """
+        if not 0 <= index < self._tab_bar.count():
+            logger.warning("Academy asked for tab %s, which does not exist", index)
+            return False
+        self._tab_bar.setCurrentIndex(index)
+        # setCurrentIndex only emits when the index actually changes, and the
+        # central stack is switched by that signal — so a course starting on
+        # the tab it wants would otherwise leave the stack pointing elsewhere.
+        self._on_tab_changed(index)
+        return True
+
+    def show_plasmid_tab(self) -> bool:
+        """Put the workspace on Plasmid Assembly, where the plasmid course runs."""
+        return self.show_tab(SynBioAcademyContext.PLASMID_TAB)
 
     def academy_context(self) -> SynBioAcademyContext:
         """The read-only snapshot this module's Academy validators inspect.

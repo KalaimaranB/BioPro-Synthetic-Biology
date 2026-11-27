@@ -48,6 +48,7 @@ from __future__ import annotations
 
 from karcytics_sdk.plugin.tutorial_models import QUESTION_PREDICT as _PREDICT
 from karcytics_sdk.plugin.tutorial_models import (
+    ActionStep,
     AnswerChoice,
     BranchingStep,
     Course,
@@ -88,7 +89,7 @@ TM_SPIN = "primer_tm_spin"
 FWD_TAIL = "primer_fwd_tail_edit"
 COVERAGE_TOGGLE = "primer_coverage_toggle"
 BTN_RUN_DESIGN = "primer_btn_design"
-PRIMER_TABS = "primer_result_tabs"
+PRIMER_TABBAR = "primer_result_tabbar"
 CANDIDATE_TABLE = "primer_candidate_table"
 RUBRIC_PANEL = "primer_rubric_panel"
 AMPLIFICATION_TRACK = "primer_amplification_track"
@@ -96,6 +97,25 @@ GEL_LADDER = "gel_ladder_combo"
 GEL_AGAROSE = "gel_agarose_combo"
 GEL_VIEW = "gel_view"
 BTN_METHODS = "primer_btn_methods"
+
+
+def _open_plasmid_tab(panel: object) -> None:
+    """Put the workspace on Plasmid Assembly before the course points at it.
+
+    The driver drops any spotlight target whose ``isVisible()`` is False, and a
+    widget on a tab that is not current is not visible. Without this the course
+    ran correctly and highlighted nothing: the workspace opens on tab 0
+    (Design), every target here belongs to tab 2, and a course that dims the
+    screen while pointing at invisible widgets looks exactly like a broken
+    overlay.
+
+    Duck-typed and silent on failure, because a step whose only job is
+    navigation must never be the thing that ends a lesson.
+    """
+    opener = getattr(panel, "show_plasmid_tab", None)
+    if callable(opener):
+        opener()
+
 
 _steps = [
     # ── PHASE 1: Orientation ──────────────────────────────────────────────────
@@ -109,6 +129,13 @@ _steps = [
         ),
         cyto_emotion="cheering",
         cyto_animation="cheering",
+        next_step_id="go_to_plasmid_tab",
+    ),
+    ActionStep(
+        id="go_to_plasmid_tab",
+        text="Taking you to the Plasmid Assembly tab…",
+        cyto_emotion="talking",
+        action=_open_plasmid_tab,
         next_step_id="the_layout",
     ),
     InfoStep(
@@ -174,7 +201,10 @@ _steps = [
             "think."
         ),
         cyto_emotion="talking",
-        target_widget_names=[IMPORT_NOTICE],
+        # The viewer is listed as well because the notice hides itself when a
+        # paste needed no cleaning at all — a legitimate outcome that would
+        # otherwise leave this step pointing at nothing.
+        target_widget_names=[IMPORT_NOTICE, SEQUENCE_VIEWER],
         next_step_id="format_question",
     ),
     QuestionStep(
@@ -512,7 +542,7 @@ _steps = [
         id="go_amplification",
         text="👉 Open the **Amplification** tab.",
         cyto_emotion="pointing",
-        target_widget_names=[PRIMER_TABS],
+        target_widget_names=[PRIMER_TABBAR],
         validator=ViewingDialogTab("amplification"),
         allow_interaction=True,
         hide_next_button=True,
@@ -549,7 +579,7 @@ _steps = [
         id="go_gel",
         text="👉 Open the **Gel** tab.",
         cyto_emotion="pointing",
-        target_widget_names=[PRIMER_TABS],
+        target_widget_names=[PRIMER_TABBAR],
         validator=ViewingDialogTab("gel"),
         allow_interaction=True,
         hide_next_button=True,

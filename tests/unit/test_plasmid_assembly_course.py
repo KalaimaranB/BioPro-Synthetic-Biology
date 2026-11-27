@@ -24,8 +24,10 @@ import pytest
 from karcytics_sdk.plugin.tutorial_models import (
     QUESTION_CHECK,
     QUESTION_PREDICT,
+    ActionStep,
     BaseStep,
     BranchingStep,
+    InteractionStep,
     QuestionStep,
     VerificationStep,
 )
@@ -54,8 +56,8 @@ from karcytics_plugins.synthetic_biology.tutorials.validators import (
 from karcytics_plugins.synthetic_biology.ui.controllers.plasmid_controller import (
     PlasmidAssemblyController,
 )
+from karcytics_plugins.synthetic_biology.ui.main_panel import SynBioPanel
 from karcytics_plugins.synthetic_biology.ui.views.plasmid_assembly_view import (
-    PlasmidAssemblyView,
     PrimerDesignDialog,
 )
 
@@ -164,44 +166,162 @@ def test_the_course_actually_spotlights_something():
     assert len(TARGETED_WIDGETS) > 10, "a course that highlights nothing is a slideshow"
 
 
-@pytest.fixture(scope="module")
-def live_object_names(request) -> frozenset[str]:
-    """Every `objectName` the real widget tree carries, view and dialog both.
+#: Inner tab each step asks the learner to open, applied once that step has run.
+_INNER_TABS = {"go_amplification": 1, "go_gel": 2}
 
-    Built from live widgets rather than grepped out of the source: the two tail
-    boxes are produced by one helper that takes the name as an argument, so no
-    literal `setObjectName("primer_fwd_tail_edit")` appears anywhere, and a
-    source scan declared it missing while the running app had it. What matters
-    is whether `findChildren(QWidget, name)` — which is exactly how
-    `AcademyStepDriver` resolves a target — can see it.
+
+def _resolves(panel, name: str) -> bool:
+    """`_update_targets` + `_find_in_other_windows`, as the driver has them."""
+    if any(w.isVisible() for w in panel.findChildren(QWidget, name)):
+        return True
+    own_window = panel.window()
+    for top in QApplication.topLevelWidgets():
+        if top is own_window or not top.isVisible():
+            continue
+        if top.objectName() == name:
+            return True
+        if any(w.isVisible() for w in top.findChildren(QWidget, name)):
+            return True
+    return False
+
+
+def _enter_step(step, panel, holder, request) -> None:
+    """Put the workspace in the state this step would actually find.
+
+    The course's own ActionStep is what navigates, so it is run here exactly
+    where the engine would run it rather than the tab being arranged by hand --
+    otherwise this would paper over the bug it exists to catch.
+    """
+    action = getattr(step, "action", None)
+    if callable(action):
+        action(panel)
+    if step.id == "open_dialog" and "dialog" not in holder:
+        dialog = PrimerDesignDialog(
+            SYNTHETIC_TEMPLATE, PlasmidAssemblyController(SynBioState()), parent=panel
+        )
+        dialog.setModal(False)
+        dialog.show()
+        holder["dialog"] = dialog
+        request.addfinalizer(dialog.deleteLater)
+
+
+def _leave_step(step, holder) -> None:
+    """Apply the switch a step told the learner to make, for the steps after it."""
+    dialog = holder.get("dialog")
+    if step.id in _INNER_TABS and dialog is not None:
+        dialog.tabs.setCurrentIndex(_INNER_TABS[step.id])
+        QApplication.processEvents()
+
+
+@pytest.fixture(scope="module")
+def walked_course(request) -> dict[str, list[str]]:
+    """Walk the whole course against a real panel; report what each step resolves.
+
+    Replaces an earlier fixture that built ``PlasmidAssemblyView`` on its own
+    and asked whether each ``objectName`` existed anywhere in it. That passed
+    while the course was completely broken, and it is worth being precise about
+    why, because the same mistake is easy to make again: standing alone, every
+    widget in the view is visible, but inside the panel the view sits in a tab
+    stack and the workspace opens on tab 0. ``AcademyStepDriver`` discards any
+    target whose ``isVisible()`` is False, so all six panel targets resolved to
+    nothing and the course dimmed the screen and pointed at empty space.
+
+    So this mirrors the driver instead of approximating it: the real panel, the
+    real tab state, the dialog opened at the step that opens it, and its inner
+    tab advanced at the steps that tell the learner to switch. The returned map
+    is step id -> target names that would not resolve at that point.
     """
     QApplication.instance() or QApplication([])
-    names: set[str] = set()
-    widgets = [
-        PlasmidAssemblyView(SynBioState(), PlasmidAssemblyController(SynBioState())),
-        PrimerDesignDialog(SYNTHETIC_TEMPLATE, PlasmidAssemblyController(SynBioState())),
-    ]
-    request.addfinalizer(lambda: [w.deleteLater() for w in widgets])
-    for root in widgets:
-        if root.objectName():
-            names.add(root.objectName())
-        names.update(w.objectName() for w in root.findChildren(QWidget) if w.objectName())
-    return frozenset(names)
+    panel = SynBioPanel()
+    panel.resize(1700, 1050)
+    panel.show()
+    request.addfinalizer(panel.deleteLater)
+
+    holder: dict[str, object] = {}
+    unresolved: dict[str, list[str]] = {}
+
+    for step in COURSE.steps:
+        _enter_step(step, panel, holder, request)
+        QApplication.processEvents()
+
+        names = step.target_widget_names or []
+        if names:
+            unresolved[step.id] = [n for n in names if not _resolves(panel, n)]
+
+        _leave_step(step, holder)
+
+    return unresolved
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("name", TARGETED_WIDGETS)
-def test_every_spotlight_target_exists_in_the_widget_tree(name, live_object_names):
-    """The driver resolves a target by `objectName`; an unset name finds nothing.
+def test_every_step_with_targets_highlights_something(walked_course):
+    """The bug that made the whole course look broken.
 
-    This is the test that makes the course real. Without it a step can name a
-    widget that was renamed or never named at all, and the only symptom is a
-    lesson that dims the screen and points at nothing.
+    A step whose every target fails to resolve dims the screen and points at
+    nothing, with no error logged anywhere.
     """
-    assert name in live_object_names, (
-        f"the course spotlights {name!r} but no widget in the plasmid view or primer "
-        "dialog carries that objectName, so the step would highlight nothing"
+    blind = {
+        sid: names
+        for sid, names in walked_course.items()
+        if names
+        and len(names) == len(next(s for s in COURSE.steps if s.id == sid).target_widget_names)
+    }
+    assert not blind, f"steps that would highlight nothing: {blind}"
+
+
+@pytest.mark.unit
+def test_the_course_switches_to_the_plasmid_tab_before_pointing_at_it():
+    """Navigation must be a step, not an assumption about where the learner is.
+
+    The Academy can be opened from any tab, and the workspace opens on Design.
+    """
+    action_steps = [s for s in COURSE.steps if isinstance(s, ActionStep)]
+    assert action_steps, "no step navigates; the course assumes the learner is already there"
+
+    first_targeting = next(s for s in COURSE.steps if s.target_widget_names)
+    order = [s.id for s in COURSE.steps]
+    assert order.index(action_steps[0].id) < order.index(first_targeting.id), (
+        "the course points at the plasmid tab before switching to it"
     )
+
+
+@pytest.mark.unit
+def test_the_navigation_step_survives_a_panel_that_cannot_navigate():
+    """A step whose only job is navigation must never end a lesson."""
+    action = next(s for s in COURSE.steps if isinstance(s, ActionStep)).action
+    assert action is not None
+    action(object())  # no show_plasmid_tab: must be a no-op, not a crash
+
+
+@pytest.mark.unit
+def test_actionable_steps_point_at_the_control_to_use(walked_course):
+    """Every step that waits on the learner must show them what to press.
+
+    An instruction with nothing highlighted is the failure a demo makes look
+    obvious and a test usually misses.
+    """
+    for step in COURSE.steps:
+        if not isinstance(step, InteractionStep | VerificationStep):
+            continue
+        assert step.target_widget_names, f"{step.id} asks for an action but points at nothing"
+        assert walked_course.get(step.id) != step.target_widget_names, (
+            f"{step.id} points only at widgets that are not visible when it runs"
+        )
+
+
+@pytest.mark.unit
+def test_a_tab_switch_points_at_the_tabs_not_the_page(walked_course):
+    """Spotlighting the QTabWidget lights the content and leaves the tabs dim.
+
+    Its rect is the whole page below the tab strip, so the thing the learner
+    has to click stayed outside the hole.
+    """
+    for step_id in ("go_amplification", "go_gel"):
+        step = next(s for s in COURSE.steps if s.id == step_id)
+        assert step.target_widget_names == ["primer_result_tabbar"], (
+            f"{step_id} must point at the tab bar, not the tab widget"
+        )
+        assert not walked_course[step_id]
 
 
 @pytest.mark.unit
