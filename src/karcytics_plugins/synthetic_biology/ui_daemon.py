@@ -65,71 +65,37 @@ _SRC_DIR = Path(__file__).resolve().parents[2]
 if str(_SRC_DIR) not in sys.path:
     sys.path.insert(0, str(_SRC_DIR))
 
-# CRITICAL: must happen before run_ui_daemon() (below, via main()) is ever
-# called — that starts the SDK's background stdin-reader thread
-# (ui_daemon_runtime.run()'s _RequestReader), and importing numpy while
-# another thread is blocked on a concurrent sys.stdin.buffer.read() call can
-# deadlock on Windows (see karcytics_sdk.plugin.ui_daemon_runtime and
-# karcytics_plugins.flow_cytometry.ui_daemon for the documented repro).
-# Importing numpy/scipy here, before that thread exists, means any later
-# import inside this plugin's own modules is just a sys.modules cache hit.
-try:
-    import numpy  # noqa: E402, F401
-except ImportError:
-    pass
-
-try:
-    import scipy  # noqa: E402, F401
-except ImportError:
-    pass
-
-try:
-    import matplotlib  # noqa: E402, F401
-    import matplotlib.pyplot  # noqa: E402, F401
-except ImportError:
-    pass
-
-try:
-    import pyqtgraph  # noqa: E402, F401
-except ImportError:
-    pass
-
-try:
-    import tellurium  # noqa: E402, F401
-except ImportError:
-    pass
-
-try:
-    import msgpack  # type: ignore[import-untyped]  # noqa: E402, F401
-except ImportError:
-    pass
-
-# The rest of this plugin's heavy third-party dependencies, pulled in further
-# down by the analysis engines (networkx by the circuit solver, Biopython by
-# assembly and CRISPR, requests by the registry client).
+# Dependency imports, all of them, before `run_ui_daemon()` is called.
 #
-# They are loaded here, with the block above, for a timing reason rather than a
-# tidiness one. The daemon runtime sends its "ready" handshake *before* calling
-# panel_factory() and only enters the Qt event loop *after* it returns, so any
-# RPC the Hub sends in between is read off stdin but cannot be serviced until
-# construction finishes. Importing these during panel construction therefore
-# spends the Hub's RPC timeout; importing them here spends the far more
-# generous startup budget instead, before the Hub is told the worker is ready.
-try:
-    import networkx  # noqa: E402, F401
-except ImportError:
-    pass
+# Two reasons they are here and in this order, and both have bitten:
+#
+# 1. numpy must be imported before run_ui_daemon() starts the SDK's background
+#    stdin-reader thread (ui_daemon_runtime's _RequestReader): importing while
+#    another thread is blocked on a concurrent sys.stdin.buffer.read() can
+#    deadlock. `startup.EAGER_MODULES` has numpy first for that reason. Doing
+#    this before the reader exists makes every later import a sys.modules hit.
+#
+#    This is also why none of it is moved to a thread to overlap with the
+#    handshake, tempting as that is: tried, and it hung the worker. See
+#    `startup`'s module docstring.
+#
+# 2. `PluginUIDaemon` allows 30 seconds for the ready frame, and all of this is
+#    spent against it. A cold matplotlib font cache is ~12 s on its own, which
+#    with uncompiled bytecode and macOS verifying each shared library on first
+#    load is what pushed a real first launch past 30 s: "Virtual Environment
+#    connection failed! Stderr: Matplotlib is building the font cache".
+#
+#    What keeps this inside budget is `analysis/daemon_worker.py`, which the
+#    Hub runs after installing dependencies with a 120-second budget and does
+#    exactly these imports. By the time this line runs on a real machine, the
+#    font cache exists and the bytecode is compiled.
+from karcytics_plugins.synthetic_biology.analysis.startup import (  # noqa: E402
+    EAGER_MODULES,
+    WARM_MODULES,
+    warm_imports,
+)
 
-try:
-    import Bio.Seq  # noqa: E402, F401
-    import Bio.SeqUtils.MeltingTemp  # noqa: E402, F401
-except ImportError:
-    pass
-
-try:
-    import requests  # noqa: E402, F401
-except ImportError:
-    pass
+warm_imports(EAGER_MODULES + WARM_MODULES)
 
 
 def _build_plugin_context() -> Any:

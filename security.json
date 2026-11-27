@@ -118,7 +118,7 @@
         "src/karcytics_plugins/synthetic_biology/ui/workers/registry_worker.py": "891928eeb7a5949461246f0800c6e77980c0d0239841fdadbb819866246f77f2",
         "src/karcytics_plugins/synthetic_biology/ui/workers/simulation_worker.py": "d481d32563f1e079b98bd0b54ead4b1d0508fdd723de0a66216a1d48e794580f",
         "src/karcytics_plugins/synthetic_biology/ui/workspace_persistence.py": "0b4904fafa6ae2ac0fa1148978bf261854dbed616cf9c058b06a7022c77d6c7d",
-        "src/karcytics_plugins/synthetic_biology/ui_daemon.py": "f191bc304dc2ac7ea8762e616a91a5aa6ef8a0f82ec1cbc52acd9df6451ffe0c",
+        "src/karcytics_plugins/synthetic_biology/ui_daemon.py": "ab855ca363d7c23872b6ea3838d8a9e3f74f35fd5eb9c5a5eb6063fb23ffff4b",
         "src/karcytics_plugins/synthetic_biology/utils/__init__.py": "0dda65bbb80c0638bef7a96093c410614e686e4c46700b5122ee4c8f4d1ec4e8",
         "src/karcytics_plugins/synthetic_biology/utils/robot_exporter.py": "eba585d71be17878dd36a7bb8236351575554cb183583e3769de770030068627"
     }
