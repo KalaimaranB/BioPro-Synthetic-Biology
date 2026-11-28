@@ -14,6 +14,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import shiboken6
 from karcytics_sdk.plugin.citation_widgets import CitationLabel
 from karcytics_sdk.plugin.components import (
     BioCaptionLabel,
@@ -73,6 +74,7 @@ from ...analysis.sequence_input import (
     validate_region,
 )
 from ...analysis.state import SynBioState
+from ...tutorials.context import PrimerDialogSnapshot
 from ...ui.controllers.plasmid_controller import PlasmidAssemblyController
 from ..widgets.amplification_track import AmplificationTrack
 from ..widgets.bio_tab_widget import BioTabWidget
@@ -207,6 +209,7 @@ class PrimerDesignDialog(QDialog):
         super().__init__(parent)
         self.controller = controller
         self.target_sequence = target_sequence or ""
+        self.setObjectName("primer_design_dialog")
         self.setWindowTitle("Primer Design & Amplification")
         self.setMinimumSize(1040, 760)
 
@@ -233,6 +236,16 @@ class PrimerDesignDialog(QDialog):
         layout.addWidget(self._build_inputs())
 
         self.tabs = BioTabWidget()
+        # Academy spotlight targets. The names are collected in
+        # tutorials/plasmid_assembly.py and asserted by its test, so renaming
+        # one here fails a test rather than silently producing a lesson that
+        # highlights nothing.
+        self.tabs.setObjectName("primer_result_tabs")
+        # The strip of clickable tabs, named separately from the widget. A step
+        # that says "open the Gel tab" must highlight the tabs themselves; the
+        # QTabWidget's rect is the whole page below them, so spotlighting that
+        # lit up the content and left the thing to click in the dark.
+        self.tabs.tabBar().setObjectName("primer_result_tabbar")
         self.tabs.addTab(self._build_candidates_tab(), "Candidates")
         self.tabs.addTab(self._build_amplification_tab(), "Amplification")
         self.tabs.addTab(self._build_gel_tab(), "Gel")
@@ -261,6 +274,7 @@ class PrimerDesignDialog(QDialog):
         row.setContentsMargins(0, 0, 0, 0)
 
         self.btn_methods = SecondaryButton("Methods && References")
+        self.btn_methods.setObjectName("primer_btn_methods")
         self.btn_methods.clicked.connect(self._open_methods)
         row.addWidget(self.btn_methods)
 
@@ -280,6 +294,27 @@ class PrimerDesignDialog(QDialog):
         self.save_button.clicked.connect(self._save_workspace)
         row.addWidget(self.save_button)
         return bar
+
+    def academy_snapshot(self) -> PrimerDialogSnapshot:
+        """What an Academy validator may know about this dialog.
+
+        Public and read-only on purpose: a course asks the panel, the panel
+        asks this, and no validator ever touches a widget. See
+        ``tutorials/context.py`` for why that boundary is worth a method.
+        """
+        rows = self.candidate_table.selectionModel()
+        selected = rows.selectedRows() if rows is not None else []
+        tabs = ("candidates", "amplification", "gel")
+        index = self.tabs.currentIndex()
+        return PrimerDialogSnapshot(
+            is_open=self.isVisible(),
+            candidate_count=len(self._candidates),
+            selected_index=selected[0].row() if selected else None,
+            visible_tab=tabs[index] if 0 <= index < len(tabs) else "",
+            target_tm=self.tm_spin.value(),
+            has_forward_tail=bool(self.fwd_overhang_edit.text().strip()),
+            has_reverse_tail=bool(self.rev_overhang_edit.text().strip()),
+        )
 
     def _selected_candidate(self) -> dict | None:
         row = self.candidate_table.currentRow()
@@ -380,12 +415,14 @@ class PrimerDesignDialog(QDialog):
         form = QFormLayout()
 
         self.feature_combo = BioComboBox()
+        self.feature_combo.setObjectName("primer_feature_combo")
         self.feature_combo.addItem("Whole target sequence", userData=None)
         self._add_feature_items()
         self.feature_combo.currentIndexChanged.connect(self._on_region_changed)
         form.addRow("Amplify:", self.feature_combo)
 
         coords = QWidget()
+        coords.setObjectName("primer_coords_row")
         coord_row = QHBoxLayout(coords)
         coord_row.setContentsMargins(0, 0, 0, 0)
         self.start_spin = BioSpinBox()
@@ -403,17 +440,23 @@ class PrimerDesignDialog(QDialog):
         form.addRow("Coordinates:", coords)
 
         self.tm_spin = BioDoubleSpinBox()
+        self.tm_spin.setObjectName("primer_tm_spin")
         self.tm_spin.setRange(45.0, 75.0)
         self.tm_spin.setValue(60.0)
         form.addRow("Target Tm (\u00b0C):", self.tm_spin)
 
-        self.fwd_overhang_edit, self.fwd_enzyme_label, fwd_row = self._build_tail_row("GAATTC")
+        self.fwd_overhang_edit, self.fwd_enzyme_label, fwd_row = self._build_tail_row(
+            "GAATTC", object_name="primer_fwd_tail_edit"
+        )
         form.addRow("Forward 5' tail:", fwd_row)
 
-        self.rev_overhang_edit, self.rev_enzyme_label, rev_row = self._build_tail_row("AAGCTT")
+        self.rev_overhang_edit, self.rev_enzyme_label, rev_row = self._build_tail_row(
+            "AAGCTT", object_name="primer_rev_tail_edit"
+        )
         form.addRow("Reverse 5' tail:", rev_row)
 
         self.full_target_toggle = BioToggleButton(_COVERAGE_OFF)
+        self.full_target_toggle.setObjectName("primer_coverage_toggle")
         self.full_target_toggle.setCheckable(True)
         # The label used to read "Keep the whole target (no trimming)" whether
         # the toggle was on or off, so it looked like a statement of current
@@ -446,6 +489,7 @@ class PrimerDesignDialog(QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.btn_design = PrimaryButton("Design Primers")
+        self.btn_design.setObjectName("primer_btn_design")
         self.btn_design.clicked.connect(self._on_design_clicked)
         layout.addWidget(self.btn_design)
 
@@ -476,9 +520,15 @@ class PrimerDesignDialog(QDialog):
         label.setText(text)
         label.setVisible(bool(text))
 
-    def _build_tail_row(self, example: str) -> tuple:
-        """A tail entry box plus the enzyme name the digest engine resolves it to."""
+    def _build_tail_row(self, example: str, object_name: str = "") -> tuple:
+        """A tail entry box plus the enzyme name the digest engine resolves it to.
+
+        ``object_name`` is the Academy spotlight target; both rows are built
+        here, so it cannot be set at the single call site.
+        """
         edit = BioLineEdit()
+        if object_name:
+            edit.setObjectName(object_name)
         edit.setPlaceholderText(f"e.g. {example}")
         edit.textChanged.connect(self._on_tail_edited)
 
@@ -704,6 +754,7 @@ class PrimerDesignDialog(QDialog):
         column = QVBoxLayout(page)
 
         self.candidate_table = BioTableWidget()
+        self.candidate_table.setObjectName("primer_candidate_table")
         headers = (
             "#",
             "Score",
@@ -731,6 +782,7 @@ class PrimerDesignDialog(QDialog):
         )
 
         self.rubric_panel = RubricPanel()
+        self.rubric_panel.setObjectName("primer_rubric_panel")
         column.addWidget(self.rubric_panel, stretch=4)
         column.addWidget(
             CitationLabel("Screening", FEATURE_CITATIONS["primer_screen"], prefix="Based on")
@@ -745,6 +797,7 @@ class PrimerDesignDialog(QDialog):
         column.addWidget(self.amplification_hint)
 
         self.amplification_track = AmplificationTrack()
+        self.amplification_track.setObjectName("primer_amplification_track")
         column.addWidget(self.amplification_track, stretch=1)
         column.addWidget(
             CitationLabel("Amplification", FEATURE_CITATIONS["amplification"], prefix="Based on")
@@ -764,6 +817,7 @@ class PrimerDesignDialog(QDialog):
 
         control_row.addWidget(QLabel("Ladder:"))
         self.ladder_combo = BioComboBox()
+        self.ladder_combo.setObjectName("gel_ladder_combo")
         for key, ladder in gel_engine.LADDERS.items():
             self.ladder_combo.addItem(ladder.name, userData=key)
         self.ladder_combo.setCurrentIndex(max(list(gel_engine.LADDERS).index("1kb_plus"), 0))
@@ -772,6 +826,7 @@ class PrimerDesignDialog(QDialog):
 
         control_row.addWidget(QLabel("Agarose:"))
         self.agarose_combo = BioComboBox()
+        self.agarose_combo.setObjectName("gel_agarose_combo")
         for percentage in gel_engine.AGAROSE_WINDOWS:
             self.agarose_combo.addItem(percentage, userData=percentage)
         self.agarose_combo.setCurrentText(gel_engine.DEFAULT_AGAROSE)
@@ -781,6 +836,7 @@ class PrimerDesignDialog(QDialog):
         column.addWidget(controls)
 
         self.gel_view = GelView()
+        self.gel_view.setObjectName("gel_view")
         column.addWidget(self.gel_view, stretch=1)
         return page
 
@@ -1102,6 +1158,21 @@ class SequencePasteDialog(QDialog):
         self._set_loadable(True)
 
 
+def _academy_course_is_running() -> bool:
+    """Whether an Academy course is live in this process.
+
+    Imported lazily and defensively: the primer dialog must open whether or
+    not the Academy is wired up, so a missing or half-initialised
+    ``runtime_services`` means "no course", never an exception on a button
+    the user just pressed.
+    """
+    try:
+        from karcytics_sdk.plugin.runtime_services import tutorial_manager
+    except Exception:
+        return False
+    return getattr(tutorial_manager, "active_course", None) is not None
+
+
 class PlasmidAssemblyView(QWidget):
     """PySide6 View for plasmid assembly, Drag-and-Drop part ordering, and Sequence
     viewer.
@@ -1125,6 +1196,9 @@ class PlasmidAssemblyView(QWidget):
         self.state = state
         self.controller = controller
         self.catalogue = catalogue
+        #: The open primer dialog, while one is open. Only ever read through
+        #: ``academy_primer_dialog()``.
+        self._primer_dialog: PrimerDesignDialog | None = None
 
         self._init_ui()
         self._connect_signals()
@@ -1185,6 +1259,7 @@ class PlasmidAssemblyView(QWidget):
         left_layout.addWidget(lbl_palette)
 
         self.part_palette = PartPaletteWidget()
+        self.part_palette.setObjectName("parts_palette")
         left_layout.addWidget(self.part_palette)
 
         splitter.addWidget(left_panel)
@@ -1202,6 +1277,7 @@ class PlasmidAssemblyView(QWidget):
         # widest single control. Button text is identical either way.
         toolbar = FlowLayout(margin=0, hSpacing=6, vSpacing=6)
         self.name_edit = BioLineEdit("pKarcytics_v1")
+        self.name_edit.setObjectName("plasmid_name_edit")
         # Without this the edit asks for a comfortable default width and puts
         # most of the row's minimum back.
         self.name_edit.setMinimumWidth(110)
@@ -1209,18 +1285,22 @@ class PlasmidAssemblyView(QWidget):
         toolbar.addWidget(self.name_edit)
 
         self.btn_import = SecondaryButton("📁 Import File")
+        self.btn_import.setObjectName("btn_import_sequence")
         self.btn_import.clicked.connect(self._on_import_clicked)
         toolbar.addWidget(self.btn_import)
 
         self.btn_paste = SecondaryButton("📋 Paste Sequence")
+        self.btn_paste.setObjectName("btn_paste_sequence")
         self.btn_paste.clicked.connect(self._on_paste_clicked)
         toolbar.addWidget(self.btn_paste)
 
         self.btn_assemble = PrimaryButton("⚡ Assemble Construct")
+        self.btn_assemble.setObjectName("btn_assemble_construct")
         self.btn_assemble.clicked.connect(self._on_assemble_clicked)
         toolbar.addWidget(self.btn_assemble)
 
         self.btn_primer = SecondaryButton("🧬 Design Primers")
+        self.btn_primer.setObjectName("btn_design_primers")
         self.btn_primer.clicked.connect(self._on_primer_clicked)
         toolbar.addWidget(self.btn_primer)
 
@@ -1230,6 +1310,7 @@ class PlasmidAssemblyView(QWidget):
         # to know their sequence was altered on the way in *while* they design
         # primers against it, not for three seconds beforehand.
         self.import_notice = BioStatusLabel("")
+        self.import_notice.setObjectName("plasmid_import_notice")
         self.import_notice.setVisible(False)
         center_layout.addWidget(self.import_notice)
 
@@ -1273,6 +1354,7 @@ class PlasmidAssemblyView(QWidget):
         right_layout.addWidget(self.feature_table)
 
         self.seq_display = QTextEdit()
+        self.seq_display.setObjectName("plasmid_sequence_viewer")
         self.seq_display.setReadOnly(True)
         self.seq_display.setPlaceholderText("Assembled sequence display (FASTA / GenBank)...")
         self.seq_display.setStyleSheet("font-family: Menlo, Consolas, 'Courier New', monospace;")
@@ -1578,7 +1660,41 @@ class PlasmidAssemblyView(QWidget):
         dlg = PrimerDesignDialog(
             target_sequence=plasmid.sequence, controller=self.controller, parent=self
         )
+        # Held so the panel can report the dialog's state to an Academy
+        # validator; cleared on close so a stale snapshot can never satisfy a
+        # step after the dialog has gone.
+        self._primer_dialog = dlg
+        dlg.finished.connect(self._on_primer_dialog_finished)
+
+        if _academy_course_is_running():
+            # A modal exec() would make this dialog run its own event loop and
+            # refuse input to the main window - which is where the Academy
+            # overlay lives, parented to the panel. Cyto's Next button would be
+            # dead for the dozen steps the plasmid course teaches inside here.
+            # Shown non-modally the SDK keeps working as designed: it cannot
+            # paint a spotlight over another window, but it maps the dialog's
+            # rect in and moves Cyto and the bubble clear of it rather than
+            # leaving them stranded underneath (see
+            # academy_driver._find_in_other_windows).
+            #
+            # Outside a course the dialog stays modal, which is the behaviour
+            # every other caller has always had.
+            dlg.setModal(False)
+            dlg.show()
+            dlg.raise_()
+            return
+
         dlg.exec()
+
+    def _on_primer_dialog_finished(self, _result: int = 0) -> None:
+        self._primer_dialog = None
+
+    def academy_primer_dialog(self) -> PrimerDialogSnapshot:
+        """The primer dialog's state, or an empty snapshot when it is closed."""
+        dialog = self._primer_dialog
+        if dialog is None or not shiboken6.isValid(dialog):
+            return PrimerDialogSnapshot()
+        return dialog.academy_snapshot()
 
     @Slot(PlasmidVector)
     def render_plasmid(self, vector: PlasmidVector, announce: bool = True):
